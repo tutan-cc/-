@@ -1,7 +1,0 @@
-  var GEAR_ICON = mkIconGroup("gear", "art/icons/gear/",
-    ["pot", "griddle", "steamer",
-     "plate_empty", "plate_egg", "plate_bacon", "plate_sandwich", "plate_bun", "plate_salad",
-     "juice_jug", "tray", "tools"]);
-  var FACE_ICON = mkIconGroup("face", "art/icons/faces/",
-    ["stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent",
-     "fang_calm", "fang_urgent", "fang_happy", "lu_calm", "lu_urgent", "lu_happy"]);

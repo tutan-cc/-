@@ -1169,7 +1169,8 @@
   /** 兼容旧名：重新预加载全部贴图（现在不只食材了）*/
   function initFoodIcons(baseDir) { initIcons(baseDir); return FOOD_ICON; }
 
-  /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）─────────────── */
+  /** 灶位 kind → 厨具贴图名（锅 / 煎盘 / 蒸笼 / 木托盘 / 果汁壶）*/
+  function gearNameOfKind(kind) { return GEAR_OF_KIND[kind] || null; }
   /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）───────────────
      盘位贴图：本批 Lovart 素材把「盘面」拆成了 6 张一一对应的图
      （空盘 / 只装煎蛋 / 只装培根 / 只装三明治 / 只装包子 / 只装沙拉）。
@@ -1201,6 +1202,13 @@
       t = pool[i]; pool[i] = pool[k]; pool[k] = t;
     }
     return pool;
+  }
+  /** 顾客编号 → 角色名（用常量池；state 版本见 faceNameIn）。负数 / 非数按 0。 */
+  function faceKindOf(cid) {
+    var n = Math.round(Number(cid));
+    if (!isFinite(n)) n = 0;
+    var pool = facePoolFor(null);
+    return pool[Math.abs(n) % pool.length];
   }
   /** 本局角色池（有 cfg.seed 用 seed，否则用固定常量 → 永远可复现）*/
   function facePoolFor(state) {
@@ -1292,9 +1300,13 @@
       无头 / 单测用它断言「9 列元素一个都没被挪动」。 */
   function counterTopCanvasY() {
     var src = bgSource();
-    if (!src || !src.img) return BG_META.kitchen.counterTopCanvasY;          // 没有贴图 → 报 v1 的几何常量
-    var nw = src.img.naturalWidth || 0, nh = src.img.naturalHeight || 0;
-    if (!(nw > 0) || !(nh > 0)) return BG_META.kitchen.counterTopCanvasY;
+    if (!src || !src.img) return BG_META[BG_SLOTS[0].id].counterTopCanvasY;  // 没有贴图 → 报首选素材的几何常量
+    var nw = src.img.naturalWidth || 0;
+    /* 分母必须是**源窗口高**（= 源图高度），不是补带之后的画布高：
+       v2 载入的是「整幅宽 + 底部补带」的成品图（1180×790），若拿它当分母，
+       台面 y 会算成 704（源像素）而不是 405.7（画布像素）。 */
+    var nh = (src.meta.srcWindow && src.meta.srcWindow.h) || src.img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return BG_META[BG_SLOTS[0].id].counterTopCanvasY;
     return Math.round(src.meta.counterTopSrcY * H / nh * 10) / 10;
   }
 
@@ -1340,7 +1352,8 @@
     /** 背景（两级回退）：ready/id 是**当前生效**那张；slots 是全部候选与各自的加载状态 */
     bg: function () {
       var src = bgSource();
-      var meta = src ? src.meta : BG_META.kitchen;
+      /* 没有可用贴图时，报「首选素材 kitchen2」的几何常量（与 file/name 一致，便于断言）*/
+      var meta = src ? src.meta : BG_META[BG_SLOTS[0].id];
       var slots = BG_SLOTS.map(function (s) {
         return { id:s.id, name:s.name, file:"art/bg/" + s.name, loaded:s.loaded, failed:s.failed,
                  ready:!!(s.img && (s.img.naturalWidth || 0) > 0 && s.img.complete !== false) };
@@ -1375,6 +1388,12 @@
     },
     total: function () {
       var n = 1;
+      for (var i = 0; i < ICON_GROUPS.length; i++) n += ICON_GROUPS[i].ids.length;
+      return n;
+    },
+    /** 磁盘上真实存在的候选文件总数（背景是 2 张候选：kitchen2 + kitchen）*/
+    totalFiles: function () {
+      var n = BG_SLOTS.length;
       for (var i = 0; i < ICON_GROUPS.length; i++) n += ICON_GROUPS[i].ids.length;
       return n;
     }
@@ -2877,6 +2896,20 @@
         refreshPlate(st, p);
         step(st, 0);                                        // 让 step 里的「过火 → 糊」结算跑一次
         return st.plates[k] ? st.plates[k].state === "burnt" : false;
+      },
+      /** 出图 / 测试用：把某位顾客的订单**一次补齐**（不推进时间），用于验「全部拿到 → 满意脸」*/
+      serveAll: function (cid) {
+        var st = curState(); if (!st) return false;
+        var c = null;
+        for (var i = 0; i < st.customers.length; i++) if (st.customers[i].id === cid) c = st.customers[i];
+        if (!c) return false;
+        for (var k = 0; k < c.order.length; k++) {
+          if (c.done.indexOf(c.order[k]) < 0) c.done.push(c.order[k]);
+        }
+        /* 只把订单标记为「全部拿到」——**不置 left**：出图 / 断言要在「满意」那一态停住，
+           真实玩法里的离场由 step() 负责（订单完成时才置 left）。这样 happy 头像才抓得到。 */
+        if (!c.satisfiedAt) c.satisfiedAt = st.elapsed;
+        return true;
       },
       /** 生命周期计数（无头验收用）：escBound/escRemoved 应配平，rafCancelled ≥ 1 表示循环已停 */
       lifecycle: function () {

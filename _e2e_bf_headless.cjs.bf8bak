@@ -816,8 +816,8 @@ function runMain() {
     /* 贴图范围从「只允许 art/icons/<foodId>.png」扩到本批 4 组 + 背景，
        断言同步收紧成：只允许 art/ 下的本地 PNG（bg / icons / icons/<group>），
        且协议必须是本地（无 http(s) / data）。 */
-    A(di.every(x => /(^|\/)art\/(bg\/kitchen2?\.png|icons\/([a-z]+\/)?[a-z_]+\.png)$/.test(x.src)),
-      "每次 drawImage 的图都来自本地 art/（背景 v2 / 食材 / 厨具 / 盘面 / 头像 / UI）",
+    A(di.every(x => /(^|\/)art\/(bg\/kitchen\.png|icons\/([a-z]+\/)?[a-z_]+\.png)$/.test(x.src)),
+      "每次 drawImage 的图都来自本地 art/（背景 / 食材 / 厨具 / 头像 / UI）",
       [...new Set(di.map(x => x.src.split("/").slice(-2).join("/")))].slice(0, 8).join(" "));
     A(di.every(x => !/^https?:|^data:/i.test(x.src)), "drawImage 只画本地文件（没有 http(s) / data URI 外链）");
     A(di.every(x => (x.argc === 5 || x.argc === 9) && x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sh > 0),
@@ -860,8 +860,8 @@ function runMain() {
     b4.pump(3);
     /* 素材从 9 张（食材）扩到 34 张（9 食材 + 9 厨具 + 6 头像 + 9 UI + 1 背景），
        所以「被接住的 onerror 次数」也跟着变成 34 —— 断言同步改成 34，而不是删掉这条。 */
-    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 44,
-      "加载失败时一条 drawImage 都不发，44 个 onerror 全被接住（含背景两张候选）",
+    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 34,
+      "加载失败时一条 drawImage 都不发，34 次 onerror 全被接住",
       "errors=" + b4.record.imgErrors.length + " / drawImage=" + b4.record.drawImage.length);
     A(b4.canvas()._m.log.fills > 80, "加载失败也照旧画满整屏（矢量兜底生效）");
     b4.B.dispose();
@@ -877,34 +877,24 @@ function runMain() {
       "api.art 暴露贴图映射表与背景几何（单测与无头共用同一个出口）");
     const bg = A5.bg();
     const rpt = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_assets_report.json"), "utf8"));
-    /* 本批换成 v2（art/bg/kitchen2.png）：两级回退里的首选；v1 仍在册兜底。
-       断言改成「与 art/_assets2_report.json 逐字一致」+ 「保整幅宽」两条。 */
-    const rpt2 = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_assets2_report.json"), "utf8"));
-    const r2 = rpt2.backgrounds.filter(b => b.key === "kitchen2")[0];
-    A(bg.ready === true && bg.loaded >= 1 && bg.failed === 0,
-      "背景 art/bg/kitchen2.png 真解码完成（读的是真文件的 IHDR）",
+    A(bg.ready === true && bg.loaded === 1 && bg.failed === 0,
+      "背景 art/bg/kitchen.png 真解码完成（读的是真文件的 IHDR）",
       "spec " + bg.spec.w + "×" + bg.spec.h + " loaded=" + bg.loaded + " failed=" + bg.failed);
-    A(bg.active === "kitchen2", "生效的是 v2 那一张（active=" + bg.active + "，v1 只作兜底）");
-    A(JSON.stringify(bg.srcWindow) === JSON.stringify(r2.srcWindow),
-      "breakfast.js 的源窗口与 art/_assets2_report.json 逐字一致（测量结果没被手改）", JSON.stringify(bg.srcWindow));
-    A(bg.scale === r2.scale && bg.strategy === r2.strategy && bg.croppedPerSide === r2.croppedPerSide,
-      "裁切策略与报告一致（scale=" + bg.scale + " / " + bg.strategy + " / 左右各裁 " + bg.croppedPerSide + "px）");
-    A(bg.counterTopCanvasY === r2.counterTopCanvasY,
-      "木台面上沿画布 y 与报告一致（" + bg.counterTopCanvasY + " = 源 " + bg.counterTopSrcY + " / 源高 " + bg.srcWindow.h + " × 画布 " + b5.B.VIEW.h + "）");
-    A(bg.counterTopCanvasY > b5.B.LAY.plate.y && bg.counterTopCanvasY < b5.B.LAY.buckets.y,
-      "盘带 / 锅带 / 桶带三段全部落在木台面上（台面上沿落在盘带之内）",
-      "y=" + bg.counterTopCanvasY + " ∈ (" + b5.B.LAY.plate.y + ", " + b5.B.LAY.buckets.y + ") · 9 列元素位置一字未动");
-    A(bg.croppedPerSide === 0 && bg.srcWindow.w >= 2048,
-      "v2 保整幅宽：左右各裁 0px，完整樱花树冠 + 完整货架都在画面里（源窗口宽 " + bg.srcWindow.w + "）");
-    A(bg.bottomFillPx > 0, "画布底部用木纹平铺补了 " + bg.bottomFillPx + "px（不是纯色渐变）");
-    A(bg.fallback.join(">") === "kitchen2>kitchen>vector", "两级回退链写在 art.bg().fallback：" + bg.fallback.join(">"));
-    A(b5.B.debug.bg().file === "art/bg/kitchen2.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(A5.bg().file),
-      "背景走相对路径 art/bg/kitchen2.png（不写盘符 / 协议 / data URI）");
+    A(bg.crop.x === rpt.background.crop.x && bg.crop.y === rpt.background.crop.y &&
+      bg.crop.w === rpt.background.crop.w && bg.crop.h === rpt.background.crop.h,
+      "breakfast.js 的裁切参数与 art/_assets_report.json 逐字一致（测量结果没被手改）", JSON.stringify(bg.crop));
+    A(bg.spec.w === rpt.background.spec.w && bg.spec.h === rpt.background.spec.h,
+      "背景素材尺寸与报告一致（裁剪后 " + bg.spec.w + "×" + bg.spec.h + "）");
+    A(Math.abs(bg.counterTopCanvasY - 318) <= 1.5 && bg.counterTopCanvasY <= b5.B.LAY.plate.y,
+      "木台面上沿落在画布 y≈318（= 列头线），盘/锅/桶三段全在木台面上",
+      "y=" + bg.counterTopCanvasY + " ≤ 盘带顶 " + b5.B.LAY.plate.y);
+    A(b5.B.debug.bg().file === "art/bg/kitchen.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(A5.bg().file),
+      "背景走相对路径 art/bg/kitchen.png（不写盘符 / 协议 / data URI）");
 
     /* 真开局 → 背景在最底层被 drawImage，且目标框铺满整块画布 */
     b5.B.start(b5.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: () => {} });
     b5.pump(2);
-    const bgi = b5.record.drawImage.filter(x => /art\/bg\/kitchen2\.png$/.test(x.src));
+    const bgi = b5.record.drawImage.filter(x => /art\/bg\/kitchen\.png$/.test(x.src));
     A(bgi.length > 0, "最底层真的 drawImage 铺了背景（不是只登记了个开关）", bgi.length + " 次");
     const g0 = bgi[0];
     A(!!g0 && g0.dx === 0 && g0.dy === 0 && g0.dw === VW && g0.dh === VH,
@@ -938,26 +928,15 @@ function runMain() {
     const baseEgg = cntName("egg.png"), baseCongee = cntName("congee.png");
     A(baseEgg === 1 && baseCongee === 1, "9 个盘全空时，每样食材贴图每帧只画 1 次（底排食材桶）",
       "egg=" + baseEgg + " congee=" + baseCongee);
-    /* ① 煎蛋 → 专属盘贴图 plate_egg（只装煎蛋），不再叠食材贴图。
-       本轮修的缺陷：以前煎蛋与培根**共用** plate_egg_bacon.png → 盘上分不清食材。 */
+    /* ① 煎蛋 → 专属盘贴图 plate_egg_bacon（自带蛋+培根），不再叠食材贴图 */
     b5.record.drawImage.length = 0;
     d5.drop("egg", null); d5.plateNow(3);
     b5.pump(1);
     const n2 = b5.record.drawImage.map(x => x.src.split("/").pop());
-    A(n2.indexOf("plate_egg.png") >= 0, "煎蛋落到盘上 → 用 plate_egg.png（只装煎蛋的盘）");
-    A(n2.indexOf("plate_egg_bacon.png") < 0, "不再出现旧的共用盘 plate_egg_bacon.png（老缺陷已删）");
+    A(n2.indexOf("plate_egg_bacon.png") >= 0, "煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）");
     A(n2.filter(v => v === "egg.png").length === baseEgg,
       "盘贴图自带食物时不再叠一份食材贴图（整帧 egg.png 次数不变，一盘两样会被这个数抓到）",
       "egg.png " + baseEgg + " → " + n2.filter(v => v === "egg.png").length);
-    /* ①b 培根 → 另一张 plate_bacon（与煎蛋盘**不是同一张图**，这是本轮验收的核心）*/
-    b5.record.drawImage.length = 0;
-    d5.drop("bacon", null); d5.plateNow(4);
-    b5.pump(1);
-    const n2b = b5.record.drawImage.map(x => x.src.split("/").pop());
-    A(n2b.indexOf("plate_bacon.png") >= 0, "培根落到盘上 → 用 plate_bacon.png（只装培根的盘）");
-    A(n2b.filter(v => v === "plate_egg.png").length === 1 && n2b.filter(v => v === "plate_bacon.png").length === 1,
-      "同一帧里煎蛋盘与培根盘同时存在、各画各的贴图（盘上分得清食材）",
-      "plate_egg×" + n2b.filter(v => v === "plate_egg.png").length + " plate_bacon×" + n2b.filter(v => v === "plate_bacon.png").length);
     /* ② 包子 → 专属盘贴图 plate_bun（自带包子） */
     b5.record.drawImage.length = 0;
     d5.drop("bun", null); d5.plateNow(6);
@@ -1019,30 +998,8 @@ function runMain() {
     d6.setPatience(c0, 0.9);
     b6.record.drawImage.length = 0; b6.pump(1);
     A(b6.record.drawImage.some(x => /_calm\.png$/.test(x.src)), "耐心回到 90% → 又换回「平静」脸");
-    A(d6.faces().length >= 1 && d6.faces().every(f => /^(stud|office|uncle|fang|lu)_(calm|urgent|happy)$/.test(f.name)),
-      "头像文件名是 5 位角色 × 3 种情绪（映射表封闭）",
-      [...new Set(d6.faces().map(f => f.name))].join(" / "));
-    const pool6 = d6.faces()[0] ? d6.faces()[0].pool : [];
-    A(pool6.length === 5 && new Set(pool6).size === 5, "本局角色池是 5 位的一个排列：" + pool6.join("/"));
-    A(b6.B.art.facePoolSeed === 20240918 && JSON.stringify(b6.B.art.facePoolOf(20240918)) === JSON.stringify(pool6),
-      "角色池由固定种子决定（seed=" + b6.B.art.facePoolSeed + " → " + pool6.join("/") + "，可复现）");
-    /* ★ 第三态：该顾客订单全部拿到 → 立刻换「满意」脸 */
-    const fBefore = d6.faces();
-    const cH = fBefore.length > 1 ? fBefore[1].id : (fBefore[0] ? fBefore[0].id : -1);
-    const kindH = fBefore.length > 1 ? fBefore[1].kind : (fBefore[0] ? fBefore[0].kind : "");
-    A(cH >= 0, "有顾客可以验「满意」态");
-    /* debug.serveAll 把某位顾客的订单一次补齐（不推进游戏时间）*/
-    d6.serveAll(cH);
-    b6.record.drawImage.length = 0;
-    b6.pump(1);
-    const hitH = d6.faces().filter(f => f.id === cH)[0];
-    A(!hitH || (hitH.happy === true && hitH.mood === "happy"),
-      "订单全部拿到 → 该顾客头像进入第三态 happy",
-      hitH ? (hitH.name + " mood=" + hitH.mood + " happy=" + hitH.happy) : "（顾客已离场，属正常：满单 1.3s 后离开）");
-    const happyDrawn = b6.record.drawImage.filter(x => /_happy\.png$/.test(x.src));
-    A(happyDrawn.length > 0 || !hitH,
-      "帧里真的画了「满意」那张头像贴图",
-      happyDrawn.map(x => x.src.split("/").pop()).join(" ") || ("没画（kind=" + kindH + " 的 happy 可能未切图 → 回退平静脸）"));
+    A(d6.faces().length >= 1 && d6.faces().every(f => /^(stud|office|uncle)_(calm|urgent)$/.test(f.name)),
+      "头像文件名只有 3 种角色 × 2 种情绪（映射表封闭）");
 
     /* UI：耐心条底槽 bar_empty + 前景 bar_full 按剩余比例裁**源矩形** */
     d6.setPatience(pid[0], 0.8); d6.setPatience(pid[1], 0.5); d6.setPatience(pid[2], 0.2);
@@ -1051,13 +1008,12 @@ function runMain() {
     const di6 = b6.record.drawImage;
     const bars = di6.filter(x => /art\/icons\/ui\/bar_empty\.png$/.test(x.src));
     const fills = di6.filter(x => /art\/icons\/ui\/bar_full\.png$/.test(x.src)).sort((a, b) => a.dx - b.dx);
-    A(bars.length >= 2, "在场的顾客卡都画了 bar_empty 底槽", "×" + bars.length + "（在场 " + d6.faces().length + " 位）");
-    A(fills.length === bars.length, "每位在场顾客的耐心条都画了 bar_full 前景（与底槽一一对应）",
-      "底槽 ×" + bars.length + " / 前景 ×" + fills.length);
-    A(fills.length >= 2 && fills[fills.length - 1].sw < fills[0].sw,
+    A(bars.length === 3, "3 张顾客卡都画了 bar_empty 底槽", "×" + bars.length);
+    A(fills.length === 3, "3 条耐心条都画了 bar_full 前景", "×" + fills.length);
+    A(fills.length === 3 && fills[0].sw > fills[1].sw && fills[1].sw > fills[2].sw,
       "前景的源矩形宽度随剩余耐心单调递减（真的按比例裁，不是把整条压扁）",
-      fills.map(x => x.sw.toFixed(0)).join(" > ") + "  （" + fills.length + " 条：验证时已有一位顾客满单离场）");
-    A(fills.every(x => x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sw <= 256),
+      fills.map(x => x.sw.toFixed(0)).join(" > "));
+    A(fills.length === 3 && fills.every(x => x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sw <= 256),
       "前景目标框为正、源矩形不超过贴图宽度", fills.length ? ("sw=" + fills[0].sw.toFixed(0) + " dw=" + fills[0].dw.toFixed(0)) : "无");
     const st6 = di6.filter(x => /art\/icons\/ui\/stars\.png$/.test(x.src));
     A(st6.length >= 5, "顶栏 5 颗星都是从 stars.png 裁出来的单颗星", "×" + st6.length);

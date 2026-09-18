@@ -68,10 +68,19 @@ function lerpColor(a, b, t) {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
 }
 
-/* ── Canvas2D 记录 + 光栅化 ── */
-function createCanvas(w, h) {
-  const buf = new Float32Array(w * h * 3);          // RGB, 深色底
-  for (let i = 0; i < w * h; i++) { buf[i * 3] = 6; buf[i * 3 + 1] = 4; buf[i * 3 + 2] = 8; }
+/* ── Canvas2D 记录 + 光栅化 ──
+   第三个参数可选：{ hostWidth, hostHeight, hostDpr } —— 用来喂「宿主 canvas 的 CSS 逻辑尺寸」。
+   有些模块（mahjong.js）会自己算 dpr 把位图放大：cv.width = W*dpr。这时光栅化器的像素缓冲
+   必须按位图尺寸分配，而不是逻辑尺寸，否则用户坐标会被放大到画面之外（整屏空白）。
+   缺省不传 = 老行为（缓冲 = 逻辑尺寸）。                                        */
+function createCanvas(w, h, o) {
+  o = o || {};
+  const hostW = o.hostWidth || w, hostH = o.hostHeight || h;
+  const hostDpr = o.hostDpr || 1;
+  const bufW = Math.round(hostW * hostDpr), bufH = Math.round(hostH * hostDpr);
+  const buf = new Float32Array(bufW * bufH * 3);    // RGB, 深色底
+  for (let i = 0; i < bufW * bufH; i++) { buf[i * 3] = 6; buf[i * 3 + 1] = 4; buf[i * 3 + 2] = 8; }
+  w = bufW; h = bufH;
 
   let m = [1, 0, 0, 1, 0, 0], stack = [];
   const apply = (x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
@@ -298,6 +307,16 @@ function createCanvas(w, h) {
     fillRect(x, y, w2, h2) { beginSub(); path.push([[x, y], [x + w2, y], [x + w2, y + h2], [x, y + h2], [x, y]]); sub = path[path.length - 1]; fillPath([path[path.length - 1]], cur.fill, cur.alpha, "nonzero"); sub = []; },
     strokeRect(x, y, w2, h2) { beginSub(); path.push([[x, y], [x + w2, y], [x + w2, y + h2], [x, y + h2], [x, y]]); strokePath([path[path.length - 1]], cur.stroke, cur.alpha, cur.lw); sub = []; },
     clip() { /* 不实现裁剪（本游戏只用于矩形边界） */ },
+    /* clearRect：把这个区域清回「全透明」——用整幅底的深色代替（本光栅化器没有 alpha 通道） */
+    clearRect(x, y, w2, h2) {
+      const p0 = apply(x, y), p1 = apply(x + w2, y + h2);
+      const X0 = Math.max(0, Math.floor(Math.min(p0[0], p1[0]))), X1 = Math.min(w - 1, Math.ceil(Math.max(p0[0], p1[0])));
+      const Y0 = Math.max(0, Math.floor(Math.min(p0[1], p1[1]))), Y1 = Math.min(h - 1, Math.ceil(Math.max(p0[1], p1[1])));
+      for (let py = Y0; py <= Y1; py++) for (let pxx = X0; pxx <= X1; pxx++) {
+        const i = (py * w + pxx) * 3;
+        buf[i] = 6; buf[i + 1] = 4; buf[i + 2] = 8;
+      }
+    },
     fillText(t, x, y) {
       if (ctx.__textHook) {
         const p = apply(x, y);

@@ -1,4 +1,4 @@
-﻿# 素材来源与授权清单（SOURCES）
+# 素材来源与授权清单（SOURCES）
 
 > 借鉴自参考项目 `tutan123/tianshu` 的 `assets/SOURCES.md` 纪律：**每一项素材都要写清来源与授权状态**。
 > 本文件随项目更新；⚠ 标记项在公开发布前必须处理。
@@ -54,4 +54,18 @@
 
 生成方式：Lovart AI（`lovart-api` skill，MCP/HTTP 均未使用），以用户提供的手游截图作风格参考图；提示词见 早餐店-素材全集接入报告.md。
 版权：AI 生成原创素材，无第三方版权，随仓库分发。
+
+### 五之二、Lovart 第二批（本轮新增，已入库）
+
+| 材料（按生成顺序） | 内容 | 用途 |
+|---|---|---|
+| `art/lovart_d227a60381a7.png` | 盘面六宫格（空盘 / 只装煎蛋 / 只装培根 ｜ 只装三明治 / 只装包子 / 只装沙拉） | 已切片 → `art/icons/gear/plate_{empty,egg,bacon,sandwich,bun,salad}.png` |
+| `art/lovart_83728cd45e62.png` | 早餐店背景 v2（完整樱花树冠 + 完整开放厨房货架） | 已裁切 → `art/bg/kitchen2.png`（首选，v1 兜底） |
+| `art/lovart_65d159fe6de7.png` | 顾客头像六宫格：女房东 ×(平静/着急/满意) ｜ 女护士 ×(平静/着急/满意) | 已切片 → `art/icons/faces/{fang,lu}_{calm,urgent,happy}.png` |
+| `art/lovart_1a973d87de0e.png` | 麻将/中式茶室包间背景（深绿绒布方桌留空 + 四把木椅 + 暖光吊灯） | 已裁切 → `art/bg/mahjong.png` |
+| `art/lovart_cef6ccfa89a5.png` | 麻将道具九宫格（白板 / 發 / 两骰子 ｜ 蓝·红·金筹码 ｜ 深蓝斜纹牌背 / 木牌尺 / 烟灰缸） | 已切片 → `art/icons/mj/*.png` |
+
+切片参数见 `art/_assets2_report.json`（脚本 `_bf_assets2_gen.cjs` 自动求出，未写死）。
+接入过程与取舍见 早餐店-素材二批接入报告.md。
+
 

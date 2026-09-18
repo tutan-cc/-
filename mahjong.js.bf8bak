@@ -38,68 +38,7 @@
     return t;
   }
 
-  /* ═══════════════ 0. 贴图（本批 Lovart 素材）═══════════════════════════════
-     统一加载器：预加载 art/icons/mj/*.png + art/bg/mahjong.png，绘制处优先 drawImage，
-     图片没就绪 / 加载失败 / 环境里没有 Image（无头单测、老浏览器）→ 一律回退原来的
-     程序化画法（卡面 drawHonorFace/drawWanFace…、牌背斜纹、绿绒桌面）。
-     所以规格是：**只允许加载 art/ 下的本地图片（相对页面目录），且每一处都有矢量回退**。
-     ⚠ 本批只改「画什么」，不碰任何规则 / AI / 提示算法。                            */
-  var ART_DIR = "art/";
-  var MJ_ICON = { key: "mj", dir: "art/icons/mj/", ext: ".png", base: "", map: {}, loaded: 0, failed: 0,
-                  ids: ["tile_white", "tile_fa", "dice", "chip_blue", "chip_red", "chip_gold", "tile_back", "ruler", "ashtray"] };
-  var MJ_BG = { dir: "art/bg/", name: "mahjong.png", img: null, loaded: 0, failed: 0 };
-  /** 页面所在目录（带结尾 /）；取不到就返回空串 → 相对路径照样能用 */
-  function pageDir() {
-    var loc = root.location, href = "";
-    if (loc) {
-      if (typeof loc.href === "string" && loc.href) href = loc.href;
-      else if (typeof loc.pathname === "string" && loc.pathname) href = loc.pathname;
-    }
-    if (!href) return "";
-    href = href.replace(/\\/g, "/");
-    var i = href.lastIndexOf("/");
-    return i >= 0 ? href.slice(0, i + 1) : href;
-  }
-  function initArt() {
-    MJ_ICON.base = pageDir() + MJ_ICON.dir;
-    MJ_ICON.map = {}; MJ_ICON.loaded = 0; MJ_ICON.failed = 0;
-    MJ_BG.img = null; MJ_BG.loaded = 0; MJ_BG.failed = 0;
-    if (!root.Image) return;                                    // 无 Image → 全矢量，功能一点不少
-    var i, img;
-    for (i = 0; i < MJ_ICON.ids.length; i++) {
-      (function (id) {
-        var im = null;
-        try { im = new root.Image(); } catch (e) { im = null; }
-        if (!im) { MJ_ICON.failed++; return; }
-        MJ_ICON.map[id] = im;
-        im.onload = function () { MJ_ICON.loaded++; };
-        im.onerror = function () { MJ_ICON.failed++; };
-        try { im.src = MJ_ICON.base + id + MJ_ICON.ext; } catch (e) { MJ_ICON.failed++; }
-      })(MJ_ICON.ids[i]);
-    }
-    try { img = new root.Image(); } catch (e2) { img = null; }
-    if (img) {
-      MJ_BG.img = img;
-      img.onload = function () { MJ_BG.loaded++; };
-      img.onerror = function () { MJ_BG.failed++; };
-      try { img.src = pageDir() + MJ_BG.dir + MJ_BG.name; } catch (e3) { MJ_BG.failed++; }
-    } else MJ_BG.failed++;
-  }
-  /** 本帧可用（真解码完成）的贴图；否则返回 null → 调用方回退矢量 */
-  function artOf(id) {
-    var img = MJ_ICON.map[id];
-    if (!img) return null;
-    var nw = img.naturalWidth || 0;
-    return (nw > 0 && img.complete !== false) ? img : null;
-  }
-  function bgArt() {
-    var img = MJ_BG.img;
-    if (!img) return null;
-    var nw = img.naturalWidth || 0;
-    return (nw > 0 && img.complete !== false) ? img : null;
-  }
-  initArt();
-
+  /* ═══════════════ 1. 常量 / 牌 / 牌型判定（纯逻辑） ═══════════════ */
 
   var SUITS = ["万", "条", "筒"];
   var KINDS = (function () {                    // 27 种序数牌，顺序：万1..9 条1..9 筒1..9
@@ -2219,22 +2158,6 @@
     g.fillStyle = "#0d131e";
     rr(g, x, y, w, h, r); g.fill();
     g.restore();
-    /* 本批素材：深蓝斜纹牌背贴图（等比塞满牌背矩形，居中裁切）。
-       贴图不可用 → 回退下面的程序化斜纹（原样保留，一处没删）。 */
-    var tbi = artOf("tile_back");
-    if (tbi) {
-      var inw = tbi.naturalWidth || 0, inh = tbi.naturalHeight || 0;
-      if (inw > 0 && inh > 0) {
-        var arT = inw / inh, arB = w / h, swT, shT;
-        if (arT > arB) { shT = inh; swT = inh * arB; } else { swT = inw; shT = inw / arB; }
-        g.save();
-        rr(g, x, y, w, h, r); g.clip();
-        if (o.light) g.globalAlpha = 1; else g.globalAlpha = 0.94;
-        g.drawImage(tbi, (inw - swT) / 2, (inh - shT) / 2, swT, shT, x, y, w, h);
-        g.restore();
-        G.tileBackTex = (G.tileBackTex || 0) + 1;
-      }
-    } else {
     var grd = g.createLinearGradient(x, y, x, y + h);
     grd.addColorStop(0, o.light ? "#33629f" : "#274c88");
     grd.addColorStop(1, o.light ? "#1d4079" : "#132b57");
@@ -2245,7 +2168,6 @@
     var i;
     for (i = -h; i < w + h; i += Math.max(5, w * .18)) { g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i + h, y + h); g.stroke(); }
     g.restore();
-    }
     g.strokeStyle = "rgba(198,226,255,.5)"; g.lineWidth = 1.4;
     rr(g, x + 1.2, y + 1.2, w - 2.4, h - 2.4, Math.max(1, r - 1)); g.stroke();
     g.strokeStyle = "rgba(140,180,235,.5)"; g.lineWidth = 1.2;
@@ -2260,19 +2182,6 @@
   }
 
   /* ── 桌面 / 牌墙 ── */
-  /** 包间背景贴图（art/bg/mahjong.png）：等比 cover 铺满整块画布、水平居中。
-      贴图不可用 → 返回 false，调用方回退原来的程序化绿绒。 */
-  function drawRoomBg(g) {
-    var img = bgArt();
-    if (!img) return false;
-    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
-    if (!(nw > 0) || !(nh > 0)) return false;
-    var arImg = nw / nh, arView = W / H, sw, sh;
-    if (Math.abs(arImg - arView) / arView <= 0.02) { sw = nw; sh = nh; }
-    else if (arImg > arView) { sh = nh; sw = nh * arView; } else { sw = nw; sh = nw / arView; }
-    g.drawImage(img, (nw - sw) / 2, (nh - sh) / 2, sw, sh, 0, 0, W, H);
-    return true;
-  }
   function noisePattern(g) {
     if (G.noise) return G.noise;
     var c = doc.createElement("canvas"); c.width = c.height = 96;
@@ -2288,23 +2197,11 @@
     return G.noise;
   }
   function drawFelt(g) {
-    /* 最底层：本批 Lovart 的「中式茶室包间」背景（深绿绒布方桌留空 + 四把木椅 + 暖光吊灯）。
-       贴图不可用 → 回退程序化绿绒（下面的径向渐变），功能一点不少。
-       铺完再压一层轻微暗场：牌面 / 金框 / 提示在照片背景上仍然读得清。 */
-    var roomBg = false;
-    try { roomBg = drawRoomBg(g); } catch (e) { roomBg = false; }
-    G.roomBg = roomBg;
-    if (roomBg) {
-      g.fillStyle = "rgba(6,10,8,.34)"; g.fillRect(0, 0, W, H);
-      g.fillStyle = "rgba(255,215,110,.05)";
-      rr(g, LAYOUT.felt.x, LAYOUT.felt.y, LAYOUT.felt.w, LAYOUT.felt.h, LAYOUT.felt.r); g.fill();
-    } else {
-      g.fillStyle = "#08070c"; g.fillRect(0, 0, W, H);
-      var grd = g.createRadialGradient(W / 2, H * .46, 80, W / 2, H * .5, W * .70);
-      grd.addColorStop(0, "#22704d"); grd.addColorStop(.5, "#175a3e"); grd.addColorStop(1, "#0b3524");
-      g.fillStyle = grd;
-      rr(g, LAYOUT.felt.x, LAYOUT.felt.y, LAYOUT.felt.w, LAYOUT.felt.h, LAYOUT.felt.r); g.fill();
-    }
+    g.fillStyle = "#08070c"; g.fillRect(0, 0, W, H);
+    var grd = g.createRadialGradient(W / 2, H * .46, 80, W / 2, H * .5, W * .70);
+    grd.addColorStop(0, "#22704d"); grd.addColorStop(.5, "#175a3e"); grd.addColorStop(1, "#0b3524");
+    g.fillStyle = grd;
+    rr(g, LAYOUT.felt.x, LAYOUT.felt.y, LAYOUT.felt.w, LAYOUT.felt.h, LAYOUT.felt.r); g.fill();
     var pat = noisePattern(g);
     if (pat) { g.save(); g.globalAlpha = .55; g.fillStyle = pat; rr(g, LAYOUT.felt.x, LAYOUT.felt.y, LAYOUT.felt.w, LAYOUT.felt.h, LAYOUT.felt.r); g.fill(); g.restore(); }
     // 中央深色绒面圈 + 金线
@@ -2754,7 +2651,6 @@
     host: null, cv: null, ctx: null, dpr: 1,
     E: null, opts: null, timers: [], raf: 0,
     hover: -1, handRects: [], wallSlots: null, noise: null, stat: null, tickTimer: 0, frames: 0,
-    roomBg: false, tileBackTex: 0,
     anim: { drawAt: 0 }, win: null, uiLock: 0, logRendered: 0,
     idleTimer: 0, winTimer: 0, result: null, resultShown: false, noiseCv: null, sheet: null, demo: null,
     hintOn: true, hint: null, hintIdx: -1, hintKey: "", hintPane: "", hintCalcN: 0, hintLastMs: 0, hintWorstMs: 0,
@@ -4050,25 +3946,6 @@
       faceTiles: function () { return (G.sheetTiles || []).map(function (s) { return { tile: s.tile, x: s.x, y: s.y, w: s.w, h: s.h }; }); },
       demoMelds: dbgDemoMelds,
       dpr: function () { return G.dpr; },
-      /** 本批贴图的加载与使用状态（无头 / 浏览器验收都读它）*/
-      art: function () {
-        var out = [], i, im, nw;
-        for (i = 0; i < MJ_ICON.ids.length; i++) {
-          im = MJ_ICON.map[MJ_ICON.ids[i]];
-          nw = im ? (im.naturalWidth || 0) : 0;
-          out.push({ id: MJ_ICON.ids[i], has: !!im, ready: !!(nw > 0 && im.complete !== false),
-                     src: (im && typeof im.src === "string") ? im.src : "", naturalWidth: nw });
-        }
-        var bimg = MJ_BG.img, bnw = bimg ? (bimg.naturalWidth || 0) : 0;
-        return { dir: MJ_ICON.dir, ids: MJ_ICON.ids.slice(), icons: out,
-                 ready: (function () { var n = 0; for (var k = 0; k < out.length; k++) if (out[k].ready) n++; return n; })(),
-                 loaded: MJ_ICON.loaded, failed: MJ_ICON.failed,
-                 bg: { dir: MJ_BG.dir, name: MJ_BG.name, file: MJ_BG.dir + MJ_BG.name,
-                       ready: !!(bnw > 0 && bimg.complete !== false), naturalWidth: bnw,
-                       loaded: MJ_BG.loaded, failed: MJ_BG.failed },
-                 roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0,
-                 fallback: ["tile_back-texture", "procedural-stripe", "procedural-felt"] };
-      },
       forceWin: dbgForceWin,
       showResult: dbgShowResult,
       continueGame: dbgContinue,

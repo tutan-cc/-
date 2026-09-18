@@ -99,54 +99,6 @@ function pngSize(buf) {
   return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20), bytes: buf.length, sig };
 }
 
-/* PNG 解码（8bit / 颜色类型 0,2,4,6 / 非隔行）：给「麻将包间背景贴图真的画出来了」取证。
-   本批断言不靠「源码里有字符串」，而是直接量截图像素：旧程序化绿绒的中心是绿色，
-   新贴图（暖光茶室）的中心是深棕红 —— 用 R/G 比值就能一刀切开。 */
-function decPng(buf) {
-  const zlib = require("zlib");
-  if (!pngSize(buf)) return null;
-  let p = 8, w = 0, h = 0, depth = 0, color = 0, interlace = 0; const idat = [];
-  while (p + 8 <= buf.length) {
-    const len = buf.readUInt32BE(p), type = buf.slice(p + 4, p + 8).toString("ascii");
-    const d = buf.slice(p + 8, p + 8 + len);
-    if (type === "IHDR") { w = d.readUInt32BE(0); h = d.readUInt32BE(4); depth = d[8]; color = d[9]; interlace = d[12]; }
-    else if (type === "IDAT") idat.push(d);
-    else if (type === "IEND") break;
-    p += 12 + len;
-  }
-  if (depth !== 8 || interlace) return null;
-  const ch = color === 0 ? 1 : color === 2 ? 3 : color === 4 ? 2 : color === 6 ? 4 : -1;
-  if (ch < 0) return null;
-  const raw = zlib.inflateSync(Buffer.concat(idat));
-  const stride = w * ch, px = Buffer.alloc(w * h * ch);
-  let prev = Buffer.alloc(stride);
-  for (let y = 0; y < h; y++) {
-    const ft = raw[y * (stride + 1)];
-    const line = raw.slice(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
-    const cur = Buffer.alloc(stride);
-    for (let x = 0; x < stride; x++) {
-      const a = x >= ch ? cur[x - ch] : 0, b = prev[x], c = x >= ch ? prev[x - ch] : 0, v = line[x];
-      let r;
-      if (ft === 0) r = v; else if (ft === 1) r = v + a; else if (ft === 2) r = v + b;
-      else if (ft === 3) r = v + ((a + b) >> 1);
-      else { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); r = v + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c); }
-      cur[x] = r & 255;
-    }
-    cur.copy(px, y * stride); prev = cur;
-  }
-  return { w, h, ch, data: px };
-}
-/** 区域平均色 */
-function regionAvg(img, x0, y0, x1, y1, step) {
-  let r = 0, g = 0, b = 0, n = 0;
-  for (let y = Math.max(0, y0); y < Math.min(img.h, y1); y += (step || 3))
-    for (let x = Math.max(0, x0); x < Math.min(img.w, x1); x += (step || 3)) {
-      const i = (y * img.w + x) * img.ch;
-      r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++;
-    }
-  return n ? { r: r / n, g: g / n, b: b / n, n } : { r: 0, g: 0, b: 0, n: 0 };
-}
-
 /* ══════════ 模式 B：mshta / Trident 引擎 HTA 探针（内容全 ASCII，避免编码问题） ══════════ */
 const HTA = [
   '<!DOCTYPE html><html><head><meta http-equiv="X-UA-Compatible" content="IE=edge">',
@@ -219,14 +171,6 @@ const HTA = [
   '    A("px_handColors", p1.handColors > 200, p1.handColors);',
   '    var rs = Mahjong.debug.renderStats();',
   '    A("render_faces", rs && rs.faces >= 13, rs && rs.faces);',
-  '    /* ── 本批 Lovart 贴图：9 张麻将道具 + 包间背景 ── */',
-  '    var ar = (Mahjong.debug.art ? Mahjong.debug.art() : null);',
-  '    A("mj_art_api", !!ar, ar ? ("ready=" + ar.ready) : "no-api");',
-  '    A("mj_icons9", ar && ar.ready === 9 && ar.failed === 0, ar && (ar.ready + "/9 failed=" + ar.failed));',
-  '    A("mj_bg_ready", ar && ar.bg && ar.bg.ready === true, ar && (ar.bg && ar.bg.file + " w=" + ar.bg.naturalWidth));',
-  '    A("mj_bg_relpath", ar && ar.bg && ar.bg.file === "art/bg/mahjong.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(ar.bg.file), ar && ar.bg && ar.bg.file);',
-  '    A("mj_roombg_drawn", ar && ar.roomBg === true, ar && String(ar.roomBg));',
-  '    A("mj_tileback_tex", ar && ar.tileBackTex > 0, ar && (ar.tileBackTex + " 次"));',
   '    A("render_wallStacks", rs && rs.wallStacks > 0, rs && rs.wallStacks);',
   '    /* ── 手牌排序 / 摸牌位置 / 牌面尺寸 ── */',
   '    A("hand_sorted", st.handSorted === true, (st.hand || []).join(","));',
@@ -713,12 +657,6 @@ const CHECK_ZH = {
   melds_demo: "副露示范可开启（调试）", melds_tiles: "四家副露共画出 60 张副露牌（暗杠/明杠/碰/补杠）",
   domLen: "牌桌 DOM 已生成", px_ratio: "牌桌铺满（不透明像素占比）", px_colors: "画面颜色数（牌面/绒面/牌背）",
   px_handColors: "手牌区颜色数（旧版 253~260 色，越高越清晰）", render_faces: "绘制手牌牌面张数 ≥13",
-  mj_art_api: "麻将贴图状态出口（Mahjong.debug.art）可读",
-  mj_icons9: "9 张麻将道具贴图（art/icons/mj/*.png）真解码完成",
-  mj_bg_ready: "包间背景 art/bg/mahjong.png 真解码完成",
-  mj_bg_relpath: "包间背景走相对路径 art/bg/mahjong.png（不写盘符/协议/data）",
-  mj_roombg_drawn: "本帧真的用贴图铺了包间背景（不是程序化绿绒）",
-  mj_tileback_tex: "牌背用贴图 tile_back（替换程序化斜纹）",
   render_wallStacks: "绘制牌墙墩数 >0", turn_ready: "轮到玩家出牌", hitrects: "手牌命中区 ≥13",
   hover_pick: "悬停手牌可点提示", click_discard: "真实鼠标点击出牌（弃牌 +1）", hand_minus: "出牌后手牌 -1",
   correct_tile: "打出的正是被点击的那张", ai_log: "AI 有行动（牌局记录增长）", ai_discard: "AI 打出牌（三家弃牌增加）",
@@ -1125,28 +1063,6 @@ async function runChrome() {
       if (!sz) { errors.push(s.file + " 不是合法 PNG"); continue; }
       if (s.want && (sz.w !== s.want[0] || sz.h !== s.want[1])) {
         errors.push(s.file + " 尺寸应为 " + s.want.join("×") + "，实际 " + sz.w + "×" + sz.h);
-      }
-    }
-    /* ── 包间背景贴图的**像素级**取证（不靠源码字符串）：
-       旧程序化绿绒的中心是绿色（G 明显大于 R）；新贴图是暖光茶室（R 大于 G）。 ── */
-    const tblPx = decPng(tri.png);
-    if (!tblPx) { errors.push("mahjong_table.png 解不开（无法做包间背景像素取证）"); }
-    else {
-      const ctr = regionAvg(tblPx, 560, 380, 680, 480, 3);
-      const left = regionAvg(tblPx, 2, 260, 46, 600, 3);
-      const top = regionAvg(tblPx, 300, 2, 900, 34, 5);
-      const rgb = c => [Math.round(c.r), Math.round(c.g), Math.round(c.b)];
-      info.bg_px = { center: rgb(ctr), left: rgb(left), top: rgb(top) };
-      /* 判据：① 画面四边是暖木（R > G）→ 照片背景真的铺上了（旧程序化底只有绿绒 + 黑边）；
-              ② 中心不是旧程序化绿绒那种饱和绿（G 远超 R）。 */
-      const warm = c => c.r > c.g + 6 && c.r > 30;
-      const greenExcess = Math.round((ctr.g - ctr.r) * 10) / 10;
-      if (warm(left) && warm(top) && greenExcess < 15) {
-        checks.push("包间背景像素取证（中心 " + rgb(ctr).join(",") + " / 左 " + rgb(left).join(",") +
-                    " / 顶 " + rgb(top).join(",") + "：四边暖木、中心非饱和绿绒）");
-      } else {
-        errors.push("包间背景像素取证失败（中心 " + rgb(ctr).join(",") + " / 左 " + rgb(left).join(",") +
-                    " / 顶 " + rgb(top).join(",") + "，中心绿超出 " + greenExcess + "）");
       }
     }
     if (!tri.png2) console.log("[提示] 结算面板截图缺失（不影响断言）");
