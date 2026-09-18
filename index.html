@@ -209,6 +209,20 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .bf-btn:hover{background:var(--gold);color:#1b1108}
 .bf-btn.primary{border-color:var(--green);color:var(--green)}
 .bf-btn.primary:hover{background:var(--green);color:#08210f}
+/* ══ 本批素材接入（Lovart 玩法入口图标 / UI 元素）══════════════════════════
+   ① .gm-ico  侧栏按钮 + 玩法面板标题上的入口图标（默认 display:none，
+      img.onload 才显示；onerror 直接摘掉 img → 后面 <span class="gm-emj"> 的 emoji 就是回退文案）
+   ② .bf-uiico 结算面板里的 UI 贴图（绿勾/红叉/灯泡），回退方式同上
+   ③ 木牌按钮 / 红漆按钮：贴图作 background-image（100% 100% 铺满），
+      图片加载失败时 CSS 什么都不做 → 退回原来的描边按钮，布局不变 */
+.gm-ico{display:none;width:18px;height:18px;vertical-align:-4px;margin-right:6px;border-radius:4px}
+.btn-m .gm-ico{width:14px;height:14px;vertical-align:-2px;margin-right:4px}
+.overlay .panel h3 .gm-ico{width:20px;height:20px;vertical-align:-5px}
+.bf-uiico{display:none;width:18px;height:18px;vertical-align:-3px;margin-right:5px}
+#bfGame .bf-btn.bf-wood{background-color:transparent;background-image:url("art/icons/ui/btn_wood.png");background-size:100% 100%;background-repeat:no-repeat;color:#3a2412;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+#bfGame .bf-btn.bf-wood:hover{background-color:transparent;background-image:url("art/icons/ui/btn_wood.png");color:#2a180c;filter:brightness(1.12)}
+#bfGame .bf-btn.bf-red{background-color:transparent;background-image:url("art/icons/ui/btn_red.png");background-size:100% 100%;background-repeat:no-repeat;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+#bfGame .bf-btn.bf-red:hover{background-color:transparent;background-image:url("art/icons/ui/btn_red.png");color:#fff;filter:brightness(1.1)}
 .bf-result{margin-top:8px;padding:16px 18px;border:2px solid var(--line);border-radius:10px;
   background:rgba(12,9,18,.94);font-size:16px;
   position:sticky;bottom:0;z-index:2;max-height:calc(100vh - 40px);overflow-y:auto;overscroll-behavior:contain}
@@ -372,9 +386,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
       <div class="sec-t">任 务</div><div id="quests"></div>
       <div class="sec-t">成 就</div><div id="achvs"></div>
       <button class="btn-m" id="equipBtn">🎒 随身装备</button>
-      <button class="btn-m" id="lotteryBtn">🎟 刮刮乐（¥20）</button>
-      <button class="btn-m" id="mjFreeBtn">🀄 找人打两圈</button>
-      <button class="btn-m" id="bfBtn" style="border-color:#ff9ec7;color:#ffd76e">🍳 做份早餐</button>
+      <button class="btn-m" id="lotteryBtn"><img class="gm-ico" src="art/icons/game/lottery.png" alt="" onload="this.style.display='inline-block';this.nextSibling.style.display='none'" onerror="this.remove()"><span class="gm-emj">🎟</span> 刮刮乐（¥20）</button>
+      <button class="btn-m" id="mjFreeBtn"><img class="gm-ico" src="art/icons/game/mahjong.png" alt="" onload="this.style.display='inline-block';this.nextSibling.style.display='none'" onerror="this.remove()"><span class="gm-emj">🀄</span> 找人打两圈</button>
+      <button class="btn-m" id="bfBtn" style="border-color:#ff9ec7;color:#ffd76e"><img class="gm-ico" src="art/icons/game/breakfast.png" alt="" onload="this.style.display='inline-block';this.nextSibling.style.display='none'" onerror="this.remove()"><span class="gm-emj">🍳</span> 做份早餐</button>
       <div id="bfNote" style="font-size:10px;color:var(--dim);line-height:1.7;margin-top:4px;padding:6px 8px;border:1px dashed var(--line);background:#0b0a13"></div>
       <div id="mjRec" style="font-size:10px;color:var(--dim);line-height:1.7;margin-top:6px;padding:6px 8px;border:1px dashed var(--line);background:#0b0a13"></div>
       <button class="btn-m" id="saveBtn">▣ 保存进度</button>
@@ -456,7 +470,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
     <!-- 躲闪小游戏 -->
     <div class="overlay" id="dodge"><div class="panel">
-      <h3>数据洪流 · 躲</h3><div class="sub2">← → 移动（或鼠标左右移动）· 撑过 12 秒 · 生命 3 —— 智慧越高，判定越宽松</div>
+      <h3><img class="gm-ico" src="art/icons/game/dodge.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">数据洪流 · 躲</h3><div class="sub2">← → 移动（或鼠标左右移动）· 撑过 12 秒 · 生命 3 —— 智慧越高，判定越宽松</div>
       <div id="dodgeHud"><span>生命 <b id="dodgeHp">♥♥♥</b></span><span>已撑 <b id="dodgeTime">0.0</b> 秒</span><span>撞击 <b id="dodgeHit">0</b></span></div>
       <canvas id="dodgeCv" width="700" height="300"></canvas>
       <div class="hint" id="dodgeHint">别被撞到——</div>
@@ -464,7 +478,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
     <!-- 股市波段小游戏 -->
     <div class="overlay" id="stock"><div class="panel">
-      <h3>股市波段 · 六个交易日</h3><div class="sub2">你「记得」大势，但点位要自己按 —— 每天选一次操作，第 6 日收盘结算</div>
+      <h3><img class="gm-ico" src="art/icons/game/stock.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">股市波段 · 六个交易日</h3><div class="sub2">你「记得」大势，但点位要自己按 —— 每天选一次操作，第 6 日收盘结算</div>
       <div id="stockHud"><span>本金 <b id="stockCash">1200</b> 元</span><span>持仓 <b id="stockPos">0</b> 股</span><span>现价 <b id="stockPrice">10.00</b></span><span>第 <b id="stockDay">1</b>/6 日</span></div>
       <canvas id="stockCv" width="700" height="260"></canvas>
       <div id="stockBtns">
@@ -476,14 +490,14 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
     <!-- 线路取证（借鉴 circuit：整数旋转 + 全 0 校验） -->
     <div class="overlay" id="circuit"><div class="panel">
-      <h3 id="cirTitle">线路取证</h3><div class="sub2" id="cirSub">点击每段线路旋转 90°，让三段全部归位 —— 接通即可取证</div>
+      <h3 id="cirTitle"><img class="gm-ico" src="art/icons/game/circuit.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">线路取证</h3><div class="sub2" id="cirSub">点击每段线路旋转 90°，让三段全部归位 —— 接通即可取证</div>
       <div id="cirRow" style="display:flex;gap:10px;justify-content:center;margin:16px 0"></div>
       <div class="hint" id="cirHint">已旋转 0 次</div>
     </div></div>
 
     <!-- 信号复原（借鉴 memory：累计器驱动 + 错 3 次失败） -->
     <div class="overlay" id="memory"><div class="panel">
-      <h3 id="memTitle">信号复原</h3><div class="sub2" id="memSub">记住信号亮起的顺序，然后按同样顺序点回去 —— 错 3 次中断</div>
+      <h3 id="memTitle"><img class="gm-ico" src="art/icons/game/memory.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">信号复原</h3><div class="sub2" id="memSub">记住信号亮起的顺序，然后按同样顺序点回去 —— 错 3 次中断</div>
       <div id="memPad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0"></div>
       <div class="timer"><i id="memBar"></i></div>
       <div class="hint" id="memHint">准备……</div>
@@ -491,7 +505,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
     <!-- 谈判博弈：话术对决 -->
     <div class="overlay" id="talk"><div class="panel">
-      <h3 id="talkTitle">合同谈判</h3><div class="sub2" id="talkSub"></div>
+      <h3 id="talkTitle"><img class="gm-ico" src="art/icons/game/talk.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">合同谈判</h3><div class="sub2" id="talkSub"></div>
       <div id="talkOpp" style="font-size:12px;line-height:1.8;padding:8px 10px;background:#0d0b15;border-left:2px solid var(--red);margin-bottom:10px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div><div style="font-size:10px;color:var(--dim);margin-bottom:3px">对手底线</div><div class="tbar"><i id="talkResolve" style="background:linear-gradient(90deg,var(--red),var(--gold))"></i></div></div>
@@ -510,7 +524,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
     <!-- 打斗：回合制格斗 -->
     <div class="overlay" id="fight"><div class="panel">
-      <h3 id="fightTitle">拳台对决</h3><div class="sub2" id="fightSub"></div>
+      <h3 id="fightTitle"><img class="gm-ico" src="art/icons/game/fight.png" alt="" onload="this.style.display='inline-block'" onerror="this.remove()">拳台对决</h3><div class="sub2" id="fightSub"></div>
       <div id="fightFoe" style="font-size:12px;line-height:1.8;padding:8px 10px;background:#0d0b15;border-left:2px solid var(--red);margin-bottom:10px"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div><div style="font-size:10px;color:var(--dim);margin-bottom:3px">你的生命</div><div class="tbar"><i id="fightHpMine" style="background:linear-gradient(90deg,var(--red),var(--gold))"></i></div></div>

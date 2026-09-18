@@ -1,0 +1,253 @@
+{
+  "src": "art/lovart_63f2f17a1187.png",
+  "srcW": 1254,
+  "srcH": 1254,
+  "cell": 418,
+  "cropOffsetRule": "列/行分界取「相邻图标内容之间的空隙中点」；裁剪框 418×418，内容居中",
+  "colCut": [
+    443,
+    839.5
+  ],
+  "rowCut": [
+    419.5,
+    824.5
+  ],
+  "jobs": [
+    {
+      "id": "congee",
+      "crop": "crop=375:297:54:80",
+      "x": 54,
+      "y": 80,
+      "w": 375,
+      "h": 297
+    },
+    {
+      "id": "milk",
+      "crop": "crop=397:317:443:73",
+      "x": 443,
+      "y": 73,
+      "w": 397,
+      "h": 317
+    },
+    {
+      "id": "soup",
+      "crop": "crop=328:281:854:92",
+      "x": 854,
+      "y": 92,
+      "w": 328,
+      "h": 281
+    },
+    {
+      "id": "egg",
+      "crop": "crop=342:266:64:495",
+      "x": 64,
+      "y": 495,
+      "w": 342,
+      "h": 266
+    },
+    {
+      "id": "bacon",
+      "crop": "crop=364:259:463:497",
+      "x": 463,
+      "y": 497,
+      "w": 364,
+      "h": 259
+    },
+    {
+      "id": "sandwich",
+      "crop": "crop=306:292:866:475",
+      "x": 866,
+      "y": 475,
+      "w": 306,
+      "h": 292
+    },
+    {
+      "id": "bun",
+      "crop": "crop=340:322:62:850",
+      "x": 62,
+      "y": 850,
+      "w": 340,
+      "h": 322
+    },
+    {
+      "id": "salad",
+      "crop": "crop=367:328:447:845",
+      "x": 447,
+      "y": 845,
+      "w": 367,
+      "h": 328
+    },
+    {
+      "id": "juice",
+      "crop": "crop=306:329:883:849",
+      "x": 883,
+      "y": 849,
+      "w": 306,
+      "h": 329
+    }
+  ],
+  "target": 256,
+  "pad": 12,
+  "scale": 0.588832,
+  "maxSpan": 394,
+  "method": {
+    "name": "border-flood + distance-constrained coverage field + median",
+    "bgFloodThreshold": 248,
+    "bandPx": 3,
+    "amberLowerBound": 150,
+    "unPremultiplyClamp": 20,
+    "steps": [
+      "① 从图边界沿 minC ≥ 248 的像素 4 邻域洪泛 → 真背景（α=0）；图标闭合描边挡住洪泛，内部近白食材（粥面/奶面/蛋清）不受影响",
+      "② BFS 求到真背景的距离场，把哑光限制在 ≤3px 的外圈白晕内",
+      "③ 外圈白晕按 minC 插值出覆盖率，3×3 加权平滑消除锯齿，内部锁死 α=255 且颜色原样不动",
+      "④ 5×5 中值滤波消除外圈的孤立像素（白齿）",
+      "⑤ 半透明像素做限量 un-premultiply（单通道上涨 ≤20）消除残留白底贡献"
+    ]
+  },
+  "report": [
+    {
+      "id": "congee",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\congee.png",
+      "kb": 70.8,
+      "coverage": 39.2,
+      "colors": 12684,
+      "meanA": 97.8,
+      "drawSize": [
+        215,
+        168
+      ],
+      "nBg": 37956,
+      "nFull": 70900,
+      "nSemi": 4446,
+      "nInnerLight": 3236
+    },
+    {
+      "id": "milk",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\milk.png",
+      "kb": 61.3,
+      "coverage": 38.2,
+      "colors": 10529,
+      "meanA": 95.1,
+      "drawSize": [
+        189,
+        179
+      ],
+      "nBg": 54426,
+      "nFull": 68911,
+      "nSemi": 4439,
+      "nInnerLight": 5058
+    },
+    {
+      "id": "soup",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\soup.png",
+      "kb": 73.3,
+      "coverage": 35.1,
+      "colors": 18450,
+      "meanA": 87.6,
+      "drawSize": [
+        185,
+        159
+      ],
+      "nBg": 26341,
+      "nFull": 63441,
+      "nSemi": 4189,
+      "nInnerLight": 1129
+    },
+    {
+      "id": "egg",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\egg.png",
+      "kb": 55.9,
+      "coverage": 33.8,
+      "colors": 9076,
+      "meanA": 84.2,
+      "drawSize": [
+        192,
+        150
+      ],
+      "nBg": 27576,
+      "nFull": 60936,
+      "nSemi": 4279,
+      "nInnerLight": 3778
+    },
+    {
+      "id": "bacon",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\bacon.png",
+      "kb": 59.4,
+      "coverage": 26,
+      "colors": 14655,
+      "meanA": 64.2,
+      "drawSize": [
+        205,
+        145
+      ],
+      "nBg": 45756,
+      "nFull": 46032,
+      "nSemi": 4316,
+      "nInnerLight": 29
+    },
+    {
+      "id": "sandwich",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\sandwich.png",
+      "kb": 62.6,
+      "coverage": 28.3,
+      "colors": 15222,
+      "meanA": 70.2,
+      "drawSize": [
+        171,
+        164
+      ],
+      "nBg": 36497,
+      "nFull": 50526,
+      "nSemi": 4183,
+      "nInnerLight": 7
+    },
+    {
+      "id": "bun",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\bun.png",
+      "kb": 79.4,
+      "coverage": 43.4,
+      "colors": 13408,
+      "meanA": 108.4,
+      "drawSize": [
+        191,
+        182
+      ],
+      "nBg": 28085,
+      "nFull": 78774,
+      "nSemi": 4649,
+      "nInnerLight": 1613
+    },
+    {
+      "id": "salad",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\salad.png",
+      "kb": 96.5,
+      "coverage": 43.6,
+      "colors": 25212,
+      "meanA": 108.8,
+      "drawSize": [
+        207,
+        185
+      ],
+      "nBg": 38697,
+      "nFull": 78995,
+      "nSemi": 4701,
+      "nInnerLight": 1707
+    },
+    {
+      "id": "juice",
+      "file": "C:\\Users\\chris\\Desktop\\重生2-原型\\art\\icons\\juice.png",
+      "kb": 63.5,
+      "coverage": 37,
+      "colors": 13231,
+      "meanA": 92.1,
+      "drawSize": [
+        172,
+        186
+      ],
+      "nBg": 31400,
+      "nFull": 66681,
+      "nSemi": 4486,
+      "nInnerLight": 855
+    }
+  ]
+}

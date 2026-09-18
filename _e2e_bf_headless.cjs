@@ -20,6 +20,59 @@ const SRC = fs.readFileSync(path.join(OUT, "breakfast.js"), "utf8");
 /* 画面逻辑尺寸（放大后的规格：要求 B ≥1100×680）*/
 const VW = 1180, VH = 790;
 
+/* ── 本地食材贴图（art/icons/<foodId>.png）────────────────────────────────
+   breakfast.js 现在会预加载 art/icons/ 下的本地 PNG 并 drawImage。
+   无头环境本来没有真实解码能力，所以这里做一个**真去文件系统读 PNG** 的替身：
+   读 IHDR 拿到真实宽高喂给 naturalWidth/naturalHeight —— 这样「按图片真实宽高
+   等比缩放」的那段代码走的是真数据，而不是被桩成一个假数字。 */
+const ICON_DIR = path.join(OUT, "art", "icons");
+/** 读 PNG 的 IHDR → { w, h }（不解 IDAT，只取宽高；校验签名与 8bit/颜色类型）*/
+function pngSize(file) {
+  const b = fs.readFileSync(file);
+  if (b.length < 33 || b.readUInt32BE(0) !== 0x89504e47) throw new Error("不是 PNG：" + file);
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), depth: b[24], color: b[25] };
+}
+/** 把 <img>.src（可能是绝对路径 / file:// URL / 相对 URL）落成磁盘路径 */
+function resolveImgPath(src) {
+  let s = String(src || "");
+  if (/^file:\/\//i.test(s)) {
+    s = decodeURIComponent(s.replace(/^file:\/\//i, ""));
+    if (/^\/[A-Za-z]:/.test(s)) s = s.slice(1);            // /C:/... → C:/...
+  }
+  if (/^[A-Za-z]:[\\/]/.test(s) || s.startsWith("\\\\")) return path.normalize(s);
+  if (s.startsWith("/")) s = s.slice(1);
+  return path.join(OUT, s);
+}
+/** 记录式图片替身：src 一赋值就同步去磁盘读 PNG（成功→loaded，失败→error）*/
+function makeRecord() {
+  return { drawImage: [], imgLoads: [], imgErrors: [] };
+}
+function makeImageCtor(record) {
+  return function Image() {
+    const img = {
+      naturalWidth: 0, naturalHeight: 0, complete: false, width: 0, height: 0,
+      onload: null, onerror: null, _src: "",
+      get src() { return this._src; },
+      set src(v) {
+        this._src = String(v);
+        let sz = null;
+        try { sz = pngSize(resolveImgPath(v)); } catch (e) { sz = null; }
+        if (sz) {
+          this.naturalWidth = sz.w; this.naturalHeight = sz.h; this.width = sz.w; this.height = sz.h;
+          this.complete = true;
+          record.imgLoads.push({ src: this._src, w: sz.w, h: sz.h });
+          if (typeof this.onload === "function") this.onload({ target: this });
+        } else {
+          this.complete = false;
+          record.imgErrors.push({ src: this._src });
+          if (typeof this.onerror === "function") this.onerror({ target: this });
+        }
+      }
+    };
+    return img;
+  };
+}
+
 /* ── 固定随机种子（可复现）───────────────────────────────────────────────
    breakfast.js 里所有随机都走 rnd01() → Math.random()（顾客进店 / 订单长度 / 订单内容 /
    进店间隔）。无头链把宿主 Math 换成一个定种子 PRNG，场景就完全可复现：
@@ -65,8 +118,8 @@ function matchSel(el, sel) {
 }
 
 /* ── 记录式 Canvas2D mock ── */
-function makeCtx() {
-  const log = { ops: 0, fills: 0, strokes: 0, arcs: 0, ellipses: 0, rects: 0, texts: 0, gradients: 0 };
+function makeCtx(record) {
+  const log = { ops: 0, fills: 0, strokes: 0, arcs: 0, ellipses: 0, rects: 0, texts: 0, gradients: 0, images: 0 };
   const colors = {}, strokes = {}, texts = [];
   let cur = { fill: "#000", stroke: "#000", font: "10px sans-serif", alpha: 1, lineWidth: 1 };
   const stack = [];
@@ -93,7 +146,21 @@ function makeCtx() {
     createLinearGradient() { log.gradients++; return { addColorStop() {} }; },
     createRadialGradient() { log.gradients++; return { addColorStop() {} }; },
     createPattern() { return null; },
-    drawImage() { throw new Error("breakfast.js 不应调用 drawImage（规格：零外部图片）"); },
+    /* 现在允许画 art/** 下的本地贴图（背景 / 食材 / 厨具 / 头像 / UI）。
+       这里不改写像素，只如实记录每次 drawImage 的**源矩形 + 目标框**：
+       5 参（图 + 目标框）与 9 参（源矩形 + 目标框）都记全，断言直接对着记录核对。 */
+    drawImage(img, dx, dy, dw, dh) {
+      log.ops++; log.images++;
+      if (!record) return;
+      const a = arguments.length;
+      const nw = (img && img.naturalWidth) || 0, nh = (img && img.naturalHeight) || 0;
+      const rec = { img: img, src: (img && img.src) || "", argc: a,
+                    sx: 0, sy: 0, sw: nw, sh: nh, dx: dx, dy: dy, dw: dw, dh: dh };
+      if (a >= 9) { rec.sx = dx; rec.sy = dy; rec.sw = dw; rec.sh = dh;
+                    rec.dx = arguments[5]; rec.dy = arguments[6]; rec.dw = arguments[7]; rec.dh = arguments[8]; }
+      record.drawImage.push(rec);
+    },
+
     getImageData() { return { data: new Uint8ClampedArray(4) }; },
     putImageData() {},
   };
@@ -101,7 +168,7 @@ function makeCtx() {
 }
 
 /* ── 最小 DOM mock ── */
-function makeEl(tag) {
+function makeEl(tag, record) {
   const el = {
     tagName: String(tag).toUpperCase(), children: [], parentNode: null,
     id: "", className: "", _html: "", textContent: "", type: "", value: "",
@@ -132,7 +199,7 @@ function makeEl(tag) {
     toggle(c, on) { if (on === undefined) on = !this.contains(c); on ? this.add(c) : this.remove(c); },
   };
   if (el.tagName === "CANVAS") {
-    const m = makeCtx();
+    const m = makeCtx(record);
     el._ctx = m.ctx; m.ctx.canvas = el; el._m = m;
     el.width = 300; el.height = 150;
   }
@@ -140,9 +207,12 @@ function makeEl(tag) {
 }
 
 /* ── 装载：可手动泵的 rAF + 可控时钟 ── */
-function boot() {
-  const body = makeEl("body");
-  const host = makeEl("div"); host.id = "bfGameHost"; body.appendChild(host);
+function boot(opts) {
+  opts = opts || {};
+  const record = makeRecord();
+  const ImageCtor = makeImageCtor(record);
+  const body = makeEl("body", record);
+  const host = makeEl("div", record); host.id = "bfGameHost"; body.appendChild(host);
   const frames = [];
   let clock = 0;
   const listeners = { window: {}, document: {} };
@@ -155,10 +225,14 @@ function boot() {
     addEventListener: (t, f) => { (listeners.window[t] = listeners.window[t] || []).push(f); },
     removeEventListener: (t, f) => { const h = listeners.window[t] || []; const i = h.indexOf(f); if (i >= 0) h.splice(i, 1); },
     document: null,
+    Image: ImageCtor,
+    /* 本地贴图按「当前页面目录」解析 → 这里把页面当作 OUT/index.html，
+       于是 art/icons/<foodId>.png 落到 OUT/art/icons/ 下（真有文件，真读宽高）。 */
+    location: { href: "file:///" + path.join(OUT, "index.html").replace(/\\/g, "/"), pathname: "/" + path.join(OUT, "index.html").replace(/\\/g, "/") },
   };
   win.document = {
     body,
-    createElement: makeEl,
+    createElement: tag => makeEl(tag, record),
     getElementById: id => (id === "bfGameHost" ? host : null),
     querySelector: sel => body.querySelector(sel),
     querySelectorAll: sel => body.querySelectorAll(sel),
@@ -166,7 +240,13 @@ function boot() {
     addEventListener: (t, f) => { (listeners.document[t] = listeners.document[t] || []).push(f); },
     removeEventListener: (t, f) => { const h = listeners.document[t] || []; const i = h.indexOf(f); if (i >= 0) h.splice(i, 1); },
   };
-  const ctx = vm.createContext(Object.assign(win, { console, Math: seededMath(BF_SEED), Date, isFinite, Number, String, Object, Array }));
+  /* 关键：breakfast.js 在**模块初始化时**就预加载贴图，所以「没有 Image / 加载失败」
+     这两个开关必须在跑源码之前就位（第一版把它们放在 start() 里，永远走不到，
+     6 条断言直接翻车）。做法是塞一个 __bfIconPre 到全局，源码顶部读它。 */
+  const ctx = vm.createContext(Object.assign(win, {
+    console, Math: seededMath(BF_SEED), Date, isFinite, Number, String, Object, Array,
+    __bfIconPre: { noImages: !!opts.noImages, forceFail: !!opts.imagesFail }
+  }));
   ctx.window = ctx; ctx.globalThis = ctx;
   vm.runInContext(SRC + "\n;globalThis.__BF = window.Breakfast;", ctx);
   /** 泵 n 帧（每帧把时钟往前推 ms 毫秒），返回渲染次数 */
@@ -182,6 +262,17 @@ function boot() {
     return rendered;
   }
   return { B: ctx.__BF, body, host, pump, listeners, win: ctx, now: () => clock, canvas: () => host.querySelector("canvas.bf-cv"),
+           record, ImageCtor,
+           /** 改图片可用性开关后按当前基准重新预加载 9 张（用来分别验图片 / 矢量两条分支）*/
+           reloadIcons: (flags) => {
+             const f = flags || {};
+             vm.runInContext("(function(){var F=globalThis.__BF.__bfIconFlags();" +
+               "F.forceFail=" + (f.forceFail ? "true" : "false") + ";" +
+               "F.forceNull=" + (f.forceNull ? "true" : "false") + ";})();", ctx);
+             const before = record.drawImage.length;
+             vm.runInContext("globalThis.__BF.__bfPreloadIcons();", ctx);
+             return { before: before, after: record.drawImage.length };
+           },
            /** ESC = 点 #bfGo（无头里把 keydown 递给 breakfast.js 挂上去的那个监听） */
            esc: () => (listeners.document.keydown || []).slice().forEach(f => f({ key: "Escape", preventDefault() {}, stopPropagation() {} })),
            docKeys: () => (listeners.document.keydown || []).length };
@@ -218,7 +309,13 @@ function runMain() {
     A(v.lay.cards.w >= 220, "顾客卡宽度 ≥220（要求 B6）", v.lay.cards.w + "×" + v.lay.cards.h + "（为让出 9 列，卡片压矮了）");
   }
   A(m.log.ops > 800, "首帧真的画了一堆东西（绘制指令数）", m.log.ops + " ops");
-  A(m.log.fills > 80 && m.log.strokes > 40, "有大量填充与描边（不是空画布）", m.log.fills + " fills / " + m.log.strokes + " strokes");
+  /* 本轮起，锅体 / 盘 / 食物改走贴图，矢量图元数量会下降 —— 所以判据从
+     「矢量 fills 很多」改成「矢量图元 + 贴图 drawImage 合计画满整屏」，
+     两边任一充足都说明画面不是空的（缺素材时 fills 多，有素材时 images 多）。 */
+  A(m.log.fills > 40 && m.log.strokes > 20, "首帧真的画了一堆矢量图元（底衬 / 边框 / 文字底）",
+    m.log.fills + " fills / " + m.log.strokes + " strokes");
+  A(m.log.images >= 25, "首帧真的把贴图画上去了（背景 + 9 厨具 + 9 盘 + 9 桶 + 星级 + 金币）",
+    m.log.images + " 次 drawImage");
   A(Object.keys(m.colors).length >= 10, "用到了多种颜色（暖木 + 锅具 + 食物）", Object.keys(m.colors).length + " 种");
   A(m.log.gradients >= 3, "用了渐变（暖木背景 / 锅体）", m.log.gradients + " 个渐变");
 
@@ -243,7 +340,10 @@ function runMain() {
       "标题栏 / 提示行 DOM 里写着赠送对象与三条操作提示",
       String((tipEl && tipEl._html) || "").slice(0, 60));
   }
-  A(m.log.ellipses > 20, "食物矢量图元（椭圆/白黄蛋、碗口、包子褶皱）在画", m.log.ellipses + " 个 ellipse");
+  /* 食物现在是贴图（drawImage），矢量椭圆只剩盘底阴影 ——「有没有食物」改成
+     「贴图或矢量图元任一充足」。 */
+  A(m.log.ellipses > 5 || m.log.images >= 25, "画面里真有一份份食物（食物贴图 drawImage 或矢量图元）",
+    m.log.ellipses + " 个 ellipse / " + m.log.images + " 次 drawImage");
   A(m.log.arcs > 5, "圆形图元（炉口火焰 / 樱瓣）在画", m.log.arcs + " 个 arc");
   A(!m.colors["#8a87a3"], "9 样食材都有自己的矢量图（没有落到 drawFood 的兜底灰块）",
     m.colors["#8a87a3"] ? "有食材缺图（兜底灰块 ×" + m.colors["#8a87a3"] + "）" : "全部有图");
@@ -561,12 +661,17 @@ function runMain() {
   d6.tick(1 / 60);
   d6b.canvas()._m.texts.length = 0;
   const strokes6 = Object.assign({}, d6b.canvas()._m.strokes);
+  const imgN6 = d6b.record.drawImage.length;
   d6b.pump(1);
   const t6c = d6b.canvas()._m.texts;
   A(t6c.some(x => /糊了/.test(x)) && t6c.some(x => /只能丢/.test(x)), "糊了的盘画出「糊了 · 只能丢（双击）」",
     (t6c.filter(x => /只能丢/.test(x))[0] || ""));
-  A((d6b.canvas()._m.strokes["#ff4d6d"] || 0) > (strokes6["#ff4d6d"] || 0), "糊了画出红色警告（红叉）",
-    "#ff4d6d " + (strokes6["#ff4d6d"] || 0) + " → " + (d6b.canvas()._m.strokes["#ff4d6d"] || 0));
+  /* 红叉现在是 ui/cross.png 贴图（缺图才回退红色矢量叉）→ 两条路任一成立即可，
+     并在 extra 里把「贴图几次 / 矢量描边涨了多少」都打出来，便于一眼看出走的哪条。 */
+  const cross6 = d6b.record.drawImage.slice(imgN6).filter(x => /art\/icons\/ui\/cross\.png$/.test(x.src));
+  A(cross6.length > 0 || (d6b.canvas()._m.strokes["#ff4d6d"] || 0) > (strokes6["#ff4d6d"] || 0),
+    "糊了画出红色警告（红叉贴图；缺图时回退红色矢量叉）",
+    "cross.png ×" + cross6.length + " · #ff4d6d " + (strokes6["#ff4d6d"] || 0) + " → " + (d6b.canvas()._m.strokes["#ff4d6d"] || 0));
   d6.close();
 
   /* ⑦ 通过路径 */
@@ -662,14 +767,307 @@ function runMain() {
   A(escN === 1, "ESC 连按仍是 1 次（幂等 + 监听已摘）");
   A(d7b.B.isBusy() === false && d7b.docKeys() === 0, "ESC 之后已收摊且不留监听");
 
-  /* ⑨ 零外部图片 / 自包含 */
-  A(!/drawImage/.test(SRC), "breakfast.js 源码不含 drawImage（不引用外部图片）");
-  A(!/new\s+Image\b/.test(SRC) && !/\.src\s*=/.test(SRC), "源码不创建 Image 对象、不设 src");
-  A(!/url\(/.test(SRC), "源码不使用 url() 贴图");
-  A(!/^\s*(import|export)\s/m.test(SRC.replace(/\/\*[\s\S]*?\*\//g, "")), "不使用 ES module（自包含 IIFE）");
-  A(/\(function \(root\)/.test(SRC) && /root\.Breakfast = api/.test(SRC), "IIFE + window.Breakfast 暴露方式与 mahjong.js 一致");
+  /* ⑨ 贴图规格（已从「零外部图片」改为「只加载 art/icons/ 下的本地图片 + 必须有矢量回退」）
+        ——原来的两条断言与现在的需求冲突，这里改成更准确的新断言，没有删掉不管：
+        原：源码不含 drawImage（不引用外部图片）
+        新：drawImage 只允许配 art/icons/ 下的本地 PNG，且必须保留矢量回退
+        原因：用户用 Lovart 生成了九宫格食材素材，要把程序化矢量图标换成真实贴图；
+              但必须保留「缺素材 / 无头环境 → 矢量」的兜底，离线仍然可玩。 */
+  {
+    const ios = B.debug.icons();
+    A(ios.length === 9 && ios.every(x => x.id), "debug.icons() 列出 9 样食材的贴图状态", ios.map(x => x.id).join("/"));
+    A(ios.every(x => /(^|\/)art\/icons\/[a-z]+\.png$/.test(x.src) || x.src === ""),
+      "贴图 src 一律落在本地 art/icons/<foodId>.png（无 http/data 外链）",
+      ios.map(x => x.src.split("/").slice(-2).join("/")).join(" "));
+    A(ios.every(x => !/^https?:|^data:/i.test(x.src)), "没有任何 http(s):// 或 data: 外链图片");
+    A(!/url\(/.test(SRC), "源码不使用 url() 贴图");
+    /* 矢量回退必须还在源码里：drawFood → drawFoodImg 失败 → drawFoodVector */
+    A(/function drawFoodVector\(/.test(SRC) && /function drawFoodImg\(/.test(SRC) &&
+      /function drawFood\(g, id, s, cook\) \{\s*\n\s*if \(drawFoodImg\(g, id, s, cook\)\) return;\s*\n\s*drawFoodVector\(g, id, s, cook\);/.test(SRC),
+      "drawFood = 贴图优先 → 矢量回退（两条路径都在源码里，回退没有被删）");
+    A(!/^\s*(import|export)\s/m.test(SRC.replace(/\/\*[\s\S]*?\*\//g, "")), "不使用 ES module（自包含 IIFE）");
+    A(/\(function \(root\)/.test(SRC) && /root\.Breakfast = api/.test(SRC), "IIFE + window.Breakfast 暴露方式与 mahjong.js 一致");
+  }
+
+  /* ⑨b 贴图路径：真的从 art/icons/ 读到 9 张 PNG（宽高由真文件 IHDR 给出） */
+  {
+    const b2 = boot();
+    const ios2 = b2.B.debug.icons();                 // 预加载发生在模块初始化时，开局前就可读
+    A(ios2.filter(x => x.loaded).length === 9, "9 张本地贴图全部解码完成（真读 art/icons/*.png 的 IHDR）",
+      "loaded=" + ios2.filter(x => x.loaded).length + " / vector=" + ios2.filter(x => x.drawAs === "vector").length);
+    A(ios2.every(x => x.naturalWidth === 256 && x.naturalHeight === 256),
+      "9 张贴图都是 256×256（切片规格）", [...new Set(ios2.map(x => x.naturalWidth + "×" + x.naturalHeight))].join(" "));
+    A(ios2.every(x => !/^https?:|^data:/i.test(x.src)) && ios2.every(x => /art\/icons\/[a-z]+\.png$/.test(x.src)),
+      "src 全部是 art/icons/<foodId>.png 本地路径（无外链 / 无 data URI）");
+    /* reloadIcons 只是「按当前开关重新预加载」，本身不该画任何图 */
+    const rl = b2.reloadIcons({});
+    A(rl.after - rl.before === 0, "重新预加载不会顺手画图（drawImage 次数不变）", "Δ=" + (rl.after - rl.before));
+    /* 真开局：确认每样食物都走了 drawImage 而不是矢量 */
+    let fin2 = null;
+    b2.B.start(b2.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: r => { fin2 = r; } });
+    b2.pump(3);
+    const st = b2.B.debug.view().icons;
+    A(st.ready === 9 && st.failed === 0, "开局后 9 张贴图可用、0 张失败", "ready=" + st.ready + " failed=" + st.failed);
+    A(st.span === 36 && st.spec === 76,
+      "贴图沿用既有视觉尺寸（局部跨度 36px → bucket/card/plate/pan 四种缩放都不变）",
+      "span=" + st.span + "px / 单份食物规格 " + st.spec + "px");
+    const di = b2.record.drawImage;
+    A(di.length > 0, "开局首帧真的调用了 ctx.drawImage（用的是贴图）", di.length + " 次");
+    /* 贴图范围从「只允许 art/icons/<foodId>.png」扩到本批 4 组 + 背景，
+       断言同步收紧成：只允许 art/ 下的本地 PNG（bg / icons / icons/<group>），
+       且协议必须是本地（无 http(s) / data）。 */
+    A(di.every(x => /(^|\/)art\/(bg\/kitchen\.png|icons\/([a-z]+\/)?[a-z_]+\.png)$/.test(x.src)),
+      "每次 drawImage 的图都来自本地 art/（背景 / 食材 / 厨具 / 头像 / UI）",
+      [...new Set(di.map(x => x.src.split("/").slice(-2).join("/")))].slice(0, 8).join(" "));
+    A(di.every(x => !/^https?:|^data:/i.test(x.src)), "drawImage 只画本地文件（没有 http(s) / data URI 外链）");
+    A(di.every(x => (x.argc === 5 || x.argc === 9) && x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sh > 0),
+      "drawImage 用 5 参（图+目标框）或 9 参（源矩形+目标框），源/目标框都是正尺寸",
+      di.length ? ("例如 argc=" + di[0].argc + " " + di[0].sw.toFixed(0) + "×" + di[0].sh.toFixed(0) + " → " + di[0].dw.toFixed(1) + "×" + di[0].dh.toFixed(1)) : "无");
+    A(b2.B.debug.icons().every(x => x.drawAs === "image"), "9 样食物的绘制源都判定为 image");
+    b2.B.dispose();
+  }
+
+  /* ⑨c 矢量回退：没有 Image 构造器 / 9 张全加载失败 → 一条 drawImage 都不发，游戏照样画得出来 */
+  {
+    const b3 = boot({ noImages: true });
+    let fin3 = null;
+    b3.B.start(b3.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: r => { fin3 = r; } });
+    A(b3.B.debug.view().icons.ready === 0 && b3.B.debug.view().icons.vector === 9,
+      "无 Image 构造器时 9 张全部判定为「走矢量」", "ready=0 vector=9");
+    b3.pump(3);
+    const m3 = b3.canvas()._m;
+    A(b3.record.drawImage.length === 0, "无 Image 时不发任何 drawImage");
+    A(m3.log.ops > 800 && m3.log.fills > 80, "回退路径照旧画满整屏（矢量指令数）", m3.log.ops + " ops / " + m3.log.fills + " fills");
+    A(m3.log.ellipses > 0 && Object.keys(m3.colors).length >= 10, "矢量回退用到了椭圆与多种颜色（真的画了食物）",
+      m3.log.ellipses + " ellipses / " + Object.keys(m3.colors).length + " 色");
+    A(b3.B.debug.icons().every(x => x.drawAs === "vector"), "9 样食物都判定为 vector");
+    b3.B.dispose();
+
+    /* 9 张全失败（有 Image 但读不到文件）→ 同样必须回退。
+       这里用一个**不存在的基准目录**触发真实路径的加载失败（走 onerror），
+       而不是只翻 forceFail 开关 —— 后者只标记槽位，不经过真实加载流程。 */
+    const b4 = boot();
+    const badBase = path.join(OUT, "art", "__no_such_dir__") + "/";
+    const pr = b4.B.__bfPreloadIcons(badBase);
+    A(pr.ready === 0 && pr.vector === 9 && pr.failed === 9,
+      "9 张食材贴图全加载失败 → 全部回退矢量", "ready=" + pr.ready + " failed=" + pr.failed);
+    A(b4.B.art.ready().gear === 0 && b4.B.art.ready().face === 0 && b4.B.art.ready().ui === 0 && b4.B.art.ready().bg === 0,
+      "同一批坏目录下，厨具 / 头像 / UI / 背景也一起判为不可用（统一加载器，四条路一起回退）",
+      JSON.stringify(b4.B.art.ready()));
+    b4.B.start(b4.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: () => {} });
+    const st4 = b4.B.debug.view().icons;
+    A(st4.ready === 0 && st4.vector === 9, "开局后仍然 9 张不可用（不做二次加载）", "ready=" + st4.ready);
+    b4.pump(3);
+    /* 素材从 9 张（食材）扩到 34 张（9 食材 + 9 厨具 + 6 头像 + 9 UI + 1 背景），
+       所以「被接住的 onerror 次数」也跟着变成 34 —— 断言同步改成 34，而不是删掉这条。 */
+    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 34,
+      "加载失败时一条 drawImage 都不发，34 次 onerror 全被接住",
+      "errors=" + b4.record.imgErrors.length + " / drawImage=" + b4.record.drawImage.length);
+    A(b4.canvas()._m.log.fills > 80, "加载失败也照旧画满整屏（矢量兜底生效）");
+    b4.B.dispose();
+  }
+
+  /* ⑨d 本轮 5 组素材的接入证据：背景铺满 / 厨具与盘位贴图 / 头像按耐心切换 / UI 元素
+         —— 全部由「真跑 breakfast.js → 记录 drawImage（源矩形 + 目标框）」证明，
+            不是源码里出现了字符串就算数。 */
+  {
+    const b5 = boot();
+    const A5 = b5.B.art;
+    A(!!A5 && typeof A5.bg === "function" && typeof A5.groups === "function",
+      "api.art 暴露贴图映射表与背景几何（单测与无头共用同一个出口）");
+    const bg = A5.bg();
+    const rpt = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_assets_report.json"), "utf8"));
+    A(bg.ready === true && bg.loaded === 1 && bg.failed === 0,
+      "背景 art/bg/kitchen.png 真解码完成（读的是真文件的 IHDR）",
+      "spec " + bg.spec.w + "×" + bg.spec.h + " loaded=" + bg.loaded + " failed=" + bg.failed);
+    A(bg.crop.x === rpt.background.crop.x && bg.crop.y === rpt.background.crop.y &&
+      bg.crop.w === rpt.background.crop.w && bg.crop.h === rpt.background.crop.h,
+      "breakfast.js 的裁切参数与 art/_assets_report.json 逐字一致（测量结果没被手改）", JSON.stringify(bg.crop));
+    A(bg.spec.w === rpt.background.spec.w && bg.spec.h === rpt.background.spec.h,
+      "背景素材尺寸与报告一致（裁剪后 " + bg.spec.w + "×" + bg.spec.h + "）");
+    A(Math.abs(bg.counterTopCanvasY - 318) <= 1.5 && bg.counterTopCanvasY <= b5.B.LAY.plate.y,
+      "木台面上沿落在画布 y≈318（= 列头线），盘/锅/桶三段全在木台面上",
+      "y=" + bg.counterTopCanvasY + " ≤ 盘带顶 " + b5.B.LAY.plate.y);
+    A(b5.B.debug.bg().file === "art/bg/kitchen.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(A5.bg().file),
+      "背景走相对路径 art/bg/kitchen.png（不写盘符 / 协议 / data URI）");
+
+    /* 真开局 → 背景在最底层被 drawImage，且目标框铺满整块画布 */
+    b5.B.start(b5.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: () => {} });
+    b5.pump(2);
+    const bgi = b5.record.drawImage.filter(x => /art\/bg\/kitchen\.png$/.test(x.src));
+    A(bgi.length > 0, "最底层真的 drawImage 铺了背景（不是只登记了个开关）", bgi.length + " 次");
+    const g0 = bgi[0];
+    A(!!g0 && g0.dx === 0 && g0.dy === 0 && g0.dw === VW && g0.dh === VH,
+      "背景目标框 = 整块画布（0,0,1180,790）→ 铺满",
+      g0 ? ("dx/dy/dw/dh = " + [g0.dx, g0.dy, g0.dw, g0.dh].join(",")) : "没有记录");
+    const tex = b5.B.debug.tex();
+    A(tex.bg === true && (tex.bgMode === "fit" || tex.bgMode === "cover"),
+      "debug.tex() 报告本帧背景已绘制", "mode=" + tex.bgMode);
+    A(tex.panTex >= 9, "9 个灶位都画了厨具贴图（汤锅/煎盘/蒸笼/托盘/果汁壶）", "panTex=" + tex.panTex);
+    A(tex.plateTex >= 9, "9 个专属盘都画了盘位贴图", "plateTex=" + tex.plateTex);
+    A(tex.gearTools >= 1, "图例条右端画了「锅铲+夹子」贴图", "gearTools=" + tex.gearTools);
+    const names = b5.record.drawImage.map(x => x.src.split("/").pop());
+    const cnt = n => names.filter(v => v === n).length;
+    A(cnt("pot.png") >= 3 && cnt("griddle.png") >= 3 && cnt("steamer.png") >= 1 && cnt("tray.png") >= 1 && cnt("juice_jug.png") >= 1,
+      "锅位贴图按 kind 映射正确（锅×3 / 煎盘×3 / 蒸笼×1 / 托盘×1 / 果汁壶×1）",
+      "pot=" + cnt("pot.png") + " griddle=" + cnt("griddle.png") + " steamer=" + cnt("steamer.png") +
+      " tray=" + cnt("tray.png") + " juice_jug=" + cnt("juice_jug.png"));
+    A(cnt("plate_empty.png") >= 9, "9 个空盘都用了 plate_empty.png", "×" + cnt("plate_empty.png"));
+    A(cnt("stars.png") >= 5 && cnt("coin.png") >= 1, "顶栏星级用 stars.png 的单颗星、得分用 coin.png",
+      "stars×" + cnt("stars.png") + " coin×" + cnt("coin.png"));
+
+    /* 盘上有食物 → 换「有食物盘」贴图（煎蛋培根盘 / 包子盘），且不再叠一份食材贴图。
+       注意：无头 ctx 替身**不实现 translate/scale**（只记次数），所以 drawImage 记下来的
+       坐标是**局部坐标**，不能用绝对位置判断「画在哪个盘位」。
+       这里改成数「每帧某张贴图画了几次」—— 底排 9 个食材桶每帧各画一次，
+       盘位上再叠一份，那个数字就会 +1，与坐标无关。 */
+    const d5 = b5.B.debug;
+    const cntName = (n) => b5.record.drawImage.filter(r => r.src.split("/").pop() === n).length;
+    b5.record.drawImage.length = 0;
+    b5.pump(1);
+    const baseEgg = cntName("egg.png"), baseCongee = cntName("congee.png");
+    A(baseEgg === 1 && baseCongee === 1, "9 个盘全空时，每样食材贴图每帧只画 1 次（底排食材桶）",
+      "egg=" + baseEgg + " congee=" + baseCongee);
+    /* ① 煎蛋 → 专属盘贴图 plate_egg_bacon（自带蛋+培根），不再叠食材贴图 */
+    b5.record.drawImage.length = 0;
+    d5.drop("egg", null); d5.plateNow(3);
+    b5.pump(1);
+    const n2 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n2.indexOf("plate_egg_bacon.png") >= 0, "煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）");
+    A(n2.filter(v => v === "egg.png").length === baseEgg,
+      "盘贴图自带食物时不再叠一份食材贴图（整帧 egg.png 次数不变，一盘两样会被这个数抓到）",
+      "egg.png " + baseEgg + " → " + n2.filter(v => v === "egg.png").length);
+    /* ② 包子 → 专属盘贴图 plate_bun（自带包子） */
+    b5.record.drawImage.length = 0;
+    d5.drop("bun", null); d5.plateNow(6);
+    b5.pump(1);
+    const n3 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n3.indexOf("plate_bun.png") >= 0, "包子落到盘上 → 用 plate_bun.png（包子盘）");
+    A(n3.filter(v => v === "bun.png").length === 1, "包子盘自带包子 → 不再叠一份 bun.png",
+      "bun.png ×" + n3.filter(v => v === "bun.png").length);
+    /* ③ 没有专属盘贴图的食材（白粥）→ 仍然是「空盘 + 食物贴图」 */
+    b5.record.drawImage.length = 0;
+    d5.drop("congee", null); d5.plateNow(0);
+    b5.pump(1);
+    const n4 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n4.indexOf("plate_empty.png") >= 0 && n4.filter(v => v === "congee.png").length === baseCongee + 1,
+      "白粥落盘 → 盘位是「plate_empty + 食物贴图」（没有专属盘贴图的食材照旧这样画）",
+      "plate_empty=" + n4.filter(v => v === "plate_empty.png").length + " congee.png " + baseCongee + " → " + n4.filter(v => v === "congee.png").length);
+    /* ④ 糊了 → 红叉贴图 */
+    d5.burnPlate(6);
+    b5.record.drawImage.length = 0;
+    b5.pump(1);
+    A(b5.record.drawImage.some(x => /art\/icons\/ui\/cross\.png$/.test(x.src)),
+      "盘上那份糊了 → 画红叉贴图 ui/cross.png（矢量红叉只是缺图时的兜底）");
+    b5.B.dispose();
+  }
+
+
+  /* ⑨e 顾客头像按耐心阈值切换 + UI 元素（耐心条按比例裁源矩形 / 星级 / 金币 / 绿勾） */
+  {
+    const b6 = boot();
+    b6.B.start(b6.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 30, goal: 8, onFinish: () => {} });
+    const d6 = b6.B.debug;
+    /* 第 1 位故意点两样：整单完成的顾客会立刻离店（不再画卡），
+       所以「订单项打勾」要在**还差一样**的状态下验。 */
+    const pid = [d6.pushCustomer(["congee", "egg"]), d6.pushCustomer(["milk"]), d6.pushCustomer(["soup"])];
+    const PAT = [0.82, 0.55, 0.22];
+    pid.forEach((id, i) => d6.setPatience(id, PAT[i]));
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    const faces = d6.faces();
+    A(faces.length === 3, "3 位顾客各有一个头像位", faces.length + " 位");
+    A(faces[0].mood === "calm" && faces[1].mood === "calm" && faces[2].mood === "urgent",
+      "耐心 82% / 55% / 22% → 平静 / 平静 / 着急（阈值 40%）",
+      faces.map(f => f.ratio + "→" + f.mood).join(" · "));
+    A(b6.B.art.faceUrgentAt === 0.4, "阈值写在常量里且读得到（FACE_ICON.urgentAt = 0.40）",
+      "faceUrgentAt=" + b6.B.art.faceUrgentAt);
+    const fdraw = b6.record.drawImage.filter(x => /art\/icons\/faces\//.test(x.src));
+    const perCard = faces.map(f => {
+      const hit = fdraw.filter(x => (x.dx + x.dw / 2) >= f.box.x && (x.dx + x.dw / 2) <= f.box.x + f.box.w);
+      return hit.length ? hit[hit.length - 1].src.split("/").pop() : "";
+    });
+    A(perCard[0].indexOf("_calm") > 0 && perCard[1].indexOf("_calm") > 0 && perCard[2].indexOf("_urgent") > 0,
+      "每张卡的头像位真的按耐心阈值切换贴图（calm / calm / urgent）", perCard.join(" ") || "没画头像");
+    /* 同一位顾客改耐心 → 立刻换脸（证明是阈值在驱动，不是随机 / 一次性）*/
+    const c0 = faces[0].id;
+    d6.setPatience(c0, 0.2);
+    b6.record.drawImage.length = 0; b6.pump(1);
+    A(b6.record.drawImage.some(x => /_urgent\.png$/.test(x.src)), "耐心掉到 20% → 同一位顾客换成「着急」脸",
+      b6.record.drawImage.filter(x => /faces\//.test(x.src)).map(x => x.src.split("/").pop()).join(" "));
+    d6.setPatience(c0, 0.9);
+    b6.record.drawImage.length = 0; b6.pump(1);
+    A(b6.record.drawImage.some(x => /_calm\.png$/.test(x.src)), "耐心回到 90% → 又换回「平静」脸");
+    A(d6.faces().length >= 1 && d6.faces().every(f => /^(stud|office|uncle)_(calm|urgent)$/.test(f.name)),
+      "头像文件名只有 3 种角色 × 2 种情绪（映射表封闭）");
+
+    /* UI：耐心条底槽 bar_empty + 前景 bar_full 按剩余比例裁**源矩形** */
+    d6.setPatience(pid[0], 0.8); d6.setPatience(pid[1], 0.5); d6.setPatience(pid[2], 0.2);
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    const di6 = b6.record.drawImage;
+    const bars = di6.filter(x => /art\/icons\/ui\/bar_empty\.png$/.test(x.src));
+    const fills = di6.filter(x => /art\/icons\/ui\/bar_full\.png$/.test(x.src)).sort((a, b) => a.dx - b.dx);
+    A(bars.length === 3, "3 张顾客卡都画了 bar_empty 底槽", "×" + bars.length);
+    A(fills.length === 3, "3 条耐心条都画了 bar_full 前景", "×" + fills.length);
+    A(fills.length === 3 && fills[0].sw > fills[1].sw && fills[1].sw > fills[2].sw,
+      "前景的源矩形宽度随剩余耐心单调递减（真的按比例裁，不是把整条压扁）",
+      fills.map(x => x.sw.toFixed(0)).join(" > "));
+    A(fills.length === 3 && fills.every(x => x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sw <= 256),
+      "前景目标框为正、源矩形不超过贴图宽度", fills.length ? ("sw=" + fills[0].sw.toFixed(0) + " dw=" + fills[0].dw.toFixed(0)) : "无");
+    const st6 = di6.filter(x => /art\/icons\/ui\/stars\.png$/.test(x.src));
+    A(st6.length >= 5, "顶栏 5 颗星都是从 stars.png 裁出来的单颗星", "×" + st6.length);
+    A(st6.length >= 5 && st6.every(x => x.sw > 0 && x.sw < 256 && x.sh > 0),
+      "单颗星用源矩形裁剪（sw 小于整幅宽度）", st6.length ? ("sw=" + st6[0].sw.toFixed(0) + "/256") : "无");
+    A(di6.some(x => /art\/icons\/ui\/coin\.png$/.test(x.src)), "得分旁边画的是金币 coin.png");
+    /* 上桌打勾：让一位顾客的整单完成 → check.png */
+    const dz = b6.B.debug;
+    dz.drop("congee", null); dz.plateNow(0); dz.serveCol(0);
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    A(b6.record.drawImage.some(x => /art\/icons\/ui\/check\.png$/.test(x.src)),
+      "订单项完成 → 画绿勾贴图 ui/check.png",
+      b6.record.drawImage.filter(x => /ui\//.test(x.src)).map(x => x.src.split("/").pop()).join(" "));
+    b6.B.dispose();
+  }
+
+  /* ⑨f 玩法入口图标：9 张 art/icons/game/*.png + index.html 的侧栏 / 面板接入 */
+  {
+    const games = ["mahjong", "breakfast", "talk", "fight", "lottery", "stock", "dodge", "circuit", "memory"];
+    const missing = games.filter(n => !fs.existsSync(path.join(OUT, "art", "icons", "game", n + ".png")));
+    A(missing.length === 0, "9 张玩法入口图标都在盘上", missing.length ? "缺：" + missing.join(",") : "9/9");
+    const sizes = games.map(n => {
+      const b = fs.readFileSync(path.join(OUT, "art", "icons", "game", n + ".png"));
+      return b.readUInt32BE(16) + "×" + b.readUInt32BE(20);
+    });
+    A([...new Set(sizes)].length === 1 && sizes[0] === "128×128",
+      "9 张都是 128×128（同一套切片规格）", [...new Set(sizes)].join(" "));
+    games.forEach(n => A(HTML.indexOf("art/icons/game/" + n + ".png") > 0,
+      "index.html 引用了 art/icons/game/" + n + ".png"));
+    A(/id="lotteryBtn"><img class="gm-ico" src="art\/icons\/game\/lottery\.png"/.test(HTML),
+      "侧栏「刮刮乐」按钮用图标（emoji 作回退）");
+    A(/id="mjFreeBtn"><img class="gm-ico" src="art\/icons\/game\/mahjong\.png"/.test(HTML),
+      "侧栏「找人打两圈」按钮用图标（emoji 作回退）");
+    A(/id="bfBtn"[^>]*><img class="gm-ico" src="art\/icons\/game\/breakfast\.png"/.test(HTML),
+      "侧栏「做份早餐」按钮用图标（emoji 作回退）");
+    A(/<span class="gm-emj">🎟<\/span>/.test(HTML) && /<span class="gm-emj">🀄<\/span>/.test(HTML) &&
+      /<span class="gm-emj">🍳<\/span>/.test(HTML),
+      "三个侧栏按钮都保留了 emoji 兜底文案（img onerror / style.display=none 时显示）");
+    A(/onerror="this\.remove\(\)"/.test(HTML), "图片加载失败时摘掉 img，不留破图占位");
+    A(/\.gm-ico\{display:none/.test(HTML), "入口图标默认 display:none，只有 onload 成功才显示");
+    ["dodge", "stock", "circuit", "memory", "talk", "fight"].forEach(n => {
+      A(new RegExp('<h3[^>]*><img class="gm-ico" src="art/icons/game/' + n + '\\.png"').test(HTML),
+        "玩法面板标题带了 " + n + " 图标");
+    });
+    A(/#bfGame \.bf-btn\.bf-wood\{[^}]*btn_wood\.png/.test(HTML),
+      "顶栏「收摊」按钮用木牌贴图（CSS background-image，失败时退回原描边）");
+    A(/#bfGame \.bf-btn\.bf-red\{[^}]*btn_red\.png/.test(HTML), "结算主按钮用红漆贴图");
+    A(/\.bf-uiico\{display:none/.test(HTML) && /function uiIconTag\(name, emoji\)/.test(SRC),
+      "结算面板的 UI 贴图（绿勾 / 红叉 / 灯泡）走 uiIconTag，带 emoji 回退");
+  }
 
   /* ⑩ 剧情入口链路：sister_bf →（选对象）→ 局 → #bfGo → afterInter → after 镜头 → finishNode
+
         → S.done 含 sister_bf → next 解锁 flashback；自由局则回沙盘 + 结算 toast。
        做法：把 index.html 里**真实的内联胶水层**（applyFx / afterInter / finishNode / advance / isAvail
        + 早餐店整段 glue）逐字抽出来，和真 breakfast.js 一起跑在同一个无头 vm 里（S / render / toast

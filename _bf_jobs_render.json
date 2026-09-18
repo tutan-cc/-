@@ -1,0 +1,88 @@
+{
+  "jobs": [
+    { "file": "breakfast.js",
+      "from": "      /* 星级：按完美率 */",
+      "to": "      g.fillText(String(st.score), pbX + pbW + 234, 24);",
+      "textFile": "_bf_new_topbar.txt" },
+
+    { "file": "breakfast.js",
+      "from": "    function drawBg() {",
+      "to": "      g.fillStyle = rg; g.fillRect(0, LAY.topH, W, H - LAY.topH);\n    }",
+      "textFile": "_bf_new_drawbg.txt" },
+
+    { "file": "breakfast.js",
+      "from": "      var by = box.y + box.h - 30, bw = box.w - 32 - 96, bx = box.x + 16;\n      g.fillStyle = \"rgba(0,0,0,.45)\"; roundRect(g, bx, by, bw, 22, 11); g.fill();",
+      "to": "      roundRect(g, bx, by, Math.max(4, bw * Math.max(0, Math.min(1, warn))), 22, 11); g.fill();",
+      "textFile": "_bf_new_bar.txt" },
+
+    { "file": "breakfast.js",
+      "from": "    function drawCustomer(c, box, slot) {",
+      "textFile": "_bf_new_face.txt" },
+
+    { "file": "breakfast.js",
+      "from": "      drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);\n      g.textAlign = \"left\"; g.textBaseline = \"middle\";",
+      "text": "      drawCustomerFace(box, c);\n      g.textAlign = \"left\"; g.textBaseline = \"middle\";" },
+
+    { "file": "breakfast.js",
+      "from": "        if (got) {\n          g.strokeStyle = PAL.green; g.lineWidth = 5; g.beginPath();\n          g.moveTo(cx + 14, iconY - 22); g.lineTo(cx + 23, iconY - 12); g.lineTo(cx + 38, iconY - 34); g.stroke();\n        }",
+      "text": "        if (got) {\n          if (drawUiIcon(g, \"check\", cx + 8, iconY - 40, 34)) IA.drawn.uiCheck = (IA.drawn.uiCheck || 0) + 1;\n          else {\n            g.strokeStyle = PAL.green; g.lineWidth = 5; g.beginPath();\n            g.moveTo(cx + 14, iconY - 22); g.lineTo(cx + 23, iconY - 12); g.lineTo(cx + 38, iconY - 34); g.stroke();\n          }\n        }" },
+
+    { "file": "breakfast.js",
+      "from": "      if (got2(c)) { g.font = fontOf(40, true); g.fillStyle = \"rgba(93,255,160,.9)\"; g.textAlign = \"center\"; g.fillText(\"✓\", box.x + box.w - 40, box.y + 26); g.textAlign = \"left\"; }",
+      "text": "      if (got2(c)) {\n        if (drawUiIcon(g, \"check\", box.x + box.w - 58, box.y + 8, 36)) IA.drawn.uiCheck = (IA.drawn.uiCheck || 0) + 1;\n        else { g.font = fontOf(40, true); g.fillStyle = \"rgba(93,255,160,.9)\"; g.textAlign = \"center\"; g.fillText(\"✓\", box.x + box.w - 40, box.y + 26); g.textAlign = \"left\"; }\n      }" },
+
+    { "file": "breakfast.js",
+      "from": "      g.fillStyle = pg;\n      if (s.kind === \"pot\") { g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill(); }\n      else { roundRect(g, b.x + 5, b.y + 5, b.w - 10, b.h - 10, 16); g.fill(); }\n      if (s.kind === \"pot\") {",
+      "to": "      } else {\n        g.strokeStyle = \"rgba(255,255,255,.10)\"; g.lineWidth = 2;\n        g.beginPath(); g.moveTo(b.x + 14, b.y + b.h - 26); g.lineTo(b.x + b.w - 14, b.y + b.h - 26); g.stroke();\n      }",
+      "textFile": "_bf_new_pan.txt" },
+
+    { "file": "breakfast.js",
+      "from": "      if (s.state === \"burnt\") {\n        /* 焦黑锅 + 红叉 + 冒烟 */\n        g.strokeStyle = PAL.red; g.lineWidth = 7;\n        g.beginPath(); g.moveTo(cx - 18, cy - 18); g.lineTo(cx + 18, cy + 18);\n        g.moveTo(cx + 18, cy - 18); g.lineTo(cx - 18, cy + 18); g.stroke();",
+      "text": "      if (s.state === \"burnt\") {\n        /* 焦黑锅 + 红叉（贴图）+ 冒烟 */\n        if (drawUiIcon(g, \"cross\", cx - 24, cy - 24, 48)) IA.drawn.uiCross = (IA.drawn.uiCross || 0) + 1;\n        else {\n          g.strokeStyle = PAL.red; g.lineWidth = 7;\n          g.beginPath(); g.moveTo(cx - 18, cy - 18); g.lineTo(cx + 18, cy + 18);\n          g.moveTo(cx + 18, cy - 18); g.lineTo(cx - 18, cy + 18); g.stroke();\n        }" },
+
+    { "file": "breakfast.js",
+      "from": "      g.fillStyle = \"rgba(0,0,0,.42)\";\n      g.beginPath(); g.ellipse(cx, cy + 7, rw, rh, 0, 0, Math.PI * 2); g.fill();\n      var pg = g.createLinearGradient(cx - rw, cy - rh, cx + rw, cy + rh);",
+      "to": "      /* 有食物 */\n      g.save(); g.translate(cx, cy - 6); drawFood(g, p.food, FS.plate, p.state); g.restore();",
+      "textFile": "_bf_new_plate.txt" },
+
+    { "file": "breakfast.js",
+      "from": "        g.strokeStyle = PAL.red; g.lineWidth = 6;\n        g.beginPath(); g.moveTo(cx - 16, cy - 20); g.lineTo(cx + 16, cy + 8); g.moveTo(cx + 16, cy - 20); g.lineTo(cx - 16, cy + 8); g.stroke();",
+      "text": "        if (drawUiIcon(g, \"cross\", cx - 19, cy - 23, 38)) IA.drawn.uiCross = (IA.drawn.uiCross || 0) + 1;\n        else {\n          g.strokeStyle = PAL.red; g.lineWidth = 6;\n          g.beginPath(); g.moveTo(cx - 16, cy - 20); g.lineTo(cx + 16, cy + 8); g.moveTo(cx + 16, cy - 20); g.lineTo(cx - 16, cy + 8); g.stroke();\n        }" },
+
+    { "file": "breakfast.js",
+      "from": "                 x + w / 2, y + h / 2);\n      g.restore();\n      g.textAlign = \"left\";\n      IA.drawn.legend = true;",
+      "text": "                 x + w / 2, y + h / 2);\n      /* 厨具素材里的「锅铲 + 夹子」放在图例条右端的空位（不挤文字，纯装饰）*/\n      if (drawAssetFit(g, assetOf(GEAR_ICON, \"tools\"), { x: x + w - 60, y: y + 2, w: 54, h: h - 4 }, null)) IA.drawn.gearTools = (IA.drawn.gearTools || 0) + 1;\n      g.restore();\n      g.textAlign = \"left\";\n      IA.drawn.legend = true;" },
+
+    { "file": "breakfast.js",
+      "from": "  initIcons();",
+      "textFile": "_bf_new_asset_tail.txt" },
+
+    { "file": "breakfast.js",
+      "from": "      plateMap: function () {",
+      "textFile": "_bf_new_debug.txt" },
+
+    { "file": "breakfast.js",
+      "from": "  function escHtml(s) {",
+      "text": "  /** 结算面板 / 提示处的 UI 贴图（DOM）：图片加载失败 → 自动摘掉 img，保留后面的 emoji 兜底文案 */\n  function uiIconTag(name, emoji) {\n    var src = groupBase(UI_ICON) + name + UI_ICON.ext;\n    return '<img class=\"bf-uiico\" src=\"' + src + '\" alt=\"\"' +\n           ' onload=\"this.style.display=\\u0027inline-block\\u0027;this.nextSibling.style.display=\\u0027none\\u0027;\"' +\n           ' onerror=\"this.remove()\"><span class=\"bf-emj\">' + emoji + '</span>';\n  }\n  function escHtml(s) {" },
+
+    { "file": "breakfast.js",
+      "from": "    var btnEnd = mkBtn(\"收 摊\");",
+      "text": "    var btnEnd = mkBtn(\"收 摊\", \"bf-wood\");" },
+
+    { "file": "breakfast.js",
+      "from": "        '<h3>' + (win ? \"🍳 送出热乎早餐\" : \"…早餐烧坏了\") + '</h3>' +",
+      "text": "        '<h3>' + uiIconTag(win ? \"check\" : \"cross\", win ? \"🍳\" : \"…\") + (win ? \"送出热乎早餐\" : \"早餐烧坏了\") + '</h3>' +" },
+
+    { "file": "breakfast.js",
+      "from": "        '<div class=\"bf-imp dim\">🎯 接下来 · ' + escHtml(r.quota || quotaOf(win, r.bondDelta, tgt.name)) + '</div>' +",
+      "text": "        '<div class=\"bf-imp dim\">' + uiIconTag(\"bulb\", \"🎯\") + ' 接下来 · ' + escHtml(r.quota || quotaOf(win, r.bondDelta, tgt.name)) + '</div>' +" },
+
+    { "file": "breakfast.js",
+      "from": "      var go = mkBtn(win ? \"收下早餐 · 继续\" : \"算了，明天再来 · 继续\", \"primary\");",
+      "text": "      var go = mkBtn(win ? \"收下早餐 · 继续\" : \"算了，明天再来 · 继续\", \"primary bf-red\");" },
+
+    { "file": "breakfast.js",
+      "from": "    start: start, isBusy: isBusy, dispose: dispose,",
+      "text": "    art: art,\n    start: start, isBusy: isBusy, dispose: dispose," }
+  ]
+}

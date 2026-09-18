@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "breakfast.js",
+      "from": "      var rr = R - 16;\n      g.lineWidth = 9; g.strokeStyle = \"rgba(255,255,255,.10)\";\n      g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();",
+      "text": "      var rr = R - 16;\n      /* 环的底：先用深色描一圈当「垫底」，否则进度环压在亮色厨具贴图上会看不清\n         （生=浅蓝 / 恰好=绿 / 过火=橙 / 糊=红 这四档语义一个都没改）*/\n      g.lineWidth = 13; g.strokeStyle = \"rgba(10,7,4,.55)\";\n      g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();\n      g.lineWidth = 9; g.strokeStyle = \"rgba(255,255,255,.10)\";\n      g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();" }
+  ]
+}

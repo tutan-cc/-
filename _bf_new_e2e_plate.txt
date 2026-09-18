@@ -1,0 +1,45 @@
+    /* 盘上有食物 → 换「有食物盘」贴图（煎蛋培根盘 / 包子盘），且不再叠一份食材贴图。
+       注意：无头 ctx 替身**不实现 translate/scale**（只记次数），所以 drawImage 记下来的
+       坐标是**局部坐标**，不能用绝对位置判断「画在哪个盘位」。
+       这里改成数「每帧某张贴图画了几次」—— 底排 9 个食材桶每帧各画一次，
+       盘位上再叠一份，那个数字就会 +1，与坐标无关。 */
+    const d5 = b5.B.debug;
+    const cntName = (n) => b5.record.drawImage.filter(r => r.src.split("/").pop() === n).length;
+    b5.record.drawImage.length = 0;
+    b5.pump(1);
+    const baseEgg = cntName("egg.png"), baseCongee = cntName("congee.png");
+    A(baseEgg === 1 && baseCongee === 1, "9 个盘全空时，每样食材贴图每帧只画 1 次（底排食材桶）",
+      "egg=" + baseEgg + " congee=" + baseCongee);
+    /* ① 煎蛋 → 专属盘贴图 plate_egg_bacon（自带蛋+培根），不再叠食材贴图 */
+    b5.record.drawImage.length = 0;
+    d5.drop("egg", null); d5.plateNow(3);
+    b5.pump(1);
+    const n2 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n2.indexOf("plate_egg_bacon.png") >= 0, "煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）");
+    A(n2.filter(v => v === "egg.png").length === baseEgg,
+      "盘贴图自带食物时不再叠一份食材贴图（整帧 egg.png 次数不变，一盘两样会被这个数抓到）",
+      "egg.png " + baseEgg + " → " + n2.filter(v => v === "egg.png").length);
+    /* ② 包子 → 专属盘贴图 plate_bun（自带包子） */
+    b5.record.drawImage.length = 0;
+    d5.drop("bun", null); d5.plateNow(6);
+    b5.pump(1);
+    const n3 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n3.indexOf("plate_bun.png") >= 0, "包子落到盘上 → 用 plate_bun.png（包子盘）");
+    A(n3.filter(v => v === "bun.png").length === 1, "包子盘自带包子 → 不再叠一份 bun.png",
+      "bun.png ×" + n3.filter(v => v === "bun.png").length);
+    /* ③ 没有专属盘贴图的食材（白粥）→ 仍然是「空盘 + 食物贴图」 */
+    b5.record.drawImage.length = 0;
+    d5.drop("congee", null); d5.plateNow(0);
+    b5.pump(1);
+    const n4 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n4.indexOf("plate_empty.png") >= 0 && n4.filter(v => v === "congee.png").length === baseCongee + 1,
+      "白粥落盘 → 盘位是「plate_empty + 食物贴图」（没有专属盘贴图的食材照旧这样画）",
+      "plate_empty=" + n4.filter(v => v === "plate_empty.png").length + " congee.png " + baseCongee + " → " + n4.filter(v => v === "congee.png").length);
+    /* ④ 糊了 → 红叉贴图 */
+    d5.burnPlate(6);
+    b5.record.drawImage.length = 0;
+    b5.pump(1);
+    A(b5.record.drawImage.some(x => /art\/icons\/ui\/cross\.png$/.test(x.src)),
+      "盘上那份糊了 → 画红叉贴图 ui/cross.png（矢量红叉只是缺图时的兜底）");
+    b5.B.dispose();
+  }

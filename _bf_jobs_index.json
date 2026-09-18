@@ -1,0 +1,43 @@
+{
+  "jobs": [
+    { "file": "index.html",
+      "from": ".bf-btn.primary:hover{background:var(--green);color:#08210f}",
+      "text": ".bf-btn.primary:hover{background:var(--green);color:#08210f}\n/* ══ 本批素材接入（Lovart 玩法入口图标 / UI 元素）══════════════════════════\n   ① .gm-ico  侧栏按钮 + 玩法面板标题上的入口图标（默认 display:none，\n      img.onload 才显示；onerror 直接摘掉 img → 后面 <span class=\"gm-emj\"> 的 emoji 就是回退文案）\n   ② .bf-uiico 结算面板里的 UI 贴图（绿勾/红叉/灯泡），回退方式同上\n   ③ 木牌按钮 / 红漆按钮：贴图作 background-image（100% 100% 铺满），\n      图片加载失败时 CSS 什么都不做 → 退回原来的描边按钮，布局不变 */\n.gm-ico{display:none;width:18px;height:18px;vertical-align:-4px;margin-right:6px;border-radius:4px}\n.btn-m .gm-ico{width:14px;height:14px;vertical-align:-2px;margin-right:4px}\n.overlay .panel h3 .gm-ico{width:20px;height:20px;vertical-align:-5px}\n.bf-uiico{display:none;width:18px;height:18px;vertical-align:-3px;margin-right:5px}\n#bfGame .bf-btn.bf-wood{background-color:transparent;background-image:url(\"art/icons/ui/btn_wood.png\");background-size:100% 100%;background-repeat:no-repeat;color:#3a2412;text-shadow:0 1px 0 rgba(255,255,255,.35)}\n#bfGame .bf-btn.bf-wood:hover{background-color:transparent;background-image:url(\"art/icons/ui/btn_wood.png\");color:#2a180c;filter:brightness(1.12)}\n#bfGame .bf-btn.bf-red{background-color:transparent;background-image:url(\"art/icons/ui/btn_red.png\");background-size:100% 100%;background-repeat:no-repeat;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55)}\n#bfGame .bf-btn.bf-red:hover{background-color:transparent;background-image:url(\"art/icons/ui/btn_red.png\");color:#fff;filter:brightness(1.1)}" },
+
+    { "file": "index.html",
+      "from": "<button class=\"btn-m\" id=\"lotteryBtn\">🎟 刮刮乐（¥20）</button>",
+      "text": "<button class=\"btn-m\" id=\"lotteryBtn\"><img class=\"gm-ico\" src=\"art/icons/game/lottery.png\" alt=\"\" onload=\"this.style.display='inline-block';this.nextSibling.style.display='none'\" onerror=\"this.remove()\"><span class=\"gm-emj\">🎟</span> 刮刮乐（¥20）</button>" },
+
+    { "file": "index.html",
+      "from": "<button class=\"btn-m\" id=\"mjFreeBtn\">🀄 找人打两圈</button>",
+      "text": "<button class=\"btn-m\" id=\"mjFreeBtn\"><img class=\"gm-ico\" src=\"art/icons/game/mahjong.png\" alt=\"\" onload=\"this.style.display='inline-block';this.nextSibling.style.display='none'\" onerror=\"this.remove()\"><span class=\"gm-emj\">🀄</span> 找人打两圈</button>" },
+
+    { "file": "index.html",
+      "from": "<button class=\"btn-m\" id=\"bfBtn\" style=\"border-color:#ff9ec7;color:#ffd76e\">🍳 做份早餐</button>",
+      "text": "<button class=\"btn-m\" id=\"bfBtn\" style=\"border-color:#ff9ec7;color:#ffd76e\"><img class=\"gm-ico\" src=\"art/icons/game/breakfast.png\" alt=\"\" onload=\"this.style.display='inline-block';this.nextSibling.style.display='none'\" onerror=\"this.remove()\"><span class=\"gm-emj\">🍳</span> 做份早餐</button>" },
+
+    { "file": "index.html",
+      "from": "<h3>数据洪流 · 躲</h3>",
+      "text": "<h3><img class=\"gm-ico\" src=\"art/icons/game/dodge.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">数据洪流 · 躲</h3>" },
+
+    { "file": "index.html",
+      "from": "<h3>股市波段 · 六个交易日</h3>",
+      "text": "<h3><img class=\"gm-ico\" src=\"art/icons/game/stock.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">股市波段 · 六个交易日</h3>" },
+
+    { "file": "index.html",
+      "from": "<h3 id=\"cirTitle\">线路取证</h3>",
+      "text": "<h3 id=\"cirTitle\"><img class=\"gm-ico\" src=\"art/icons/game/circuit.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">线路取证</h3>" },
+
+    { "file": "index.html",
+      "from": "<h3 id=\"memTitle\">信号复原</h3>",
+      "text": "<h3 id=\"memTitle\"><img class=\"gm-ico\" src=\"art/icons/game/memory.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">信号复原</h3>" },
+
+    { "file": "index.html",
+      "from": "<h3 id=\"talkTitle\">合同谈判</h3>",
+      "text": "<h3 id=\"talkTitle\"><img class=\"gm-ico\" src=\"art/icons/game/talk.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">合同谈判</h3>" },
+
+    { "file": "index.html",
+      "from": "<h3 id=\"fightTitle\">拳台对决</h3>",
+      "text": "<h3 id=\"fightTitle\"><img class=\"gm-ico\" src=\"art/icons/game/fight.png\" alt=\"\" onload=\"this.style.display='inline-block'\" onerror=\"this.remove()\">拳台对决</h3>" }
+  ]
+}

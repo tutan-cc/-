@@ -1,0 +1,18 @@
+      /* 星级：按完美率 —— 用 art/icons/ui/stars.png 里的单颗星（9 参 drawImage 取源矩形）*/
+      var rate = st.served > 0 ? st.perfect / st.served : (st.perfect > 0 ? 1 : 0);
+      var stars = Math.max(0, Math.min(5, Math.round(rate * 5)));
+      var starImg = assetOf(UI_ICON, "stars");
+      for (var i = 0; i < 5; i++) {
+        var sx0 = pbX + pbW + 30 + i * 30;
+        if (starImg && drawStar(g, starImg, i, sx0, 24, 24, i >= stars)) { IA.drawn.uiStars = (IA.drawn.uiStars || 0) + 1; }
+        else {
+          starPath(g, sx0, 24, 12);
+          g.fillStyle = i < stars ? PAL.gold : "rgba(255,255,255,.13)"; g.fill();
+        }
+      }
+      /* 得分：金币贴图（缺图 → 回退原来的金星）*/
+      var coinImg = assetOf(UI_ICON, "coin");
+      if (coinImg) { IA.drawn.uiCoin = (IA.drawn.uiCoin || 0) + 1; drawAssetFit(g, coinImg, { x: pbX + pbW + 201, y: 10, w: 28, h: 28 }, null); }
+      else { starPath(g, pbX + pbW + 214, 24, 13); g.fillStyle = PAL.gold; g.fill(); }
+      g.font = fontOf(FONT.score, true); g.fillStyle = PAL.ink;
+      g.fillText(String(st.score), pbX + pbW + 234, 24);

@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    { "file": "_bf_raster.cjs",
+      "from": "    const src = img.src;\n    if (img.__decoded) return img.__decoded;",
+      "text": "    const src = img.src;\n    /* 缓存按 **src** 命中，不能只看 img 上有没有 __decoded：同一个 Image 对象换 src\n       （出图脚本平铺素材时就这么干）在浏览器里会重新解码，按对象缓存会把第一张图的\n       像素发给后面所有 src → 整张平铺图全是同一张。 */\n    if (img.__decoded && img.__decodedSrc === src) return img.__decoded;" },
+    { "file": "_bf_raster.cjs",
+      "from": "    const dec = { w: W, h: H, data: data };\n    try { img.__decoded = dec; } catch (e) { /* 冻结对象就算了 */ }\n    return dec;",
+      "text": "    const dec = { w: W, h: H, data: data };\n    try { img.__decoded = dec; img.__decodedSrc = src; } catch (e) { /* 冻结对象就算了 */ }\n    return dec;" }
+  ]
+}

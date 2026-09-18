@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    A(n2.indexOf(\"plate_egg_bacon.png\") >= 0, \"煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）\");\n    A(n2.indexOf(\"egg.png\") < 0, \"盘贴图自带食物时不再叠一份食材贴图（避免一盘两样）\");",
+      "text": "    A(n2.indexOf(\"plate_egg_bacon.png\") >= 0, \"煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）\");\n    /* 「不再叠一份食材贴图」必须只看**盘位那一块**：底排食材桶每帧都要画 egg.png，\n       整帧里数 egg.png 是数不准的。 */\n    const pbox3 = b5.B.plateBox(3);\n    const inPlate = (name) => b5.record.drawImage.some(r => r.src.split(\"/\").pop() === name &&\n      (r.dx + r.dw / 2) >= pbox3.x && (r.dx + r.dw / 2) <= pbox3.x + pbox3.w &&\n      (r.dy + r.dh / 2) >= pbox3.y && (r.dy + r.dh / 2) <= pbox3.y + pbox3.h);\n    A(!inPlate(\"egg.png\"), \"盘贴图自带食物时，盘位框里不再叠一份食材贴图（避免一盘两样）\",\n      \"盘位框 \" + JSON.stringify(pbox3));\n    /* 反过来验一次：没有专属盘贴图的食材（白粥）→ 盘位仍是「空盘 + 食物贴图」 */\n    d5.drop(\"congee\", null); d5.plateNow(0);\n    b5.record.drawImage.length = 0;\n    b5.pump(1);\n    const pbox0 = b5.B.plateBox(0);\n    A(b5.record.drawImage.some(r => r.src.split(\"/\").pop() === \"congee.png\" &&\n      (r.dx + r.dw / 2) >= pbox0.x && (r.dx + r.dw / 2) <= pbox0.x + pbox0.w &&\n      (r.dy + r.dh / 2) >= pbox0.y && (r.dy + r.dh / 2) <= pbox0.y + pbox0.h),\n      \"白粥落盘 → 盘位是「plate_empty + 食物贴图」（没有专属盘贴图的食材照旧这样画）\");" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    const pid = [d6.pushCustomer([\"congee\"]), d6.pushCustomer([\"milk\"]), d6.pushCustomer([\"soup\"])];",
+      "text": "    /* 第 1 位故意点两样：整单完成的顾客会立刻离店（不再画卡），\n       所以「订单项打勾」要在**还差一样**的状态下验。 */\n    const pid = [d6.pushCustomer([\"congee\", \"egg\"]), d6.pushCustomer([\"milk\"]), d6.pushCustomer([\"soup\"])];" }
+  ]
+}

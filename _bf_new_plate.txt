@@ -1,0 +1,27 @@
+      g.fillStyle = "rgba(0,0,0,.42)";
+      g.beginPath(); g.ellipse(cx, cy + 7, rw, rh, 0, 0, Math.PI * 2); g.fill();
+      /* 盘位贴图：空盘 / 有食物盘（煎蛋培根盘、包子盘）；糊了 → 半透明压暗（双击丢弃的视觉）*/
+      var ptex = assetOf(GEAR_ICON, plateTexOfFood(p ? p.food : null));
+      if (ptex) {
+        drawAssetFit(g, ptex, { x: b.x + 6, y: cy - 36, w: b.w - 12, h: 72 }, (p && p.state === "burnt") ? 0.55 : null);
+        IA.drawn.plateTex = (IA.drawn.plateTex || 0) + 1;
+      } else {
+        var pg = g.createLinearGradient(cx - rw, cy - rh, cx + rw, cy + rh);
+        if (!p) { pg.addColorStop(0, "rgba(246,242,232,.22)"); pg.addColorStop(1, "rgba(186,182,174,.07)"); }
+        else { pg.addColorStop(0, "rgba(255,255,255,.38)"); pg.addColorStop(1, col); }
+        g.fillStyle = pg; g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = p ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.26)"; g.lineWidth = 3;
+        g.beginPath(); g.ellipse(cx, cy, rw * 0.72, rh * 0.72, 0, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = p ? col : "rgba(255,255,255,.38)"; g.lineWidth = p ? 4 : 2.5;
+        g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.stroke();
+      }
+      g.textAlign = "center"; g.textBaseline = "middle";
+      if (!p) {                                              // 空盘：贴图 / 矢量轮廓 + 列归属标签
+        g.font = fontOf(FONT.micro, true);
+        g.fillStyle = ptex ? "rgba(74,54,36,.88)" : "rgba(255,255,255,.46)";   // 白瓷盘上要用深色字才读得出
+        g.fillText(plateNameOf(s.col) + " · 空", cx, cy);
+        g.textAlign = "left";
+        return;
+      }
+      /* 有食物：盘贴图自带食物（煎蛋培根盘 / 包子盘）时不再叠一份，避免一盘两样 */
+      if (!(ptex && plateTexHasFood(p.food))) { g.save(); g.translate(cx, cy - 6); drawFood(g, p.food, FS.plate, p.state); g.restore(); }

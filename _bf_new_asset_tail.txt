@@ -1,0 +1,59 @@
+  initIcons();
+
+  /** 星级贴图：从 stars.png 里取第 i%3 颗星（9 参 drawImage 的源矩形裁剪）；dim=true 画成空星。
+      贴图不可用返回 false → 调用方回退矢量星。 */
+  function drawStar(g, img, i, cx, cy, size, dim) {
+    if (!img) return false;
+    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return false;
+    var b = STAR_SUB[((i % 3) + 3) % 3];
+    var sw = b.w * nw, sh = b.h * nh;
+    var dh = size, dw = size * sw / sh;
+    g.save();
+    if (dim) g.globalAlpha = 0.26;
+    g.drawImage(img, b.x * nw, b.y * nh, sw, sh, cx - dw / 2, cy - dh / 2, dw, dh);
+    g.restore();
+    return true;
+  }
+  /** 画一个 UI 贴图（等比塞进 size×size 方框，左上角在 x,y）；成功返回 true */
+  function drawUiIcon(g, name, x, y, size) {
+    var img = assetOf(UI_ICON, name);
+    if (!img) return false;
+    return drawAssetFit(g, img, { x:x, y:y, w:size, h:size }, null);
+  }
+
+  /** 贴图映射与加载状态（单测 / 无头断言直接读；不需要开局就能问）
+      —— 这是「映射完整 + 回退可用」这两条验收的机器可读出口。 */
+  var art = {
+    groups: function () {
+      return ICON_GROUPS.map(function (g2) {
+        return { key:g2.key, dir:g2.dir, ext:g2.ext, ids:g2.ids.slice(), base:g2.base,
+                 loaded:g2.loaded, failed:g2.failed, ready:readyCount(g2) };
+      });
+    },
+    group: function (key) {
+      for (var i = 0; i < ICON_GROUPS.length; i++) if (ICON_GROUPS[i].key === key) return ICON_GROUPS[i];
+      return null;
+    },
+    bg: function () {
+      return { dir:BG_IMG.dir, name:BG_IMG.name, file:BG_IMG.dir + BG_IMG.name,
+               spec:{ w:BG_IMG.crop.w, h:BG_IMG.crop.h }, srcSpec:BG_IMG.srcSpec, crop:BG_IMG.crop,
+               counterTopSrcY:BG_IMG.counterTopSrcY, counterTopInCrop:BG_IMG.counterTopInCrop,
+               counterTopCanvasY:counterTopCanvasY(), counterTopCanvasYTarget:BG_IMG.counterTopCanvasY,
+               view:{ w:VIEW.w, h:VIEW.h }, ready:!!bgIcon(), loaded:BG_IMG.loaded, failed:BG_IMG.failed };
+    },
+    bgDraw: function () { var img = bgIcon(); return img ? bgDrawArgs(img) : null; },
+    gearOfKind: gearNameOfKind, plateTexOf: plateTexOfFood, plateTexHasFood: plateTexHasFood,
+    faceOf: faceNameOf, faceUrgentAt: FACE_ICON.urgentAt,
+    foodIds: FOOD_IDS.slice(), gearIds: GEAR_ICON.ids.slice(), faceIds: FACE_ICON.ids.slice(),
+    uiIds: UI_ICON.ids.slice(), starSub: STAR_SUB,
+    ready: function () {
+      return { food:readyCount(FOOD_ICON), gear:readyCount(GEAR_ICON), face:readyCount(FACE_ICON),
+               ui:readyCount(UI_ICON), bg:(bgIcon() ? 1 : 0) };
+    },
+    total: function () {
+      var n = 1;
+      for (var i = 0; i < ICON_GROUPS.length; i++) n += ICON_GROUPS[i].ids.length;
+      return n;
+    }
+  };

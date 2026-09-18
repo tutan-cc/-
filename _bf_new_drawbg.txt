@@ -1,0 +1,39 @@
+    /* 背景：最底层先铺 art/bg/kitchen.png（整幅铺满画布 = cover；素材已按画布比例
+       裁好，木台面上沿正好落在专属盘带顶部 y=318），再叠两层「可读性压暗」；
+       贴图加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底（功能一点不少）。 */
+    function drawBg() {
+      var bimg = bgIcon(), bargs = bimg ? bgDrawArgs(bimg) : null;
+      IA.drawn.bg = !!bargs;
+      IA.drawn.bgMode = bargs ? bargs.mode : "vector";
+      if (bargs) {
+        g.drawImage(bimg, bargs.sx, bargs.sy, bargs.sw, bargs.sh, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
+        IA.drawn.bgW = bargs.sw; IA.drawn.bgH = bargs.sh;
+        g.fillStyle = "rgba(12,7,4," + BG_IMG.scrimAll + ")"; g.fillRect(0, 0, W, H);
+        var sgr = g.createLinearGradient(0, LAY.topH, 0, LAY.legend.y + LAY.legend.h);
+        sgr.addColorStop(0, "rgba(12,7,4," + BG_IMG.scrimTop + ")"); sgr.addColorStop(1, "rgba(12,7,4,0)");
+        g.fillStyle = sgr; g.fillRect(0, LAY.topH, W, LAY.legend.y + LAY.legend.h - LAY.topH);
+      } else {
+        var lg = g.createLinearGradient(0, 0, 0, H);
+        lg.addColorStop(0, "#4d301c"); lg.addColorStop(0.5, "#33200f"); lg.addColorStop(1, "#1d120a");
+        g.fillStyle = lg; g.fillRect(0, 0, W, H);
+        /* 暖木台面木纹 */
+        for (var w = 0; w < 28; w++) {
+          var y = 70 + w * 26;
+          g.strokeStyle = "rgba(255,205,150," + (0.018 + prand(w) * 0.032).toFixed(3) + ")";
+          g.lineWidth = 1 + prand(w + 3) * 2;
+          g.beginPath(); g.moveTo(0, y);
+          for (var x = 0; x <= W; x += 60) g.lineTo(x, y + Math.sin((x + w * 40) / 170) * 3.2);
+          g.stroke();
+        }
+        /* 淡粉樱瓣（低饱和，不抢戏）*/
+        for (var i = 0; i < 44; i++) {
+          var px = prand(i) * W, py = prand(i + 90) * H, r = 3 + prand(i + 7) * 4;
+          g.fillStyle = "rgba(255,170,200," + (0.04 + prand(i + 3) * 0.05).toFixed(3) + ")";
+          g.beginPath(); g.ellipse(px, py, r, r * 0.6, prand(i + 5) * 3, 0, Math.PI * 2); g.fill();
+        }
+        g.fillStyle = "rgba(12,7,4,.34)"; g.fillRect(0, LAY.topH, W, LAY.buckets.y - LAY.topH);
+      }
+      var rg = g.createRadialGradient(W / 2, 470, 60, W / 2, 470, 640);
+      rg.addColorStop(0, "rgba(255,170,80,.20)"); rg.addColorStop(1, "rgba(255,170,80,0)");
+      g.fillStyle = rg; g.fillRect(0, LAY.topH, W, H - LAY.topH);
+    }

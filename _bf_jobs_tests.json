@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.ok(/台阶|明天再来/.test(ltxt), \"失败面板同样给台阶\");\r\n});",
+      "textFile": "_bf_new_tests.txt" }
+  ]
+}

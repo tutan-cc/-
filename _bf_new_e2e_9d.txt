@@ -1,0 +1,172 @@
+  /* ⑨d 本轮 5 组素材的接入证据：背景铺满 / 厨具与盘位贴图 / 头像按耐心切换 / UI 元素
+         —— 全部由「真跑 breakfast.js → 记录 drawImage（源矩形 + 目标框）」证明，
+            不是源码里出现了字符串就算数。 */
+  {
+    const b5 = boot();
+    const A5 = b5.B.art;
+    A(!!A5 && typeof A5.bg === "function" && typeof A5.groups === "function",
+      "api.art 暴露贴图映射表与背景几何（单测与无头共用同一个出口）");
+    const bg = A5.bg();
+    const rpt = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_assets_report.json"), "utf8"));
+    A(bg.ready === true && bg.loaded === 1 && bg.failed === 0,
+      "背景 art/bg/kitchen.png 真解码完成（读的是真文件的 IHDR）",
+      "spec " + bg.spec.w + "×" + bg.spec.h + " loaded=" + bg.loaded + " failed=" + bg.failed);
+    A(bg.crop.x === rpt.background.crop.x && bg.crop.y === rpt.background.crop.y &&
+      bg.crop.w === rpt.background.crop.w && bg.crop.h === rpt.background.crop.h,
+      "breakfast.js 的裁切参数与 art/_assets_report.json 逐字一致（测量结果没被手改）", JSON.stringify(bg.crop));
+    A(bg.spec.w === rpt.background.spec.w && bg.spec.h === rpt.background.spec.h,
+      "背景素材尺寸与报告一致（裁剪后 " + bg.spec.w + "×" + bg.spec.h + "）");
+    A(Math.abs(bg.counterTopCanvasY - 318) <= 1.5 && bg.counterTopCanvasY <= b5.B.LAY.plate.y,
+      "木台面上沿落在画布 y≈318（= 列头线），盘/锅/桶三段全在木台面上",
+      "y=" + bg.counterTopCanvasY + " ≤ 盘带顶 " + b5.B.LAY.plate.y);
+    A(b5.B.debug.bg().file === "art/bg/kitchen.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(A5.bg().file),
+      "背景走相对路径 art/bg/kitchen.png（不写盘符 / 协议 / data URI）");
+
+    /* 真开局 → 背景在最底层被 drawImage，且目标框铺满整块画布 */
+    b5.B.start(b5.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 20, goal: 8, onFinish: () => {} });
+    b5.pump(2);
+    const bgi = b5.record.drawImage.filter(x => /art\/bg\/kitchen\.png$/.test(x.src));
+    A(bgi.length > 0, "最底层真的 drawImage 铺了背景（不是只登记了个开关）", bgi.length + " 次");
+    const g0 = bgi[0];
+    A(!!g0 && g0.dx === 0 && g0.dy === 0 && g0.dw === VW && g0.dh === VH,
+      "背景目标框 = 整块画布（0,0,1180,790）→ 铺满",
+      g0 ? ("dx/dy/dw/dh = " + [g0.dx, g0.dy, g0.dw, g0.dh].join(",")) : "没有记录");
+    const tex = b5.B.debug.tex();
+    A(tex.bg === true && (tex.bgMode === "fit" || tex.bgMode === "cover"),
+      "debug.tex() 报告本帧背景已绘制", "mode=" + tex.bgMode);
+    A(tex.panTex >= 9, "9 个灶位都画了厨具贴图（汤锅/煎盘/蒸笼/托盘/果汁壶）", "panTex=" + tex.panTex);
+    A(tex.plateTex >= 9, "9 个专属盘都画了盘位贴图", "plateTex=" + tex.plateTex);
+    A(tex.gearTools >= 1, "图例条右端画了「锅铲+夹子」贴图", "gearTools=" + tex.gearTools);
+    const names = b5.record.drawImage.map(x => x.src.split("/").pop());
+    const cnt = n => names.filter(v => v === n).length;
+    A(cnt("pot.png") >= 3 && cnt("griddle.png") >= 3 && cnt("steamer.png") >= 1 && cnt("tray.png") >= 1 && cnt("juice_jug.png") >= 1,
+      "锅位贴图按 kind 映射正确（锅×3 / 煎盘×3 / 蒸笼×1 / 托盘×1 / 果汁壶×1）",
+      "pot=" + cnt("pot.png") + " griddle=" + cnt("griddle.png") + " steamer=" + cnt("steamer.png") +
+      " tray=" + cnt("tray.png") + " juice_jug=" + cnt("juice_jug.png"));
+    A(cnt("plate_empty.png") >= 9, "9 个空盘都用了 plate_empty.png", "×" + cnt("plate_empty.png"));
+    A(cnt("stars.png") >= 5 && cnt("coin.png") >= 1, "顶栏星级用 stars.png 的单颗星、得分用 coin.png",
+      "stars×" + cnt("stars.png") + " coin×" + cnt("coin.png"));
+
+    /* 盘上有食物 → 换「有食物盘」贴图（煎蛋培根盘 / 包子盘），且不再叠一份食材贴图 */
+    const d5 = b5.B.debug;
+    b5.record.drawImage.length = 0;
+    d5.drop("egg", null); d5.plateNow(3);
+    b5.pump(1);
+    const n2 = b5.record.drawImage.map(x => x.src.split("/").pop());
+    A(n2.indexOf("plate_egg_bacon.png") >= 0, "煎蛋落到盘上 → 用 plate_egg_bacon.png（煎蛋培根盘）");
+    A(n2.indexOf("egg.png") < 0, "盘贴图自带食物时不再叠一份食材贴图（避免一盘两样）");
+    b5.record.drawImage.length = 0;
+    d5.drop("bun", null); d5.plateNow(6);
+    b5.pump(1);
+    A(b5.record.drawImage.map(x => x.src.split("/").pop()).indexOf("plate_bun.png") >= 0,
+      "包子落到盘上 → 用 plate_bun.png（包子盘）");
+    d5.burnPlate(6);
+    b5.record.drawImage.length = 0;
+    b5.pump(1);
+    A(b5.record.drawImage.some(x => /art\/icons\/ui\/cross\.png$/.test(x.src)),
+      "盘上那份糊了 → 画红叉贴图 ui/cross.png（矢量红叉只是缺图时的兜底）");
+    b5.B.dispose();
+  }
+
+  /* ⑨e 顾客头像按耐心阈值切换 + UI 元素（耐心条按比例裁源矩形 / 星级 / 金币 / 绿勾） */
+  {
+    const b6 = boot();
+    b6.B.start(b6.host, { target: { id: "su", name: "苏晚晴", bond: 40 }, duration: 30, goal: 8, onFinish: () => {} });
+    const d6 = b6.B.debug;
+    const pid = [d6.pushCustomer(["congee"]), d6.pushCustomer(["milk"]), d6.pushCustomer(["soup"])];
+    const PAT = [0.82, 0.55, 0.22];
+    pid.forEach((id, i) => d6.setPatience(id, PAT[i]));
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    const faces = d6.faces();
+    A(faces.length === 3, "3 位顾客各有一个头像位", faces.length + " 位");
+    A(faces[0].mood === "calm" && faces[1].mood === "calm" && faces[2].mood === "urgent",
+      "耐心 82% / 55% / 22% → 平静 / 平静 / 着急（阈值 40%）",
+      faces.map(f => f.ratio + "→" + f.mood).join(" · "));
+    A(b6.B.art.faceUrgentAt === 0.4, "阈值写在常量里且读得到（FACE_ICON.urgentAt = 0.40）",
+      "faceUrgentAt=" + b6.B.art.faceUrgentAt);
+    const fdraw = b6.record.drawImage.filter(x => /art\/icons\/faces\//.test(x.src));
+    const perCard = faces.map(f => {
+      const hit = fdraw.filter(x => (x.dx + x.dw / 2) >= f.box.x && (x.dx + x.dw / 2) <= f.box.x + f.box.w);
+      return hit.length ? hit[hit.length - 1].src.split("/").pop() : "";
+    });
+    A(perCard[0].indexOf("_calm") > 0 && perCard[1].indexOf("_calm") > 0 && perCard[2].indexOf("_urgent") > 0,
+      "每张卡的头像位真的按耐心阈值切换贴图（calm / calm / urgent）", perCard.join(" ") || "没画头像");
+    /* 同一位顾客改耐心 → 立刻换脸（证明是阈值在驱动，不是随机 / 一次性）*/
+    const c0 = faces[0].id;
+    d6.setPatience(c0, 0.2);
+    b6.record.drawImage.length = 0; b6.pump(1);
+    A(b6.record.drawImage.some(x => /_urgent\.png$/.test(x.src)), "耐心掉到 20% → 同一位顾客换成「着急」脸",
+      b6.record.drawImage.filter(x => /faces\//.test(x.src)).map(x => x.src.split("/").pop()).join(" "));
+    d6.setPatience(c0, 0.9);
+    b6.record.drawImage.length = 0; b6.pump(1);
+    A(b6.record.drawImage.some(x => /_calm\.png$/.test(x.src)), "耐心回到 90% → 又换回「平静」脸");
+    A(d6.faces().length >= 1 && d6.faces().every(f => /^(stud|office|uncle)_(calm|urgent)$/.test(f.name)),
+      "头像文件名只有 3 种角色 × 2 种情绪（映射表封闭）");
+
+    /* UI：耐心条底槽 bar_empty + 前景 bar_full 按剩余比例裁**源矩形** */
+    d6.setPatience(pid[0], 0.8); d6.setPatience(pid[1], 0.5); d6.setPatience(pid[2], 0.2);
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    const di6 = b6.record.drawImage;
+    const bars = di6.filter(x => /art\/icons\/ui\/bar_empty\.png$/.test(x.src));
+    const fills = di6.filter(x => /art\/icons\/ui\/bar_full\.png$/.test(x.src)).sort((a, b) => a.dx - b.dx);
+    A(bars.length === 3, "3 张顾客卡都画了 bar_empty 底槽", "×" + bars.length);
+    A(fills.length === 3, "3 条耐心条都画了 bar_full 前景", "×" + fills.length);
+    A(fills.length === 3 && fills[0].sw > fills[1].sw && fills[1].sw > fills[2].sw,
+      "前景的源矩形宽度随剩余耐心单调递减（真的按比例裁，不是把整条压扁）",
+      fills.map(x => x.sw.toFixed(0)).join(" > "));
+    A(fills.length === 3 && fills.every(x => x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sw <= 256),
+      "前景目标框为正、源矩形不超过贴图宽度", fills.length ? ("sw=" + fills[0].sw.toFixed(0) + " dw=" + fills[0].dw.toFixed(0)) : "无");
+    const st6 = di6.filter(x => /art\/icons\/ui\/stars\.png$/.test(x.src));
+    A(st6.length >= 5, "顶栏 5 颗星都是从 stars.png 裁出来的单颗星", "×" + st6.length);
+    A(st6.length >= 5 && st6.every(x => x.sw > 0 && x.sw < 256 && x.sh > 0),
+      "单颗星用源矩形裁剪（sw 小于整幅宽度）", st6.length ? ("sw=" + st6[0].sw.toFixed(0) + "/256") : "无");
+    A(di6.some(x => /art\/icons\/ui\/coin\.png$/.test(x.src)), "得分旁边画的是金币 coin.png");
+    /* 上桌打勾：让一位顾客的整单完成 → check.png */
+    const dz = b6.B.debug;
+    dz.drop("congee", null); dz.plateNow(0); dz.serveCol(0);
+    b6.record.drawImage.length = 0;
+    b6.pump(1);
+    A(b6.record.drawImage.some(x => /art\/icons\/ui\/check\.png$/.test(x.src)),
+      "订单项完成 → 画绿勾贴图 ui/check.png",
+      b6.record.drawImage.filter(x => /ui\//.test(x.src)).map(x => x.src.split("/").pop()).join(" "));
+    b6.B.dispose();
+  }
+
+  /* ⑨f 玩法入口图标：9 张 art/icons/game/*.png + index.html 的侧栏 / 面板接入 */
+  {
+    const games = ["mahjong", "breakfast", "talk", "fight", "lottery", "stock", "dodge", "circuit", "memory"];
+    const missing = games.filter(n => !fs.existsSync(path.join(OUT, "art", "icons", "game", n + ".png")));
+    A(missing.length === 0, "9 张玩法入口图标都在盘上", missing.length ? "缺：" + missing.join(",") : "9/9");
+    const sizes = games.map(n => {
+      const b = fs.readFileSync(path.join(OUT, "art", "icons", "game", n + ".png"));
+      return b.readUInt32BE(16) + "×" + b.readUInt32BE(20);
+    });
+    A([...new Set(sizes)].length === 1 && sizes[0] === "128×128",
+      "9 张都是 128×128（同一套切片规格）", [...new Set(sizes)].join(" "));
+    games.forEach(n => A(HTML.indexOf("art/icons/game/" + n + ".png") > 0,
+      "index.html 引用了 art/icons/game/" + n + ".png"));
+    A(/id="lotteryBtn"><img class="gm-ico" src="art\/icons\/game\/lottery\.png"/.test(HTML),
+      "侧栏「刮刮乐」按钮用图标（emoji 作回退）");
+    A(/id="mjFreeBtn"><img class="gm-ico" src="art\/icons\/game\/mahjong\.png"/.test(HTML),
+      "侧栏「找人打两圈」按钮用图标（emoji 作回退）");
+    A(/id="bfBtn"[^>]*><img class="gm-ico" src="art\/icons\/game\/breakfast\.png"/.test(HTML),
+      "侧栏「做份早餐」按钮用图标（emoji 作回退）");
+    A(/<span class="gm-emj">🎟<\/span>/.test(HTML) && /<span class="gm-emj">🀄<\/span>/.test(HTML) &&
+      /<span class="gm-emj">🍳<\/span>/.test(HTML),
+      "三个侧栏按钮都保留了 emoji 兜底文案（img onerror / style.display=none 时显示）");
+    A(/onerror="this\.remove\(\)"/.test(HTML), "图片加载失败时摘掉 img，不留破图占位");
+    A(/\.gm-ico\{display:none/.test(HTML), "入口图标默认 display:none，只有 onload 成功才显示");
+    ["dodge", "stock", "circuit", "memory", "talk", "fight"].forEach(n => {
+      A(new RegExp('<h3[^>]*><img class="gm-ico" src="art/icons/game/' + n + '\\.png"').test(HTML),
+        "玩法面板标题带了 " + n + " 图标");
+    });
+    A(/#bfGame \.bf-btn\.bf-wood\{[^}]*btn_wood\.png/.test(HTML),
+      "顶栏「收摊」按钮用木牌贴图（CSS background-image，失败时退回原描边）");
+    A(/#bfGame \.bf-btn\.bf-red\{[^}]*btn_red\.png/.test(HTML), "结算主按钮用红漆贴图");
+    A(/\.bf-uiico\{display:none/.test(HTML) && /function uiIconTag\(name, emoji\)/.test(SRC),
+      "结算面板的 UI 贴图（绿勾 / 红叉 / 灯泡）走 uiIconTag，带 emoji 回退");
+  }
+
+  /* ⑩ 剧情入口链路：sister_bf →（选对象）→ 局 → #bfGo → afterInter → after 镜头 → finishNode

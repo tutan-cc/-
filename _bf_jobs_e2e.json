@@ -1,0 +1,35 @@
+{
+  "jobs": [
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    /* 现在允许画 art/icons/ 下的本地贴图（规格已从「零外部图片」改为\n       「只允许本地 art/icons/ 贴图 + 必须有矢量回退」）。这里不改写像素，\n       只如实记录每次 drawImage 的图与目标框，供断言核对。 */\n    drawImage(img, dx, dy, dw, dh) {\n      log.ops++; log.images++;\n      if (record) record.drawImage.push({ img: img, src: (img && img.src) || \"\", dx: dx, dy: dy, dw: dw, dh: dh, argc: arguments.length });\n    },",
+      "textFile": "_bf_new_e2e_mock.txt" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "  A(m.log.fills > 80 && m.log.strokes > 40, \"有大量填充与描边（不是空画布）\", m.log.fills + \" fills / \" + m.log.strokes + \" strokes\");",
+      "text": "  /* 本轮起，锅体 / 盘 / 食物改走贴图，矢量图元数量会下降 —— 所以判据从\n     「矢量 fills 很多」改成「矢量图元 + 贴图 drawImage 合计画满整屏」，\n     两边任一充足都说明画面不是空的（缺素材时 fills 多，有素材时 images 多）。 */\n  A(m.log.fills > 40 && m.log.strokes > 20, \"首帧真的画了一堆矢量图元（底衬 / 边框 / 文字底）\",\n    m.log.fills + \" fills / \" + m.log.strokes + \" strokes\");\n  A(m.log.images >= 25, \"首帧真的把贴图画上去了（背景 + 9 厨具 + 9 盘 + 9 桶 + 星级 + 金币）\",\n    m.log.images + \" 次 drawImage\");" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "  A(m.log.ellipses > 20, \"食物矢量图元（椭圆/白黄蛋、碗口、包子褶皱）在画\", m.log.ellipses + \" 个 ellipse\");",
+      "text": "  /* 食物现在是贴图（drawImage），矢量椭圆只剩盘底阴影 ——「有没有食物」改成\n     「贴图或矢量图元任一充足」。 */\n  A(m.log.ellipses > 5 || m.log.images >= 25, \"画面里真有一份份食物（食物贴图 drawImage 或矢量图元）\",\n    m.log.ellipses + \" 个 ellipse / \" + m.log.images + \" 次 drawImage\");" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "  d6.setPlateAge(3, B.SERVE_WINDOW + 0.05);\n  d6.tick(1 / 60);\n  d6b.canvas()._m.texts.length = 0;\n  const strokes6 = Object.assign({}, d6b.canvas()._m.strokes);\n  d6b.pump(1);\n  const t6c = d6b.canvas()._m.texts;\n  A(t6c.some(x => /糊了/.test(x)) && t6c.some(x => /只能丢/.test(x)), \"糊了的盘画出「糊了 · 只能丢（双击）」\",\n    (t6c.filter(x => /只能丢/.test(x))[0] || \"\"));\n  A((d6b.canvas()._m.strokes[\"#ff4d6d\"] || 0) > (strokes6[\"#ff4d6d\"] || 0), \"糊了画出红色警告（红叉）\",\n    \"#ff4d6d \" + (strokes6[\"#ff4d6d\"] || 0) + \" → \" + (d6b.canvas()._m.strokes[\"#ff4d6d\"] || 0));",
+      "text": "  d6.setPlateAge(3, B.SERVE_WINDOW + 0.05);\n  d6.tick(1 / 60);\n  d6b.canvas()._m.texts.length = 0;\n  const strokes6 = Object.assign({}, d6b.canvas()._m.strokes);\n  const imgN6 = d6b.record.drawImage.length;\n  d6b.pump(1);\n  const t6c = d6b.canvas()._m.texts;\n  A(t6c.some(x => /糊了/.test(x)) && t6c.some(x => /只能丢/.test(x)), \"糊了的盘画出「糊了 · 只能丢（双击）」\",\n    (t6c.filter(x => /只能丢/.test(x))[0] || \"\"));\n  /* 红叉现在是 ui/cross.png 贴图（缺图才回退红色矢量叉）→ 两条路任一成立即可，\n     并在 extra 里把「贴图几次 / 矢量描边涨了多少」都打出来，便于一眼看出走的哪条。 */\n  const cross6 = d6b.record.drawImage.slice(imgN6).filter(x => /art\\/icons\\/ui\\/cross\\.png$/.test(x.src));\n  A(cross6.length > 0 || (d6b.canvas()._m.strokes[\"#ff4d6d\"] || 0) > (strokes6[\"#ff4d6d\"] || 0),\n    \"糊了画出红色警告（红叉贴图；缺图时回退红色矢量叉）\",\n    \"cross.png ×\" + cross6.length + \" · #ff4d6d \" + (strokes6[\"#ff4d6d\"] || 0) + \" → \" + (d6b.canvas()._m.strokes[\"#ff4d6d\"] || 0));" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    A(di.every(x => /art\\/icons\\/[a-z]+\\.png$/.test(x.src)), \"每次 drawImage 的图都来自 art/icons/\",\n      [...new Set(di.map(x => x.src.split(\"/\").pop()))].join(\"/\"));\n    A(di.every(x => x.argc === 5 && x.dw > 0 && x.dh > 0), \"drawImage 用 5 参数形式（图 + 目标框），目标框为正尺寸\",\n      di.length ? (\"例如 \" + di[0].dw.toFixed(1) + \"×\" + di[0].dh.toFixed(1) + \" @\" + di[0].dx.toFixed(1) + \",\" + di[0].dy.toFixed(1)) : \"无\");",
+      "text": "    /* 贴图范围从「只允许 art/icons/<foodId>.png」扩到本批 4 组 + 背景，\n       断言同步收紧成：只允许 art/ 下的本地 PNG（bg / icons / icons/<group>），\n       且协议必须是本地（无 http(s) / data）。 */\n    A(di.every(x => /(^|\\/)art\\/(bg\\/kitchen\\.png|icons\\/([a-z]+\\/)?[a-z_]+\\.png)$/.test(x.src)),\n      \"每次 drawImage 的图都来自本地 art/（背景 / 食材 / 厨具 / 头像 / UI）\",\n      [...new Set(di.map(x => x.src.split(\"/\").slice(-2).join(\"/\")))].slice(0, 8).join(\" \"));\n    A(di.every(x => !/^https?:|^data:/i.test(x.src)), \"drawImage 只画本地文件（没有 http(s) / data URI 外链）\");\n    A(di.every(x => (x.argc === 5 || x.argc === 9) && x.dw > 0 && x.dh > 0 && x.sw > 0 && x.sh > 0),\n      \"drawImage 用 5 参（图+目标框）或 9 参（源矩形+目标框），源/目标框都是正尺寸\",\n      di.length ? (\"例如 argc=\" + di[0].argc + \" \" + di[0].sw.toFixed(0) + \"×\" + di[0].sh.toFixed(0) + \" → \" + di[0].dw.toFixed(1) + \"×\" + di[0].dh.toFixed(1)) : \"无\");" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    const pr = b4.B.__bfPreloadIcons(badBase);\n    A(pr.ready === 0 && pr.vector === 9 && pr.failed === 9,\n      \"9 张贴图全加载失败 → 全部回退矢量\", \"ready=\" + pr.ready + \" failed=\" + pr.failed);",
+      "text": "    const pr = b4.B.__bfPreloadIcons(badBase);\n    A(pr.ready === 0 && pr.vector === 9 && pr.failed === 9,\n      \"9 张食材贴图全加载失败 → 全部回退矢量\", \"ready=\" + pr.ready + \" failed=\" + pr.failed);\n    A(b4.B.art.ready().gear === 0 && b4.B.art.ready().face === 0 && b4.B.art.ready().ui === 0 && b4.B.art.ready().bg === 0,\n      \"同一批坏目录下，厨具 / 头像 / UI / 背景也一起判为不可用（统一加载器，四条路一起回退）\",\n      JSON.stringify(b4.B.art.ready()));" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 9,\n      \"加载失败时一条 drawImage 都不发，9 次 onerror 都被接住\", \"errors=\" + b4.record.imgErrors.length);",
+      "text": "    /* 素材从 9 张（食材）扩到 34 张（9 食材 + 9 厨具 + 6 头像 + 9 UI + 1 背景），\n       所以「被接住的 onerror 次数」也跟着变成 34 —— 断言同步改成 34，而不是删掉这条。 */\n    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 34,\n      \"加载失败时一条 drawImage 都不发，34 次 onerror 全被接住\",\n      \"errors=\" + b4.record.imgErrors.length + \" / drawImage=\" + b4.record.drawImage.length);" },
+
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "  /* ⑩ 剧情入口链路：sister_bf →（选对象）→ 局 → #bfGo → afterInter → after 镜头 → finishNode",
+      "textFile": "_bf_new_e2e_9d.txt" }
+  ]
+}

@@ -38,3 +38,20 @@
 | `_vo_real.ps1` | **真人原声抽取**：按角色分类扫描素材 → `silencedetect` 定位语音区间 → 裁剪/淡化/响度归一 → `audio/vo_real/*.mp3` |
 | `_e2e.js` / `_e2e_solo.js` / `_e2e_vo.js` | CDP 全流程验收 / 缺素材降级 / 配音诊断 |
 | `tests/core.test.cjs` | 单元测试（vm 注入内核，7 项） |
+
+---
+
+## 五、Lovart 生成素材（原创，已入库）
+
+| 材料 | 内容 | 用途 |
+|---|---|---|
+| `art/lovart_63f2f17a1187.png` | 食材九宫格（9 种早餐） | 已切片 → `art/icons/*.png` |
+| `art/lovart_41a8d9d144bc.png` | 早餐店场景背景 | 已裁切 → `art/bg/kitchen.png` |
+| `art/lovart_7f81bea2418a.png` | 厨具九宫格 | 已切片 → `art/icons/gear/*.png` |
+| `art/lovart_a5fddf40cc93.png` | 顾客头像六宫格（3 人 × 平静/着急） | 已切片 → `art/icons/faces/*.png` |
+| `art/lovart_d72b7b15758c.png` | UI 元素九宫格 | 已切片 → `art/icons/ui/*.png` |
+| `art/lovart_531fa9608451.png` | 玩法入口图标九宫格 | 已切片 → `art/icons/game/*.png` |
+
+生成方式：Lovart AI（`lovart-api` skill，MCP/HTTP 均未使用），以用户提供的手游截图作风格参考图；提示词见 早餐店-素材全集接入报告.md。
+版权：AI 生成原创素材，无第三方版权，随仓库分发。
+

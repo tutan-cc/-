@@ -1,0 +1,24 @@
+      var by = box.y + box.h - 30, bw = box.w - 32 - 96, bx = box.x + 16;
+      var col = warn > 0.6 ? PAL.green : (warn > 0.3 ? PAL.steelHot : PAL.red);
+      var ratio = Math.max(0, Math.min(1, warn));
+      var barB = assetOf(UI_ICON, "bar_empty"), barF = assetOf(UI_ICON, "bar_full");
+      if (barB) {
+        /* 底槽 = bar_empty 整条铺满；前景 = bar_full **按剩余比例裁源矩形**（不是把整条压扁）*/
+        g.drawImage(barB, bx, by, bw, 22);
+        IA.drawn.uiBar = (IA.drawn.uiBar || 0) + 1;
+        if (barF && ratio > 0.004) {
+          var nwF = barF.naturalWidth || 0, nhF = barF.naturalHeight || 0;
+          g.drawImage(barF, 0, 0, nwF * ratio, nhF, bx, by, Math.max(3, bw * ratio), 22);
+          IA.drawn.uiBarFill = (IA.drawn.uiBarFill || 0) + 1;
+        }
+        /* 旧矢量条的三档配色（绿/橙/红）与「快走闪白」两个语义，用半透明色块压在贴图上保留 */
+        if (warn <= 0.6) {
+          g.fillStyle = warn <= 0.3 ? "rgba(255,77,109,.34)" : "rgba(255,179,71,.26)";
+          roundRect(g, bx, by, Math.max(3, bw * ratio), 22, 11); g.fill();
+        }
+        if (flashOn) { g.fillStyle = "rgba(255,255,255,.55)"; roundRect(g, bx, by, Math.max(3, bw * ratio), 22, 11); g.fill(); }
+      } else {
+        g.fillStyle = "rgba(0,0,0,.45)"; roundRect(g, bx, by, bw, 22, 11); g.fill();
+        g.fillStyle = flashOn ? "#ffffff" : col;
+        roundRect(g, bx, by, Math.max(4, bw * ratio), 22, 11); g.fill();
+      }

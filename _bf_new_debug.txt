@@ -1,0 +1,37 @@
+      /** 背景底图状态（无头验收：背景真的被画出来了吗）*/
+      bg: function () { return art.bg(); },
+      /** 本帧各类贴图的实际使用次数（无头验收读它 —— 贴图真的走 drawImage 了）*/
+      tex: function () {
+        var d = inst ? inst.drawn : {};
+        return { bg:!!d.bg, bgMode:d.bgMode || null, panTex:d.gear || 0, plateTex:d.plateTex || 0,
+                 faces:d.faces || 0, faceMood:d.faceMood || null, faceName:d.faceName || null,
+                 uiBar:d.uiBar || 0, uiBarFill:d.uiBarFill || 0, uiStars:d.uiStars || 0,
+                 uiCoin:d.uiCoin || 0, uiCheck:d.uiCheck || 0, uiCross:d.uiCross || 0,
+                 gearTools:d.gearTools || 0 };
+      },
+      /** 顾客头像：耐心比例 → 该用平静脸还是着急脸（出图与断言都读它）*/
+      faces: function () {
+        var st = curState(); if (!st) return [];
+        return activeCustomers(st).map(function (c, i) {
+          var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
+          var name = faceNameOf(c.id, n);
+          var img = FACE_ICON.map[name];
+          return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,
+                   mood:(n > FACE_ICON.urgentAt ? "calm" : "urgent"),
+                   ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === "string") ? img.src : "",
+                   box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };
+        });
+      },
+      /** 出图 / 测试用：把某位顾客的耐心直接定到「满耐心的百分之几」（r ∈ 0..1）*/
+      setPatience: function (cid, ratio) {
+        var st = curState(); if (!st) return false;
+        var r = Number(ratio); if (!(r >= 0)) r = 1; if (r > 1) r = 1;
+        for (var i = 0; i < st.customers.length; i++) {
+          if (st.customers[i].id === cid) {
+            st.customers[i].patience = st.customers[i].patienceMax * r;
+            return true;
+          }
+        }
+        return false;
+      },
+      plateMap: function () {

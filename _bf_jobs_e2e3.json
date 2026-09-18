@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "_e2e_bf_headless.cjs",
+      "from": "    d5.drop(\"congee\", null); d5.plateNow(0);\n    b5.record.drawImage.length = 0;\n    b5.pump(1);\n    const pbox0 = b5.B.plateBox(0);\n    A(b5.record.drawImage.some(r => r.src.split(\"/\").pop() === \"congee.png\" &&\n      (r.dx + r.dw / 2) >= pbox0.x && (r.dx + r.dw / 2) <= pbox0.x + pbox0.w &&\n      (r.dy + r.dh / 2) >= pbox0.y && (r.dy + r.dh / 2) <= pbox0.y + pbox0.h),\n      \"白粥落盘 → 盘位是「plate_empty + 食物贴图」（没有专属盘贴图的食材照旧这样画）\");",
+      "text": "    const dropped5 = d5.drop(\"congee\", null), plated5 = d5.plateNow(0);\n    b5.record.drawImage.length = 0;\n    b5.pump(1);\n    const pbox0 = b5.B.plateBox(0);\n    const inBox0 = (name) => b5.record.drawImage.filter(r => r.src.split(\"/\").pop() === name &&\n      (r.dx + r.dw / 2) >= pbox0.x && (r.dx + r.dw / 2) <= pbox0.x + pbox0.w &&\n      (r.dy + r.dh / 2) >= pbox0.y && (r.dy + r.dh / 2) <= pbox0.y + pbox0.h);\n    A(inBox0(\"congee.png\").length > 0,\n      \"白粥落盘 → 盘位是「plate_empty + 食物贴图」（没有专属盘贴图的食材照旧这样画）\",\n      \"drop=\" + dropped5 + \" plateNow=\" + plated5 + \" plateTex=\" + d5.plates().map(p => p.food + \":\" + p.state).join(\",\") +\n      \" 盘位里的图：\" + b5.record.drawImage.filter(r => (r.dx + r.dw / 2) >= pbox0.x && (r.dx + r.dw / 2) <= pbox0.x + pbox0.w).map(r => r.src.split(\"/\").pop()).join(\",\"));" }
+  ]
+}

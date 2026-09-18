@@ -1,0 +1,14 @@
+    /* 现在允许画 art/** 下的本地贴图（背景 / 食材 / 厨具 / 头像 / UI）。
+       这里不改写像素，只如实记录每次 drawImage 的**源矩形 + 目标框**：
+       5 参（图 + 目标框）与 9 参（源矩形 + 目标框）都记全，断言直接对着记录核对。 */
+    drawImage(img, dx, dy, dw, dh) {
+      log.ops++; log.images++;
+      if (!record) return;
+      const a = arguments.length;
+      const nw = (img && img.naturalWidth) || 0, nh = (img && img.naturalHeight) || 0;
+      const rec = { img: img, src: (img && img.src) || "", argc: a,
+                    sx: 0, sy: 0, sw: nw, sh: nh, dx: dx, dy: dy, dw: dw, dh: dh };
+      if (a >= 9) { rec.sx = dx; rec.sy = dy; rec.sw = dw; rec.sh = dh;
+                    rec.dx = arguments[5]; rec.dy = arguments[6]; rec.dw = arguments[7]; rec.dh = arguments[8]; }
+      record.drawImage.push(rec);
+    },

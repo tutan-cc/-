@@ -1,0 +1,1982 @@
+{
+  "at": "2026-09-18T08:52:39.785Z",
+  "note": "本批 Lovart 素材的全部切片参数（脚本 _bf_assets_gen.cjs 自动求出，未写死）",
+  "view": {
+    "w": 1180,
+    "h": 790
+  },
+  "background": {
+    "file": "art/bg/kitchen.png",
+    "dir": "art/bg/",
+    "name": "kitchen.png",
+    "spec": {
+      "w": 1193,
+      "h": 798
+    },
+    "srcSpec": {
+      "w": 2048,
+      "h": 1152
+    },
+    "crop": {
+      "x": 428,
+      "y": 354,
+      "w": 1193,
+      "h": 798
+    },
+    "scale": 0.989518,
+    "counterTopSrcY": 675,
+    "counterTopInCrop": 321,
+    "counterTopCanvasY": 317.8,
+    "counterTopCanvasYTarget": 318,
+    "view": {
+      "w": 1180,
+      "h": 790
+    },
+    "aspectErr": 0.00088,
+    "measure": {
+      "bandX": [
+        512,
+        1536
+      ],
+      "topCandidates": [
+        {
+          "y": 653,
+          "e": 74.31
+        },
+        {
+          "y": 669,
+          "e": 66.16
+        },
+        {
+          "y": 673,
+          "e": 78.54
+        },
+        {
+          "y": 674,
+          "e": 104.32
+        },
+        {
+          "y": 675,
+          "e": 110.09
+        },
+        {
+          "y": 676,
+          "e": 66.71
+        },
+        {
+          "y": 965,
+          "e": 76.82
+        },
+        {
+          "y": 966,
+          "e": 106.19
+        },
+        {
+          "y": 967,
+          "e": 122.79
+        },
+        {
+          "y": 968,
+          "e": 116.75
+        },
+        {
+          "y": 969,
+          "e": 108.67
+        },
+        {
+          "y": 970,
+          "e": 83.34
+        }
+      ]
+    }
+  },
+  "stars": {
+    "count": 3,
+    "how": "源图列投影的 3 段独立游程",
+    "boxes": [
+      {
+        "x": 0.0742,
+        "y": 0.3594,
+        "w": 0.2682,
+        "h": 0.2852
+      },
+      {
+        "x": 0.3625,
+        "y": 0.3594,
+        "w": 0.2657,
+        "h": 0.2852
+      },
+      {
+        "x": 0.6482,
+        "y": 0.3594,
+        "w": 0.2657,
+        "h": 0.2852
+      }
+    ],
+    "note": "坐标为 stars.png 画布的相对比例（x/y/w/h ∈ 0..1），运行期用 9 参 drawImage 取单颗星"
+  },
+  "groups": [
+    {
+      "key": "gear",
+      "src": "art/lovart_7f81bea2418a.png",
+      "srcW": 1024,
+      "srcH": 1024,
+      "grid": {
+        "rows": 3,
+        "cols": 3,
+        "cellW": 341.333,
+        "cellH": 341.333
+      },
+      "colCutByRow": [
+        [
+          355,
+          700
+        ],
+        [
+          346,
+          669
+        ],
+        [
+          310,
+          669
+        ]
+      ],
+      "rowCut": [
+        357,
+        646.5
+      ],
+      "rowCutExact": [
+        true,
+        true
+      ],
+      "target": 192,
+      "pad": 10,
+      "scale": 0.504399,
+      "maxSpan": 341,
+      "alphaCfg": {
+        "bgFloodThreshold": 248,
+        "haloLowerBound": 236,
+        "unPremultiplyClamp": 20,
+        "bandPx": 3,
+        "bgThresholdForBox": 235
+      },
+      "items": [
+        {
+          "id": "pot",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/gear/pot.png",
+          "crop": {
+            "x": 21,
+            "y": 59,
+            "w": 334,
+            "h": 275
+          },
+          "cellContent": {
+            "x0": 37,
+            "y0": 67,
+            "x1": 352,
+            "y1": 325
+          },
+          "margin": {
+            "l": 16,
+            "r": 2,
+            "t": 8,
+            "b": 8
+          },
+          "target": 192,
+          "kb": 34.1,
+          "coverage": 40.9,
+          "colors": 7642,
+          "meanA": 101.6,
+          "drawSize": [
+            161,
+            134
+          ],
+          "offset": [
+            16,
+            29
+          ],
+          "srcBox": [
+            15,
+            4,
+            333,
+            269
+          ],
+          "alpha": {
+            "bg": 33971,
+            "full": 54500,
+            "semi": 3011,
+            "innerLight": 3071
+          },
+          "warn": ""
+        },
+        {
+          "id": "griddle",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/gear/griddle.png",
+          "crop": {
+            "x": 355,
+            "y": 57,
+            "w": 345,
+            "h": 256
+          },
+          "cellContent": {
+            "x0": 357,
+            "y0": 64,
+            "x1": 685,
+            "y1": 305
+          },
+          "margin": {
+            "l": 2,
+            "r": 14,
+            "t": 7,
+            "b": 7
+          },
+          "target": 192,
+          "kb": 26.4,
+          "coverage": 30.1,
+          "colors": 4159,
+          "meanA": 73.8,
+          "drawSize": [
+            168,
+            125
+          ],
+          "offset": [
+            12,
+            34
+          ],
+          "srcBox": [
+            0,
+            4,
+            333,
+            251
+          ],
+          "alpha": {
+            "bg": 46159,
+            "full": 41321,
+            "semi": 3465,
+            "innerLight": 397
+          },
+          "warn": ""
+        },
+        {
+          "id": "steamer",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/gear/steamer.png",
+          "crop": {
+            "x": 707,
+            "y": 51,
+            "w": 274,
+            "h": 290
+          },
+          "cellContent": {
+            "x0": 715,
+            "y0": 59,
+            "x1": 972,
+            "y1": 332
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 192,
+          "kb": 42.6,
+          "coverage": 42.8,
+          "colors": 11557,
+          "meanA": 106.5,
+          "drawSize": [
+            133,
+            141
+          ],
+          "offset": [
+            30,
+            26
+          ],
+          "srcBox": [
+            5,
+            6,
+            268,
+            285
+          ],
+          "alpha": {
+            "bg": 18757,
+            "full": 60361,
+            "semi": 2867,
+            "innerLight": 2
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_empty",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/gear/plate_empty.png",
+          "crop": {
+            "x": 37,
+            "y": 380,
+            "w": 298,
+            "h": 239
+          },
+          "cellContent": {
+            "x0": 45,
+            "y0": 387,
+            "x1": 326,
+            "y1": 611
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 7,
+            "b": 7
+          },
+          "target": 192,
+          "kb": 24,
+          "coverage": 35.8,
+          "colors": 3280,
+          "meanA": 88.8,
+          "drawSize": [
+            146,
+            117
+          ],
+          "offset": [
+            23,
+            38
+          ],
+          "srcBox": [
+            5,
+            4,
+            293,
+            234
+          ],
+          "alpha": {
+            "bg": 20596,
+            "full": 48004,
+            "semi": 2832,
+            "innerLight": 2292
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_egg_bacon",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/gear/plate_egg_bacon.png",
+          "crop": {
+            "x": 357,
+            "y": 380,
+            "w": 303,
+            "h": 240
+          },
+          "cellContent": {
+            "x0": 366,
+            "y0": 387,
+            "x1": 650,
+            "y1": 612
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 7,
+            "b": 7
+          },
+          "target": 192,
+          "kb": 36.2,
+          "coverage": 36.2,
+          "colors": 9776,
+          "meanA": 89.7,
+          "drawSize": [
+            146,
+            117
+          ],
+          "offset": [
+            23,
+            38
+          ],
+          "srcBox": [
+            7,
+            4,
+            295,
+            234
+          ],
+          "alpha": {
+            "bg": 21544,
+            "full": 48191,
+            "semi": 2888,
+            "innerLight": 2620
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_bun",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/gear/plate_bun.png",
+          "crop": {
+            "x": 679,
+            "y": 380,
+            "w": 303,
+            "h": 239
+          },
+          "cellContent": {
+            "x0": 688,
+            "y0": 387,
+            "x1": 972,
+            "y1": 611
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 7,
+            "b": 7
+          },
+          "target": 192,
+          "kb": 36,
+          "coverage": 36.2,
+          "colors": 8844,
+          "meanA": 89.8,
+          "drawSize": [
+            146,
+            117
+          ],
+          "offset": [
+            23,
+            38
+          ],
+          "srcBox": [
+            7,
+            4,
+            296,
+            234
+          ],
+          "alpha": {
+            "bg": 21176,
+            "full": 48310,
+            "semi": 2844,
+            "innerLight": 2562
+          },
+          "warn": ""
+        },
+        {
+          "id": "juice_jug",
+          "row": 2,
+          "col": 0,
+          "file": "art/icons/gear/juice_jug.png",
+          "crop": {
+            "x": 58,
+            "y": 647,
+            "w": 246,
+            "h": 302
+          },
+          "cellContent": {
+            "x0": 65,
+            "y0": 651,
+            "x1": 296,
+            "y1": 934
+          },
+          "margin": {
+            "l": 7,
+            "r": 7,
+            "t": 4,
+            "b": 14
+          },
+          "target": 192,
+          "kb": 34.5,
+          "coverage": 35.2,
+          "colors": 10210,
+          "meanA": 87.2,
+          "drawSize": [
+            118,
+            146
+          ],
+          "offset": [
+            37,
+            23
+          ],
+          "srcBox": [
+            6,
+            1,
+            239,
+            289
+          ],
+          "alpha": {
+            "bg": 24643,
+            "full": 46328,
+            "semi": 2602,
+            "innerLight": 3099
+          },
+          "warn": ""
+        },
+        {
+          "id": "tray",
+          "row": 2,
+          "col": 1,
+          "file": "art/icons/gear/tray.png",
+          "crop": {
+            "x": 310,
+            "y": 675,
+            "w": 359,
+            "h": 268
+          },
+          "cellContent": {
+            "x0": 319,
+            "y0": 683,
+            "x1": 659,
+            "y1": 934
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 8,
+            "b": 8
+          },
+          "target": 192,
+          "kb": 47.7,
+          "coverage": 50.4,
+          "colors": 16213,
+          "meanA": 125.6,
+          "drawSize": [
+            175,
+            130
+          ],
+          "offset": [
+            9,
+            31
+          ],
+          "srcBox": [
+            6,
+            5,
+            352,
+            262
+          ],
+          "alpha": {
+            "bg": 24586,
+            "full": 70503,
+            "semi": 3239,
+            "innerLight": 633
+          },
+          "warn": ""
+        },
+        {
+          "id": "tools",
+          "row": 2,
+          "col": 2,
+          "file": "art/icons/gear/tools.png",
+          "crop": {
+            "x": 670,
+            "y": 654,
+            "w": 316,
+            "h": 289
+          },
+          "cellContent": {
+            "x0": 679,
+            "y0": 662,
+            "x1": 976,
+            "y1": 934
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 8,
+            "b": 8
+          },
+          "target": 192,
+          "kb": 30.7,
+          "coverage": 23.8,
+          "colors": 6044,
+          "meanA": 55.3,
+          "drawSize": [
+            153,
+            140
+          ],
+          "offset": [
+            20,
+            26
+          ],
+          "srcBox": [
+            6,
+            6,
+            309,
+            282
+          ],
+          "alpha": {
+            "bg": 59683,
+            "full": 29368,
+            "semi": 6079,
+            "innerLight": 1740
+          },
+          "warn": ""
+        }
+      ]
+    },
+    {
+      "key": "faces",
+      "src": "art/lovart_a5fddf40cc93.png",
+      "srcW": 1536,
+      "srcH": 1024,
+      "grid": {
+        "rows": 2,
+        "cols": 3,
+        "cellW": 512,
+        "cellH": 512
+      },
+      "colCutByRow": [
+        [
+          536,
+          994
+        ],
+        [
+          533,
+          992
+        ]
+      ],
+      "rowCut": [
+        508
+      ],
+      "rowCutExact": [
+        true
+      ],
+      "target": 192,
+      "pad": 8,
+      "scale": 0.369748,
+      "maxSpan": 476,
+      "alphaCfg": {
+        "bgFloodThreshold": 248,
+        "haloLowerBound": 236,
+        "unPremultiplyClamp": 20,
+        "bandPx": 3,
+        "bgThresholdForBox": 235
+      },
+      "items": [
+        {
+          "id": "stud_calm",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/faces/stud_calm.png",
+          "crop": {
+            "x": 119,
+            "y": 17,
+            "w": 412,
+            "h": 487
+          },
+          "cellContent": {
+            "x0": 131,
+            "y0": 31,
+            "x1": 518,
+            "y1": 489
+          },
+          "margin": {
+            "l": 12,
+            "r": 12,
+            "t": 14,
+            "b": 14
+          },
+          "target": 192,
+          "kb": 34.8,
+          "coverage": 41.3,
+          "colors": 7762,
+          "meanA": 102.2,
+          "drawSize": [
+            146,
+            172
+          ],
+          "offset": [
+            23,
+            10
+          ],
+          "srcBox": [
+            10,
+            10,
+            403,
+            474
+          ],
+          "alpha": {
+            "bg": 92145,
+            "full": 107694,
+            "semi": 5879,
+            "innerLight": 3
+          },
+          "warn": ""
+        },
+        {
+          "id": "office_calm",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/faces/office_calm.png",
+          "crop": {
+            "x": 603,
+            "y": 32,
+            "w": 345,
+            "h": 470
+          },
+          "cellContent": {
+            "x0": 613,
+            "y0": 45,
+            "x1": 937,
+            "y1": 488
+          },
+          "margin": {
+            "l": 10,
+            "r": 10,
+            "t": 13,
+            "b": 13
+          },
+          "target": 192,
+          "kb": 38.1,
+          "coverage": 43.4,
+          "colors": 8899,
+          "meanA": 107.8,
+          "drawSize": [
+            122,
+            166
+          ],
+          "offset": [
+            35,
+            13
+          ],
+          "srcBox": [
+            6,
+            10,
+            336,
+            458
+          ],
+          "alpha": {
+            "bg": 47690,
+            "full": 113588,
+            "semi": 4896,
+            "innerLight": 86
+          },
+          "warn": ""
+        },
+        {
+          "id": "uncle_calm",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/faces/uncle_calm.png",
+          "crop": {
+            "x": 994,
+            "y": 18,
+            "w": 502,
+            "h": 487
+          },
+          "cellContent": {
+            "x0": 1004,
+            "y0": 32,
+            "x1": 1477,
+            "y1": 490
+          },
+          "margin": {
+            "l": 10,
+            "r": 18,
+            "t": 14,
+            "b": 14
+          },
+          "target": 192,
+          "kb": 38.3,
+          "coverage": 50.3,
+          "colors": 7881,
+          "meanA": 125.1,
+          "drawSize": [
+            178,
+            171
+          ],
+          "offset": [
+            7,
+            11
+          ],
+          "srcBox": [
+            6,
+            13,
+            486,
+            474
+          ],
+          "alpha": {
+            "bg": 111804,
+            "full": 131951,
+            "semi": 5407,
+            "innerLight": 0
+          },
+          "warn": ""
+        },
+        {
+          "id": "stud_urgent",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/faces/stud_urgent.png",
+          "crop": {
+            "x": 113,
+            "y": 512,
+            "w": 412,
+            "h": 489
+          },
+          "cellContent": {
+            "x0": 125,
+            "y0": 526,
+            "x1": 512,
+            "y1": 986
+          },
+          "margin": {
+            "l": 12,
+            "r": 12,
+            "t": 14,
+            "b": 14
+          },
+          "target": 192,
+          "kb": 35.5,
+          "coverage": 41.7,
+          "colors": 7843,
+          "meanA": 103,
+          "drawSize": [
+            146,
+            172
+          ],
+          "offset": [
+            23,
+            10
+          ],
+          "srcBox": [
+            10,
+            12,
+            403,
+            477
+          ],
+          "alpha": {
+            "bg": 92019,
+            "full": 108470,
+            "semi": 6096,
+            "innerLight": 11
+          },
+          "warn": ""
+        },
+        {
+          "id": "office_urgent",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/faces/office_urgent.png",
+          "crop": {
+            "x": 597,
+            "y": 524,
+            "w": 347,
+            "h": 472
+          },
+          "cellContent": {
+            "x0": 607,
+            "y0": 537,
+            "x1": 933,
+            "y1": 982
+          },
+          "margin": {
+            "l": 10,
+            "r": 10,
+            "t": 13,
+            "b": 13
+          },
+          "target": 192,
+          "kb": 38.4,
+          "coverage": 43.6,
+          "colors": 9064,
+          "meanA": 108.5,
+          "drawSize": [
+            123,
+            167
+          ],
+          "offset": [
+            35,
+            13
+          ],
+          "srcBox": [
+            7,
+            10,
+            340,
+            460
+          ],
+          "alpha": {
+            "bg": 48596,
+            "full": 114249,
+            "semi": 4997,
+            "innerLight": 79
+          },
+          "warn": ""
+        },
+        {
+          "id": "uncle_urgent",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/faces/uncle_urgent.png",
+          "crop": {
+            "x": 992,
+            "y": 512,
+            "w": 504,
+            "h": 490
+          },
+          "cellContent": {
+            "x0": 1001,
+            "y0": 526,
+            "x1": 1476,
+            "y1": 987
+          },
+          "margin": {
+            "l": 9,
+            "r": 19,
+            "t": 14,
+            "b": 14
+          },
+          "target": 192,
+          "kb": 39.1,
+          "coverage": 51,
+          "colors": 7743,
+          "meanA": 127.1,
+          "drawSize": [
+            179,
+            172
+          ],
+          "offset": [
+            7,
+            10
+          ],
+          "srcBox": [
+            6,
+            13,
+            488,
+            478
+          ],
+          "alpha": {
+            "bg": 112217,
+            "full": 134029,
+            "semi": 5407,
+            "innerLight": 2
+          },
+          "warn": ""
+        }
+      ]
+    },
+    {
+      "key": "ui",
+      "src": "art/lovart_d72b7b15758c.png",
+      "srcW": 1254,
+      "srcH": 1254,
+      "grid": {
+        "rows": 3,
+        "cols": 3,
+        "cellW": 418,
+        "cellH": 418
+      },
+      "colCutByRow": [
+        [
+          445,
+          856
+        ],
+        [
+          424,
+          836
+        ],
+        [
+          418,
+          836
+        ]
+      ],
+      "rowCut": [
+        410.5,
+        810
+      ],
+      "rowCutExact": [
+        true,
+        true
+      ],
+      "target": 256,
+      "pad": 8,
+      "scale": 0.641711,
+      "maxSpan": 374,
+      "alphaCfg": {
+        "bgFloodThreshold": 248,
+        "haloLowerBound": 236,
+        "unPremultiplyClamp": 20,
+        "bandPx": 3,
+        "bgThresholdForBox": 235
+      },
+      "items": [
+        {
+          "id": "bar_empty",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/ui/bar_empty.png",
+          "crop": {
+            "x": 47,
+            "y": 194,
+            "w": 395,
+            "h": 108
+          },
+          "cellContent": {
+            "x0": 58,
+            "y0": 200,
+            "x1": 430,
+            "y1": 295
+          },
+          "margin": {
+            "l": 11,
+            "r": 11,
+            "t": 6,
+            "b": 6
+          },
+          "target": 256,
+          "kb": 20.9,
+          "coverage": 23.6,
+          "colors": 4119,
+          "meanA": 56.1,
+          "drawSize": [
+            244,
+            67
+          ],
+          "offset": [
+            6,
+            95
+          ],
+          "srcBox": [
+            7,
+            2,
+            386,
+            105
+          ],
+          "alpha": {
+            "bg": 7026,
+            "full": 34527,
+            "semi": 4029,
+            "innerLight": 0
+          },
+          "warn": ""
+        },
+        {
+          "id": "bar_full",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/ui/bar_full.png",
+          "crop": {
+            "x": 454,
+            "y": 193,
+            "w": 396,
+            "h": 108
+          },
+          "cellContent": {
+            "x0": 465,
+            "y0": 199,
+            "x1": 838,
+            "y1": 294
+          },
+          "margin": {
+            "l": 11,
+            "r": 11,
+            "t": 6,
+            "b": 6
+          },
+          "target": 256,
+          "kb": 19.8,
+          "coverage": 22.8,
+          "colors": 6300,
+          "meanA": 55.7,
+          "drawSize": [
+            243,
+            65
+          ],
+          "offset": [
+            7,
+            96
+          ],
+          "srcBox": [
+            8,
+            3,
+            386,
+            103
+          ],
+          "alpha": {
+            "bg": 7784,
+            "full": 34529,
+            "semi": 2742,
+            "innerLight": 10
+          },
+          "warn": ""
+        },
+        {
+          "id": "stars",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/ui/stars.png",
+          "crop": {
+            "x": 864,
+            "y": 189,
+            "w": 355,
+            "h": 122
+          },
+          "cellContent": {
+            "x0": 874,
+            "y0": 195,
+            "x1": 1208,
+            "y1": 304
+          },
+          "margin": {
+            "l": 10,
+            "r": 10,
+            "t": 6,
+            "b": 6
+          },
+          "target": 256,
+          "kb": 29.8,
+          "coverage": 16.4,
+          "colors": 6971,
+          "meanA": 38.6,
+          "drawSize": [
+            218,
+            73
+          ],
+          "offset": [
+            19,
+            92
+          ],
+          "srcBox": [
+            8,
+            5,
+            347,
+            117
+          ],
+          "alpha": {
+            "bg": 18813,
+            "full": 23453,
+            "semi": 4091,
+            "innerLight": 166
+          },
+          "warn": ""
+        },
+        {
+          "id": "btn_wood",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/ui/btn_wood.png",
+          "crop": {
+            "x": 87,
+            "y": 437,
+            "w": 312,
+            "h": 308
+          },
+          "cellContent": {
+            "x0": 96,
+            "y0": 446,
+            "x1": 389,
+            "y1": 735
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 9,
+            "b": 9
+          },
+          "target": 256,
+          "kb": 44.9,
+          "coverage": 52.9,
+          "colors": 8494,
+          "meanA": 132.1,
+          "drawSize": [
+            193,
+            190
+          ],
+          "offset": [
+            32,
+            33
+          ],
+          "srcBox": [
+            6,
+            6,
+            305,
+            301
+          ],
+          "alpha": {
+            "bg": 13445,
+            "full": 82126,
+            "semi": 3225,
+            "innerLight": 0
+          },
+          "warn": ""
+        },
+        {
+          "id": "btn_red",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/ui/btn_red.png",
+          "crop": {
+            "x": 479,
+            "y": 435,
+            "w": 306,
+            "h": 308
+          },
+          "cellContent": {
+            "x0": 488,
+            "y0": 444,
+            "x1": 775,
+            "y1": 733
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 9,
+            "b": 9
+          },
+          "target": 256,
+          "kb": 41.9,
+          "coverage": 52.3,
+          "colors": 8850,
+          "meanA": 130.2,
+          "drawSize": [
+            189,
+            189
+          ],
+          "offset": [
+            34,
+            34
+          ],
+          "srcBox": [
+            6,
+            6,
+            300,
+            300
+          ],
+          "alpha": {
+            "bg": 12506,
+            "full": 80424,
+            "semi": 3729,
+            "innerLight": 1
+          },
+          "warn": ""
+        },
+        {
+          "id": "coin",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/ui/coin.png",
+          "crop": {
+            "x": 874,
+            "y": 437,
+            "w": 294,
+            "h": 307
+          },
+          "cellContent": {
+            "x0": 882,
+            "y0": 446,
+            "x1": 1159,
+            "y1": 734
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 9,
+            "b": 9
+          },
+          "target": 256,
+          "kb": 54.2,
+          "coverage": 41.4,
+          "colors": 12940,
+          "meanA": 102.9,
+          "drawSize": [
+            182,
+            190
+          ],
+          "offset": [
+            37,
+            33
+          ],
+          "srcBox": [
+            6,
+            6,
+            288,
+            301
+          ],
+          "alpha": {
+            "bg": 25740,
+            "full": 63821,
+            "semi": 3482,
+            "innerLight": 9
+          },
+          "warn": ""
+        },
+        {
+          "id": "bulb",
+          "row": 2,
+          "col": 0,
+          "file": "art/icons/ui/bulb.png",
+          "crop": {
+            "x": 110,
+            "y": 816,
+            "w": 233,
+            "h": 306
+          },
+          "cellContent": {
+            "x0": 117,
+            "y0": 825,
+            "x1": 335,
+            "y1": 1112
+          },
+          "margin": {
+            "l": 7,
+            "r": 7,
+            "t": 9,
+            "b": 9
+          },
+          "target": 256,
+          "kb": 40.5,
+          "coverage": 29.6,
+          "colors": 9934,
+          "meanA": 73.3,
+          "drawSize": [
+            144,
+            189
+          ],
+          "offset": [
+            56,
+            34
+          ],
+          "srcBox": [
+            5,
+            5,
+            228,
+            299
+          ],
+          "alpha": {
+            "bg": 25324,
+            "full": 43935,
+            "semi": 2998,
+            "innerLight": 1523
+          },
+          "warn": ""
+        },
+        {
+          "id": "check",
+          "row": 2,
+          "col": 1,
+          "file": "art/icons/ui/check.png",
+          "crop": {
+            "x": 483,
+            "y": 832,
+            "w": 295,
+            "h": 272
+          },
+          "cellContent": {
+            "x0": 491,
+            "y0": 840,
+            "x1": 769,
+            "y1": 1095
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 256,
+          "kb": 35.1,
+          "coverage": 23.3,
+          "colors": 6689,
+          "meanA": 56.9,
+          "drawSize": [
+            183,
+            167
+          ],
+          "offset": [
+            37,
+            45
+          ],
+          "srcBox": [
+            5,
+            6,
+            289,
+            266
+          ],
+          "alpha": {
+            "bg": 44409,
+            "full": 35133,
+            "semi": 3247,
+            "innerLight": 0
+          },
+          "warn": ""
+        },
+        {
+          "id": "cross",
+          "row": 2,
+          "col": 2,
+          "file": "art/icons/ui/cross.png",
+          "crop": {
+            "x": 885,
+            "y": 841,
+            "w": 248,
+            "h": 262
+          },
+          "cellContent": {
+            "x0": 892,
+            "y0": 848,
+            "x1": 1125,
+            "y1": 1095
+          },
+          "margin": {
+            "l": 7,
+            "r": 7,
+            "t": 7,
+            "b": 7
+          },
+          "target": 256,
+          "kb": 40.3,
+          "coverage": 30.3,
+          "colors": 6631,
+          "meanA": 74.5,
+          "drawSize": [
+            153,
+            163
+          ],
+          "offset": [
+            52,
+            47
+          ],
+          "srcBox": [
+            5,
+            4,
+            243,
+            257
+          ],
+          "alpha": {
+            "bg": 18170,
+            "full": 46082,
+            "semi": 3817,
+            "innerLight": 0
+          },
+          "warn": ""
+        }
+      ]
+    },
+    {
+      "key": "game",
+      "src": "art/lovart_531fa9608451.png",
+      "srcW": 1024,
+      "srcH": 1024,
+      "grid": {
+        "rows": 3,
+        "cols": 3,
+        "cellW": 341.333,
+        "cellH": 341.333
+      },
+      "colCutByRow": [
+        [
+          353,
+          668
+        ],
+        [
+          352,
+          661
+        ],
+        [
+          348,
+          662
+        ]
+      ],
+      "rowCut": [
+        364,
+        659
+      ],
+      "rowCutExact": [
+        true,
+        true
+      ],
+      "target": 128,
+      "pad": 6,
+      "scale": 0.4,
+      "maxSpan": 290,
+      "alphaCfg": {
+        "bgFloodThreshold": 248,
+        "haloLowerBound": 236,
+        "unPremultiplyClamp": 20,
+        "bandPx": 3,
+        "bgThresholdForBox": 235
+      },
+      "items": [
+        {
+          "id": "mahjong",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/game/mahjong.png",
+          "crop": {
+            "x": 47,
+            "y": 68,
+            "w": 304,
+            "h": 290
+          },
+          "cellContent": {
+            "x0": 56,
+            "y0": 76,
+            "x1": 341,
+            "y1": 349
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 26.8,
+          "coverage": 73.3,
+          "colors": 7364,
+          "meanA": 182.5,
+          "drawSize": [
+            117,
+            112
+          ],
+          "offset": [
+            6,
+            8
+          ],
+          "srcBox": [
+            6,
+            5,
+            297,
+            284
+          ],
+          "alpha": {
+            "bg": 14604,
+            "full": 71325,
+            "semi": 3225,
+            "innerLight": 1760
+          },
+          "warn": ""
+        },
+        {
+          "id": "breakfast",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/game/breakfast.png",
+          "crop": {
+            "x": 355,
+            "y": 68,
+            "w": 308,
+            "h": 294
+          },
+          "cellContent": {
+            "x0": 364,
+            "y0": 76,
+            "x1": 653,
+            "y1": 353
+          },
+          "margin": {
+            "l": 9,
+            "r": 9,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 32.2,
+          "coverage": 74.8,
+          "colors": 10266,
+          "meanA": 186.1,
+          "drawSize": [
+            118,
+            114
+          ],
+          "offset": [
+            5,
+            7
+          ],
+          "srcBox": [
+            7,
+            5,
+            301,
+            288
+          ],
+          "alpha": {
+            "bg": 15583,
+            "full": 74123,
+            "semi": 3195,
+            "innerLight": 355
+          },
+          "warn": ""
+        },
+        {
+          "id": "talk",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/game/talk.png",
+          "crop": {
+            "x": 675,
+            "y": 68,
+            "w": 290,
+            "h": 293
+          },
+          "cellContent": {
+            "x0": 683,
+            "y0": 76,
+            "x1": 956,
+            "y1": 352
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 26.3,
+          "coverage": 73.1,
+          "colors": 8531,
+          "meanA": 182.4,
+          "drawSize": [
+            112,
+            113
+          ],
+          "offset": [
+            8,
+            8
+          ],
+          "srcBox": [
+            5,
+            5,
+            284,
+            286
+          ],
+          "alpha": {
+            "bg": 11602,
+            "full": 72409,
+            "semi": 2635,
+            "innerLight": 705
+          },
+          "warn": ""
+        },
+        {
+          "id": "fight",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/game/fight.png",
+          "crop": {
+            "x": 49,
+            "y": 367,
+            "w": 294,
+            "h": 292
+          },
+          "cellContent": {
+            "x0": 57,
+            "y0": 375,
+            "x1": 334,
+            "y1": 650
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 27.4,
+          "coverage": 74,
+          "colors": 9497,
+          "meanA": 184.6,
+          "drawSize": [
+            113,
+            112
+          ],
+          "offset": [
+            8,
+            8
+          ],
+          "srcBox": [
+            5,
+            5,
+            287,
+            285
+          ],
+          "alpha": {
+            "bg": 11469,
+            "full": 73792,
+            "semi": 2886,
+            "innerLight": 30
+          },
+          "warn": ""
+        },
+        {
+          "id": "lottery",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/game/lottery.png",
+          "crop": {
+            "x": 361,
+            "y": 368,
+            "w": 288,
+            "h": 290
+          },
+          "cellContent": {
+            "x0": 369,
+            "y0": 376,
+            "x1": 640,
+            "y1": 649
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 27.7,
+          "coverage": 72.6,
+          "colors": 9384,
+          "meanA": 179.6,
+          "drawSize": [
+            111,
+            112
+          ],
+          "offset": [
+            9,
+            8
+          ],
+          "srcBox": [
+            5,
+            6,
+            281,
+            284
+          ],
+          "alpha": {
+            "bg": 11016,
+            "full": 71675,
+            "semi": 3312,
+            "innerLight": 37
+          },
+          "warn": ""
+        },
+        {
+          "id": "stock",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/game/stock.png",
+          "crop": {
+            "x": 672,
+            "y": 368,
+            "w": 295,
+            "h": 290
+          },
+          "cellContent": {
+            "x0": 680,
+            "y0": 376,
+            "x1": 958,
+            "y1": 649
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 23.1,
+          "coverage": 74.2,
+          "colors": 9222,
+          "meanA": 183.9,
+          "drawSize": [
+            114,
+            112
+          ],
+          "offset": [
+            7,
+            8
+          ],
+          "srcBox": [
+            6,
+            6,
+            289,
+            284
+          ],
+          "alpha": {
+            "bg": 11537,
+            "full": 73730,
+            "semi": 2781,
+            "innerLight": 0
+          },
+          "warn": ""
+        },
+        {
+          "id": "dodge",
+          "row": 2,
+          "col": 0,
+          "file": "art/icons/game/dodge.png",
+          "crop": {
+            "x": 49,
+            "y": 661,
+            "w": 289,
+            "h": 287
+          },
+          "cellContent": {
+            "x0": 57,
+            "y0": 669,
+            "x1": 329,
+            "y1": 939
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 23.7,
+          "coverage": 71.5,
+          "colors": 9696,
+          "meanA": 178,
+          "drawSize": [
+            111,
+            110
+          ],
+          "offset": [
+            9,
+            9
+          ],
+          "srcBox": [
+            6,
+            6,
+            282,
+            279
+          ],
+          "alpha": {
+            "bg": 11309,
+            "full": 71261,
+            "semi": 2594,
+            "innerLight": 7
+          },
+          "warn": ""
+        },
+        {
+          "id": "circuit",
+          "row": 2,
+          "col": 1,
+          "file": "art/icons/game/circuit.png",
+          "crop": {
+            "x": 358,
+            "y": 660,
+            "w": 295,
+            "h": 288
+          },
+          "cellContent": {
+            "x0": 366,
+            "y0": 668,
+            "x1": 644,
+            "y1": 939
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 25.6,
+          "coverage": 73.2,
+          "colors": 8180,
+          "meanA": 182.8,
+          "drawSize": [
+            113,
+            111
+          ],
+          "offset": [
+            8,
+            9
+          ],
+          "srcBox": [
+            6,
+            7,
+            288,
+            283
+          ],
+          "alpha": {
+            "bg": 11320,
+            "full": 72936,
+            "semi": 2760,
+            "innerLight": 254
+          },
+          "warn": ""
+        },
+        {
+          "id": "memory",
+          "row": 2,
+          "col": 2,
+          "file": "art/icons/game/memory.png",
+          "crop": {
+            "x": 671,
+            "y": 660,
+            "w": 297,
+            "h": 288
+          },
+          "cellContent": {
+            "x0": 679,
+            "y0": 668,
+            "x1": 959,
+            "y1": 939
+          },
+          "margin": {
+            "l": 8,
+            "r": 8,
+            "t": 8,
+            "b": 8
+          },
+          "target": 128,
+          "kb": 27.9,
+          "coverage": 74.2,
+          "colors": 10055,
+          "meanA": 184.4,
+          "drawSize": [
+            114,
+            111
+          ],
+          "offset": [
+            7,
+            9
+          ],
+          "srcBox": [
+            5,
+            6,
+            290,
+            283
+          ],
+          "alpha": {
+            "bg": 11222,
+            "full": 73710,
+            "semi": 3150,
+            "innerLight": 0
+          },
+          "warn": ""
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "files": 34,
+    "byGroup": [
+      {
+        "key": "gear",
+        "n": 9,
+        "target": 192,
+        "bytes": 319693
+      },
+      {
+        "key": "faces",
+        "n": 6,
+        "target": 192,
+        "bytes": 229580
+      },
+      {
+        "key": "ui",
+        "n": 9,
+        "target": 256,
+        "bytes": 335258
+      },
+      {
+        "key": "game",
+        "n": 9,
+        "target": 128,
+        "bytes": 246477
+      }
+    ],
+    "blankSuspects": []
+  }
+}

@@ -316,13 +316,120 @@ function createCanvas(w, h) {
     createLinearGradient(x0, y0, x1, y1) { return mkGrad("linear", [[x0, y0], [x1, y1]]); },
     createRadialGradient(x0, y0, r0, x1, y1, r1) { return mkGrad("radial", [[x0, y0], [x1, y1], r0, r1]); },
     createPattern() { return null; },
-    drawImage() { throw new Error("no drawImage"); },
+    /* 贴图：把 <img>.src 指向的 PNG 解成 RGBA 再按当前变换 + globalAlpha 合成。
+       3 参 / 5 参 / 9 参三种形式都支持（breakfast.js 现在用 5 参）。 */
+    drawImage(img, dx, dy, dw, dh) {
+      if (!img) return;
+      const dec = decodeImage(img);
+      if (!dec) throw new Error("drawImage: 图片没解码成功 → " + ((img && img.src) || img));
+      let sw = dec.w, sh = dec.h, sx = 0, sy = 0;
+      /* 9 参：drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)
+         —— 形参名只接住了 arguments[1..4]，所以 dest 四元组必须从 arguments[5..8] 取
+         （原来写成 [4..7]，dest 的 dw 会被当成 0 → 整条 9 参路径静默不画；
+           本轮 UI 星的源矩形裁剪 / 背景铺满才第一次用到 9 参，翻出来了）*/
+      if (arguments.length >= 9) { sx = dx; sy = dy; sw = dw; sh = dh; dx = arguments[5]; dy = arguments[6]; dw = arguments[7]; dh = arguments[8]; }
+      else if (arguments.length <= 3) { dw = sw; dh = sh; dx = dx || 0; dy = dy || 0; }
+      if (!(dw > 0) || !(dh > 0)) return;
+      blitImage(dec, sx, sy, sw, sh, dx, dy, dw, dh);
+    },
     getImageData(x, y, w2, h2) { return { data: new Uint8ClampedArray(w2 * h2 * 4), width: w2, height: h2 }; },
     putImageData() {},
     setLineDash() {}, getLineDash() { return []; },
     toPNG() { return encodePNG(w, h, buf); },
     _buf: buf, _w: w, _h: h,
   };
+  /* ── 贴图（drawImage）────────────────────────────────────────────────────
+     解码：读 <img>.src 指向的 PNG（8bit，颜色类型 0/2/4/6，非隔行），
+     按 src 缓存；带 __rgba 的替身对象直接用它自己的像素（无头测试用）。
+     合成：按当前变换把目标矩形拆成一个像素一个像素地反查源图（最近邻），
+     再按 globalAlpha 与源 alpha 做 source-over —— 图标是 256×256 缩到 ~70px，
+     最近邻在这个倍率下足够；边缘因已做过中值+平滑，不会出现锯齿。 */
+  function decodeImage(img) {
+    if (!img) return null;
+    if (img.__rgba && img.__w && img.__h) return { w: img.__w, h: img.__h, data: img.__rgba };
+    const src = img.src;
+    /* 缓存按 **src** 命中，不能只看 img 上有没有 __decoded：同一个 Image 对象换 src
+       （出图脚本平铺素材时就这么干）在浏览器里会重新解码，按对象缓存会把第一张图的
+       像素发给后面所有 src → 整张平铺图全是同一张。 */
+    if (img.__decoded && img.__decodedSrc === src) return img.__decoded;
+    if (typeof src !== "string" || !src) return null;
+    let file = src;
+    if (/^file:\/\//i.test(file)) { file = decodeURIComponent(file.replace(/^file:\/\//i, "")); if (/^\/[A-Za-z]:/.test(file)) file = file.slice(1); }
+    let buf;
+    try { buf = require("fs").readFileSync(file); } catch (e) { return null; }
+    let p = 8, W = 0, H = 0, depth = 0, color = 0, interlace = 0; const idat = [];
+    while (p + 8 <= buf.length) {
+      const len = buf.readUInt32BE(p), type = buf.toString("ascii", p + 4, p + 8);
+      const d = buf.subarray(p + 8, p + 8 + len);
+      if (type === "IHDR") { W = d.readUInt32BE(0); H = d.readUInt32BE(4); depth = d[8]; color = d[9]; interlace = d[12]; }
+      else if (type === "IDAT") idat.push(d);
+      else if (type === "IEND") break;
+      p += 12 + len;
+    }
+    if (depth !== 8 || interlace) return null;
+    const ch = color === 0 ? 1 : color === 2 ? 3 : color === 4 ? 2 : color === 6 ? 4 : -1;
+    if (ch < 0) return null;
+    const raw = zlib.inflateSync(Buffer.concat(idat));
+    const stride = W * ch, px = Buffer.alloc(W * H * ch);
+    let prev = Buffer.alloc(stride);
+    for (let y = 0; y < H; y++) {
+      const ft = raw[y * (stride + 1)];
+      const line = raw.subarray(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+      const c2 = Buffer.alloc(stride);
+      for (let x = 0; x < stride; x++) {
+        const a = x >= ch ? c2[x - ch] : 0, b = prev[x], cc = x >= ch ? prev[x - ch] : 0, v = line[x];
+        let r;
+        if (ft === 0) r = v; else if (ft === 1) r = v + a; else if (ft === 2) r = v + b;
+        else if (ft === 3) r = v + ((a + b) >> 1);
+        else { const pp = a + b - cc, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - cc); r = v + (pa <= pb && pa <= pc ? a : pb <= pc ? b : cc); }
+        c2[x] = r & 255;
+      }
+      c2.copy(px, y * stride); prev = c2;
+    }
+    const data = new Uint8Array(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      const s = i * ch;
+      if (ch === 1) { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = px[s]; data[i * 4 + 3] = 255; }
+      else if (ch === 2) { data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = px[s]; data[i * 4 + 3] = px[s + 1]; }
+      else if (ch === 3) { data[i * 4] = px[s]; data[i * 4 + 1] = px[s + 1]; data[i * 4 + 2] = px[s + 2]; data[i * 4 + 3] = 255; }
+      else { data[i * 4] = px[s]; data[i * 4 + 1] = px[s + 1]; data[i * 4 + 2] = px[s + 2]; data[i * 4 + 3] = px[s + 3]; }
+    }
+    const dec = { w: W, h: H, data: data };
+    try { img.__decoded = dec; img.__decodedSrc = src; } catch (e) { /* 冻结对象就算了 */ }
+    return dec;
+  }
+  function blitImage(dec, sx, sy, sw, sh, dx, dy, dw, dh) {
+    const alpha = cur.alpha;
+    if (alpha <= 0.003) return;
+    /* 目标矩形 → 设备坐标（本游戏只有平移+等比缩放，仿射即矩形） */
+    const p0 = apply(dx, dy), p1 = apply(dx + dw, dy), p3 = apply(dx, dy + dh);
+    const ex = [p1[0] - p0[0], p1[1] - p0[1]], ey = [p3[0] - p0[0], p3[1] - p0[1]];
+    let minX = p0[0], maxX = p0[0], minY = p0[1], maxY = p0[1];
+    for (const q of [p1, p3, [p0[0] + ex[0] + ey[0], p0[1] + ex[1] + ey[1]]]) {
+      if (q[0] < minX) minX = q[0]; if (q[0] > maxX) maxX = q[0];
+      if (q[1] < minY) minY = q[1]; if (q[1] > maxY) maxY = q[1];
+    }
+    const X0 = Math.max(0, Math.floor(minX)), X1 = Math.min(w - 1, Math.ceil(maxX));
+    const Y0 = Math.max(0, Math.floor(minY)), Y1 = Math.min(h - 1, Math.ceil(maxY));
+    /* 用目标矩形的逆变换把设备像素映射回「目标矩形局部坐标」 */
+    const det = ex[0] * ey[1] - ex[1] * ey[0];
+    if (Math.abs(det) < 1e-9) return;
+    for (let py = Y0; py <= Y1; py++) for (let pxx = X0; pxx <= X1; pxx++) {
+      const rx = pxx + 0.5 - p0[0], ry = py + 0.5 - p0[1];
+      const u = (rx * ey[1] - ry * ey[0]) / det;          // 0..1
+      const v = (ry * ex[0] - rx * ex[1]) / det;          // 0..1
+      if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
+      const su = Math.min(dec.w - 1, Math.max(0, Math.floor(sx + u * sw)));
+      const sv = Math.min(dec.h - 1, Math.max(0, Math.floor(sy + v * sh)));
+      const k = (sv * dec.w + su) * 4;
+      const sa = (dec.data[k + 3] / 255) * alpha;
+      if (sa <= 0.003) continue;
+      const i = (py * w + pxx) * 3;
+      buf[i] = buf[i] * (1 - sa) + dec.data[k] * sa;
+      buf[i + 1] = buf[i + 1] * (1 - sa) + dec.data[k + 1] * sa;
+      buf[i + 2] = buf[i + 2] * (1 - sa) + dec.data[k + 2] * sa;
+    }
+  }
   function invert(m2) {
     const det = m2[0] * m2[3] - m2[1] * m2[2];
     if (Math.abs(det) < 1e-12) return null;

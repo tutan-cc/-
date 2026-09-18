@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "_bf_raster.cjs",
+      "from": "      if (arguments.length >= 9) { sx = dx; sy = dy; sw = dw; sh = dh; dx = arguments[4]; dy = arguments[5]; dw = arguments[6]; dh = arguments[7]; }",
+      "text": "      /* 9 参：drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)\n         —— 形参名只接住了 arguments[1..4]，所以 dest 四元组必须从 arguments[5..8] 取\n         （原来写成 [4..7]，dest 的 dw 会被当成 0 → 整条 9 参路径静默不画；\n           本轮 UI 星的源矩形裁剪 / 背景铺满才第一次用到 9 参，翻出来了）*/\n      if (arguments.length >= 9) { sx = dx; sy = dy; sw = dw; sh = dh; dx = arguments[5]; dy = arguments[6]; dw = arguments[7]; dh = arguments[8]; }" }
+  ]
+}

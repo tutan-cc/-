@@ -1,0 +1,25 @@
+      /* 灶位贴图：汤锅 / 三格煎盘 / 蒸笼 / 木托盘 / 果汁壶（等比塞进灶位框，缺图 → 矢量锅体）*/
+      var gearImg = assetOf(GEAR_ICON, gearNameOfKind(s.kind));
+      g.fillStyle = pg;
+      if (gearImg) {
+        drawAssetFit(g, gearImg, { x: b.x + 6, y: b.y + 30, w: b.w - 12, h: b.h - 56 }, null);
+        IA.drawn.gear = (IA.drawn.gear || 0) + 1;
+      } else if (s.kind === "pot") { g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill(); }
+      else { roundRect(g, b.x + 5, b.y + 5, b.w - 10, b.h - 10, 16); g.fill(); }
+      if (!gearImg) {
+        if (s.kind === "pot") {
+          g.strokeStyle = "rgba(200,210,230,.40)"; g.lineWidth = 5;
+          g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+          g.fillStyle = "rgba(255,255,255,.07)";
+          g.beginPath(); g.arc(cx, cy, R - 9, 0, Math.PI * 2); g.fill();
+        } else if (s.kind === "steamer") {
+          g.strokeStyle = "rgba(255,225,180,.22)"; g.lineWidth = 3;
+          for (var k = 0; k < 3; k++) { g.beginPath(); g.moveTo(b.x + 16 + k * 30, b.y + 26); g.lineTo(b.x + 16 + k * 30, b.y + b.h - 24); g.stroke(); }
+        } else if (s.kind === "counter" || s.kind === "juicer") {
+          g.strokeStyle = "rgba(255,225,180,.14)"; g.lineWidth = 2;
+          for (var k2 = 1; k2 < 4; k2++) { g.beginPath(); g.moveTo(b.x + 10, b.y + 26 + k2 * 26); g.lineTo(b.x + b.w - 10, b.y + 26 + k2 * 26); g.stroke(); }
+        } else {
+          g.strokeStyle = "rgba(255,255,255,.10)"; g.lineWidth = 2;
+          g.beginPath(); g.moveTo(b.x + 14, b.y + b.h - 26); g.lineTo(b.x + b.w - 14, b.y + b.h - 26); g.stroke();
+        }
+      }

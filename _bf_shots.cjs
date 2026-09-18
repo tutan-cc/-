@@ -21,6 +21,42 @@ const SHOT = path.join(OUT, "测试截图");
 const SRC = fs.readFileSync(path.join(OUT, "breakfast.js"), "utf8");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
 
+/* ── 本地食材贴图：真去文件系统读 art/icons/<foodId>.png ──
+   breakfast.js 现在会预加载这些 PNG 并 drawImage；出图要看到真图标，
+   所以这里给一个 src 一赋值就同步读 PNG 头的 Image 替身
+   （自然宽高 = 真文件的 IHDR），像素则交给 _bf_raster.cjs 的 drawImage 现解现合成。 */
+function pngSize(file) {
+  const b = fs.readFileSync(file);
+  if (b.length < 33 || b.readUInt32BE(0) !== 0x89504e47) throw new Error("不是 PNG：" + file);
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
+function resolveImgPath(src) {
+  let s = String(src || "");
+  if (/^file:\/\//i.test(s)) { s = decodeURIComponent(s.replace(/^file:\/\//i, "")); if (/^\/[A-Za-z]:/.test(s)) s = s.slice(1); }
+  if (/^[A-Za-z]:[\\/]/.test(s) || s.startsWith("\\\\")) return path.normalize(s);
+  if (s.startsWith("/")) s = s.slice(1);
+  return path.join(OUT, s);
+}
+function ImageCtorFor() {
+  return function Image() {
+    const img = {
+      naturalWidth: 0, naturalHeight: 0, complete: false, width: 0, height: 0,
+      onload: null, onerror: null, _src: "",
+      get src() { return this._src; },
+      set src(v) {
+        this._src = String(v);
+        let sz = null;
+        try { sz = pngSize(resolveImgPath(v)); } catch (e) { sz = null; }
+        if (sz) {
+          this.naturalWidth = sz.w; this.naturalHeight = sz.h; this.width = sz.w; this.height = sz.h; this.complete = true;
+          if (typeof this.onload === "function") this.onload({ target: this });
+        } else if (typeof this.onerror === "function") this.onerror({ target: this });
+      }
+    };
+    return img;
+  };
+}
+
 const BITMAP_TEXT = process.argv.indexOf("--bitmap-text") >= 0;   // 兜底：用点阵文字直接出图
 
 /* ── 最小 DOM（只为让 start() 跑起来；玩法与绘制全在 breakfast.js）── */
@@ -66,6 +102,9 @@ function boot(scale, bufW, bufH) {
     setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, clearInterval: () => {},
     addEventListener: () => {}, removeEventListener: () => {},
     document: null,
+    Image: ImageCtorFor(),
+    /* 贴图按「当前页面目录」解析 → art/icons/<foodId>.png 落到 OUT/art/icons/ */
+    location: { href: "file:///" + path.join(OUT, "index.html").replace(/\\/g, "/"), pathname: "/" + path.join(OUT, "index.html").replace(/\\/g, "/") },
   };
   win.document = {
     body, createElement: (tag) => {

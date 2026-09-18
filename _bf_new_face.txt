@@ -1,0 +1,19 @@
+    /** 顾客头像贴图：耐心 > FACE_ICON.urgentAt（40%）→ 平静脸，≤ 40% → 着急脸；
+        贴图不可用 → 回退程序化头像 drawAvatar（离线也能玩，语义不变）。 */
+    function drawCustomerFace(box, c) {
+      var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
+      var name = faceNameOf(c.id, n);
+      var img = assetOf(FACE_ICON, name);
+      if (img && drawAssetFit(g, img, { x: box.x + 10, y: box.y + 22, w: 64, h: 68 }, null)) {
+        IA.drawn.faces = (IA.drawn.faces || 0) + 1;
+        IA.drawn.faceMood = (n > FACE_ICON.urgentAt) ? "calm" : "urgent";
+        IA.drawn.faceName = name;
+        return true;
+      }
+      IA.drawn.faceMood = "vector";
+      IA.drawn.faceName = "";
+      drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
+      return false;
+    }
+
+    function drawCustomer(c, box, slot) {

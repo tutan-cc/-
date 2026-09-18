@@ -980,6 +980,252 @@
                num:30, clock:34, score:34, patience:28, cardNo:19, bucket:19, panName:15 };
   var ICON = { food:76, bucket:74, card:68, plate:64, pan:72 };   // 单份食物视觉尺寸（px）
   var FS = { bucket:1.95, card:1.5, plate:1.5, pan:1.7, shop:1.35 };  // 矢量食物缩放
+
+  /* ═══ 贴图资源总表（art/**）：**所有**贴图走同一个加载器 ═══════════════════
+     离线优先、缺图可玩：模块初始化时用 new Image() 预加载本地 PNG，绘制处优先
+     drawImage；图片没就绪 / 加载失败 / 环境里根本没有 Image（无头测试、老浏览器）
+     → 一律回退到原来的矢量画法（食材 drawFoodVector / 程序化头像 / 矢量锅盘 / 矢量勾叉）。
+     所以规格是：**只允许加载 art/ 下的本地图片，且每一处都必须有矢量回退**。
+
+     五组资源，路径全部由「当前页面所在目录 + 组目录」拼出来，
+     绝不写死盘符 / 协议 / data URI → 整个文件夹换位置也能跑：
+
+       food  art/icons/<foodId>.png   9 张食材（上一轮已接入）
+       gear  art/icons/gear/*.png     9 张厨具（汤锅/三格煎盘/蒸笼 · 空盘/煎蛋培根盘/包子盘 · 果汁壶/木托盘/锅铲夹子）
+       face  art/icons/faces/*.png    6 张顾客头像（学生/女白领/胖大爷 × 平静/着急）
+       ui    art/icons/ui/*.png       9 个 UI 元素（耐心条底/满、三星、木牌按钮、红漆按钮、金币、灯泡、绿勾、红叉）
+       bg    art/bg/kitchen.png       场景背景（木台面 + 樱花街 + 右后开放厨房）
+
+     尺寸：SPEC 是原素材里「食物的视觉跨度」；IMG_SPAN 是它在 drawFood 局部
+     坐标（未缩放）里的等效跨度。矢量画法的形状大致落在 ±18 之内（跨度 ≈36），
+     所以取 36 就能让贴图与原来的视觉尺寸一致，同时沿用既有的 FS.* 缩放 ——
+     桶 74 / 卡 68 / 盘 64 / 煎盘 72 与列对齐、点击热区全部不变。
+     其余贴图一律「等比塞进各自的框里居中」，绝不拉伸变形。 */
+  var ICON_ROOT = "";                    // 测试可覆盖的根目录（__bfPreloadIcons）
+  /** 页面所在目录（带结尾 /）；取不到就返回空串（相对路径照样能用） */
+  function pageDir() {
+    var loc = root.location, href = "";
+    if (loc) {
+      if (typeof loc.href === "string" && loc.href) href = loc.href;
+      else if (typeof loc.pathname === "string" && loc.pathname) href = loc.pathname;
+    }
+    if (!href) return "";
+    href = href.replace(/\\/g, "/");
+    var i = href.lastIndexOf("/");
+    return i >= 0 ? href.slice(0, i + 1) : href;
+  }
+  var ICON_GROUPS = [];
+  function mkIconGroup(key, dir, ids) {
+    var g = { key:key, dir:dir, ext:".png", ids:ids, base:"", map:{}, loaded:0, failed:0 };
+    ICON_GROUPS.push(g); return g;
+  }
+  var FOOD_ICON = mkIconGroup("food", "art/icons/", FOOD_IDS);
+  FOOD_ICON.spec = ICON.food; FOOD_ICON.span = 36; FOOD_ICON.scale = 1;
+  FOOD_ICON.forceFail = false; FOOD_ICON.forceNull = false;
+  var GEAR_ICON = mkIconGroup("gear", "art/icons/gear/",
+    ["pot", "griddle", "steamer", "plate_empty", "plate_egg_bacon", "plate_bun", "juice_jug", "tray", "tools"]);
+  var FACE_ICON = mkIconGroup("face", "art/icons/faces/",
+    ["stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent"]);
+  var UI_ICON = mkIconGroup("ui", "art/icons/ui/",
+    ["bar_empty", "bar_full", "stars", "btn_wood", "btn_red", "coin", "bulb", "check", "cross"]);
+  FACE_ICON.urgentAt = 0.40;             // 耐心 ≤ 40% → 换成「着急」那张脸（阈值常量，可调）
+  /** 组基准路径（带结尾 /）：页面目录 + 组目录；测试覆盖时用 ICON_ROOT 顶掉页面目录 */
+  function groupBase(g) { return (ICON_ROOT || pageDir()) + g.dir; }
+  function initIconGroup(g) {
+    g.base = groupBase(g);
+    g.loaded = 0; g.failed = 0; g.map = {};
+    if (!root.Image || FOOD_ICON.forceNull) return g;           // 无 Image 构造器 → 全矢量
+    for (var i = 0; i < g.ids.length; i++) {
+      (function (id) {
+        var img = null;
+        try { img = new root.Image(); } catch (e) { img = null; }
+        if (!img) { g.failed++; return; }
+        g.map[id] = img;
+        if (FOOD_ICON.forceFail) { g.failed++; return; }         // 只有 onerror 会来
+        img.onload = function () { g.loaded++; };
+        img.onerror = function () { g.failed++; };
+        try { img.src = g.base + id + g.ext; } catch (e) { g.failed++; }
+      })(g.ids[i]);
+    }
+    return g;
+  }
+  /* ── 背景底图（art/bg/kitchen.png）─────────────────────────────────────────
+     素材已按画布比例裁好（1193×798 ≈ VIEW 1180×790），并让「干净木台面上沿」
+     正好落在画布 y = 318（= LAY.colHeaderY，列头线）：
+       源图 2048×1152 里木台面上沿 y=675 → 裁切图内 y=321 → 画布 y=317.8
+     于是 盘带 328..438 / 锅带 450..608 / 桶带 624..776 三段**全部**落在木台面上，
+     而顾客卡与顶栏落在街景上 —— 游戏元素一个都没动（列对齐有无头断言保护）。
+     裁切参数与测量过程在 art/_assets_report.json（脚本 _bf_assets_gen.cjs 自动求出）。 */
+  var BG_IMG = {
+    dir: "art/bg/", name: "kitchen.png", img: null, loaded: 0, failed: 0,
+    srcSpec: { w: 2048, h: 1152 },                       // 原素材尺寸
+    crop: { x: 428, y: 354, w: 1193, h: 798 },           // 源图里被裁下来的那块
+    counterTopSrcY: 675, counterTopInCrop: 321, counterTopCanvasY: 318,
+    scrimTop: 0.66, scrimAll: 0.32                       // 可读性压暗：整幅 32%（金黄色木台压成深木色，金色小字才读得出）
+  };
+  function initBackground() {
+    BG_IMG.img = null; BG_IMG.loaded = 0; BG_IMG.failed = 0;
+    if (!root.Image || FOOD_ICON.forceNull) return BG_IMG;
+    var img = null;
+    try { img = new root.Image(); } catch (e) { img = null; }
+    if (!img) { BG_IMG.failed++; return BG_IMG; }
+    BG_IMG.img = img;
+    if (FOOD_ICON.forceFail) { BG_IMG.failed++; return BG_IMG; }
+    img.onload = function () { BG_IMG.loaded++; };
+    img.onerror = function () { BG_IMG.failed++; };
+    try { img.src = (ICON_ROOT || pageDir()) + BG_IMG.dir + BG_IMG.name; } catch (e) { BG_IMG.failed++; }
+    return BG_IMG;
+  }
+  /** 重新预加载**全部**贴图（4 组 + 背景）；baseDir 给测试用来强制「全部加载失败」 */
+  function initIcons(baseDir) {
+    ICON_ROOT = baseDir ? String(baseDir) : "";
+    if (ICON_ROOT && ICON_ROOT.charAt(ICON_ROOT.length - 1) !== "/") ICON_ROOT += "/";
+    for (var i = 0; i < ICON_GROUPS.length; i++) initIconGroup(ICON_GROUPS[i]);
+    initBackground();
+    return ICON_GROUPS;
+  }
+  /** 本帧可用（真解码完成）的贴图；否则返回 null → 调用方回退矢量 */
+  function assetOf(g, id) {
+    var img = g && g.map[id];
+    if (!img) return null;
+    var nw = img.naturalWidth || 0;
+    return (nw > 0 && img.complete !== false) ? img : null;
+  }
+  function foodIcon(id) { return assetOf(FOOD_ICON, id); }
+  function bgIcon() { var img = BG_IMG.img; if (!img) return null; var nw = img.naturalWidth || 0; return (nw > 0 && img.complete !== false) ? img : null; }
+  function readyCount(g) { var n = 0; for (var i = 0; i < g.ids.length; i++) if (assetOf(g, g.ids[i])) n++; return n; }
+  /** 9 张食材里有几张真的能画（给 debug / 测试用）*/
+  function iconReadyCount() { return readyCount(FOOD_ICON); }
+  /** 9 张食材里有几张只能走矢量回退 */
+  function vectorCount() { return FOOD_IDS.length - iconReadyCount(); }
+  /* 测试挂钩：允许在脚本装载前用 root.__bfIconPre 预设两个开关，
+     这样「环境里没有 Image / 全部加载失败」两条回退分支才走得到。
+     页面正常运行时这个变量不存在，两个开关都是 false。 */
+  if (root.__bfIconPre) {
+    FOOD_ICON.forceNull = !!root.__bfIconPre.noImages;
+    FOOD_ICON.forceFail = !!root.__bfIconPre.forceFail;
+  }
+  /** 兼容旧名：重新预加载全部贴图（现在不只食材了）*/
+  function initFoodIcons(baseDir) { initIcons(baseDir); return FOOD_ICON; }
+
+  /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）─────────────── */
+  var GEAR_OF_KIND = { pot:"pot", griddle:"griddle", steamer:"steamer", counter:"tray", juicer:"juice_jug" };
+  var PLATE_TEX_OF_FOOD = { egg:"plate_egg_bacon", bacon:"plate_egg_bacon", bun:"plate_bun" };
+  var FACE_KINDS = ["stud", "office", "uncle"];          // 学生(红帽) / 女白领 / 胖大爷
+  function gearNameOfKind(kind) { return GEAR_OF_KIND[kind] || null; }
+  /** 盘位贴图：空盘 plate_empty；煎蛋/培根 → 煎蛋培根盘；包子 → 包子盘；其余食物盘 = 空盘 + 食物贴图 */
+  function plateTexOfFood(foodId) { return foodId ? (PLATE_TEX_OF_FOOD[foodId] || "plate_empty") : "plate_empty"; }
+  /** 这张盘贴图里自带食物吗（自带就不再叠一份食物贴图，避免一盘两样）*/
+  function plateTexHasFood(foodId) { return !!(foodId && PLATE_TEX_OF_FOOD[foodId]); }
+  /** 顾客头像贴图名：耐心 > urgentAt → 平静，≤ urgentAt → 着急；角色按顾客编号轮换 */
+  function faceNameOf(cid, patienceRatio) {
+    var n = Number(patienceRatio); if (!(n >= 0)) n = 1;
+    var k = Math.abs(Math.round(Number(cid) || 0)) % FACE_KINDS.length;
+    return FACE_KINDS[k] + (n > FACE_ICON.urgentAt ? "_calm" : "_urgent");
+  }
+  /* stars.png 里三颗星的子框（相对 stars.png 画布的比例）——由 _bf_assets_gen.cjs
+     在源图上按「列投影的 3 段独立游程」测出来，写进 art/_assets_report.json */
+  var STAR_SUB = [
+    { x:0.0742, y:0.3594, w:0.2682, h:0.2852 },
+    { x:0.3625, y:0.3594, w:0.2657, h:0.2852 },
+    { x:0.6482, y:0.3594, w:0.2657, h:0.2852 }
+  ];
+  /* ── 贴图绘制的三个小工具（都保持长宽比，绝不拉伸变形）────────────────── */
+  /** 等比塞进 box 并居中 */
+  function fitIn(box, ar, k) {
+    k = (k === undefined || !(k > 0)) ? 1 : k;
+    var w = box.w * k, h = box.h * k;
+    if (ar > w / h) h = w / ar; else w = h * ar;
+    return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w: w, h: h };
+  }
+  /** 画一张贴图（等比塞进 box 居中）；alpha 传 null 表示沿用外层 globalAlpha */
+  function drawAssetFit(g, img, box, alpha) {
+    if (!img) return false;
+    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return false;
+    var r = fitIn(box, nw / nh);
+    g.save();
+    if (alpha !== undefined && alpha !== null) g.globalAlpha = alpha;
+    g.drawImage(img, r.x, r.y, r.w, r.h);
+    g.restore();
+    return true;
+  }
+  /** 背景铺满画布的参数：素材比例与画布一致 → 直接整幅铺；换了素材比例不符 → 运行期 cover 裁切 */
+  function bgDrawArgs(img) {
+    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return null;
+    var arImg = nw / nh, arView = W / H;
+    if (Math.abs(arImg - arView) / arView <= 0.02) return { sx:0, sy:0, sw:nw, sh:nh, dx:0, dy:0, dw:W, dh:H, mode:"fit" };
+    var sw, sh;
+    if (arImg > arView) { sh = nh; sw = nh * arView; } else { sw = nw; sh = nw / arView; }
+    return { sx:(nw - sw) / 2, sy:(nh - sh) / 2, sw:sw, sh:sh, dx:0, dy:0, dw:W, dh:H, mode:"cover" };
+  }
+  /** 木台面上沿落在画布上的 y（无头 / 单测用来断言「游戏元素一个都没被挪动」）*/
+  function counterTopCanvasY() {
+    var c = BG_IMG.crop;
+    return Math.round(BG_IMG.counterTopInCrop * H / c.h * 10) / 10;
+  }
+  initIcons();
+
+  /** 星级贴图：从 stars.png 里取第 i%3 颗星（9 参 drawImage 的源矩形裁剪）；dim=true 画成空星。
+      贴图不可用返回 false → 调用方回退矢量星。 */
+  function drawStar(g, img, i, cx, cy, size, dim) {
+    if (!img) return false;
+    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return false;
+    var b = STAR_SUB[((i % 3) + 3) % 3];
+    var sw = b.w * nw, sh = b.h * nh;
+    var dh = size, dw = size * sw / sh;
+    g.save();
+    if (dim) g.globalAlpha = 0.26;
+    g.drawImage(img, b.x * nw, b.y * nh, sw, sh, cx - dw / 2, cy - dh / 2, dw, dh);
+    g.restore();
+    return true;
+  }
+  /** 画一个 UI 贴图（等比塞进 size×size 方框，左上角在 x,y）；成功返回 true */
+  function drawUiIcon(g, name, x, y, size) {
+    var img = assetOf(UI_ICON, name);
+    if (!img) return false;
+    return drawAssetFit(g, img, { x:x, y:y, w:size, h:size }, null);
+  }
+
+  /** 贴图映射与加载状态（单测 / 无头断言直接读；不需要开局就能问）
+      —— 这是「映射完整 + 回退可用」这两条验收的机器可读出口。 */
+  var art = {
+    groups: function () {
+      return ICON_GROUPS.map(function (g2) {
+        return { key:g2.key, dir:g2.dir, ext:g2.ext, ids:g2.ids.slice(), base:g2.base,
+                 loaded:g2.loaded, failed:g2.failed, ready:readyCount(g2) };
+      });
+    },
+    group: function (key) {
+      for (var i = 0; i < ICON_GROUPS.length; i++) if (ICON_GROUPS[i].key === key) return ICON_GROUPS[i];
+      return null;
+    },
+    bg: function () {
+      return { dir:BG_IMG.dir, name:BG_IMG.name, file:BG_IMG.dir + BG_IMG.name,
+               spec:{ w:BG_IMG.crop.w, h:BG_IMG.crop.h }, srcSpec:BG_IMG.srcSpec, crop:BG_IMG.crop,
+               counterTopSrcY:BG_IMG.counterTopSrcY, counterTopInCrop:BG_IMG.counterTopInCrop,
+               counterTopCanvasY:counterTopCanvasY(), counterTopCanvasYTarget:BG_IMG.counterTopCanvasY,
+               view:{ w:VIEW.w, h:VIEW.h }, ready:!!bgIcon(), loaded:BG_IMG.loaded, failed:BG_IMG.failed };
+    },
+    bgDraw: function () { var img = bgIcon(); return img ? bgDrawArgs(img) : null; },
+    gearOfKind: gearNameOfKind, plateTexOf: plateTexOfFood, plateTexHasFood: plateTexHasFood,
+    faceOf: faceNameOf, faceUrgentAt: FACE_ICON.urgentAt,
+    foodIds: FOOD_IDS.slice(), gearIds: GEAR_ICON.ids.slice(), faceIds: FACE_ICON.ids.slice(),
+    uiIds: UI_ICON.ids.slice(), starSub: STAR_SUB,
+    ready: function () {
+      return { food:readyCount(FOOD_ICON), gear:readyCount(GEAR_ICON), face:readyCount(FACE_ICON),
+               ui:readyCount(UI_ICON), bg:(bgIcon() ? 1 : 0) };
+    },
+    total: function () {
+      var n = 1;
+      for (var i = 0; i < ICON_GROUPS.length; i++) n += ICON_GROUPS[i].ids.length;
+      return n;
+    }
+  };
+
+
   var PAL = {
     ink:"#f6efe2", dim:"#b0a08c", gold:"#ffd76e", green:"#5dffa0", red:"#ff4d6d",
     steel:"#7c8296", steelHot:"#ffb347", card:"#2f1e2c", cardLine:"#6b4670", sakura:"#ff9ec7",
@@ -1048,8 +1294,28 @@
     g.closePath();
   }
 
-  /* ── 食物矢量绘制：坐标原点在食物中心，s 为缩放 ── */
-  function drawFood(g, id, s, cook) {
+  /* ── 食物绘制：优先贴图，缺图自动回退矢量 ─────────────────────────────────
+     贴图路径：只在 drawFood 的局部坐标里画一个 span×span 的方框，因此自动继承
+     既有的 FS.* 缩放与 translate —— 桶 / 卡 / 盘 / 煎盘 / 拖拽 五处尺寸与位置
+     与改之前完全一致，点击热区与 9 列列对齐不受影响。
+     火候表现：progress ring / 耐心条 / 金框脉动都画在 drawFood 之外，贴图不参与，
+     所以「完美出锅」的视觉提示照旧。 */
+  function drawFoodImg(g, id, s, cook) {
+    var img = foodIcon(id);
+    if (!img) return false;
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    var want = FOOD_ICON.span * (FOOD_ICON.scale > 0 ? FOOD_ICON.scale : 1);
+    var k = want / Math.max(nw, nh);                 // 等比：最长边 = want
+    var dw = nw * k, dh = nh * k;
+    g.save(); g.scale(s, s);
+    if (cook === "burnt") g.globalAlpha = 0.62;      // 糊了压暗（矢量画法用深色，贴图用半透明）
+    g.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+    g.restore();
+    return true;
+  }
+  /* ── 食物矢量绘制：坐标原点在食物中心，s 为缩放 ──
+     （贴图不可用时的回退，也是无头测试 / 老浏览器 / 缺素材时的唯一画法）*/
+  function drawFoodVector(g, id, s, cook) {
     cook = cook || "raw";
     g.save(); g.scale(s, s);
     var burnt = cook === "burnt", raw = cook === "raw";
@@ -1161,6 +1427,11 @@
     }
     g.restore();
   }
+  /** 食物绘制总入口：贴图优先，失败/未就绪 → 矢量回退（离线也能玩） */
+  function drawFood(g, id, s, cook) {
+    if (drawFoodImg(g, id, s, cook)) return;
+    drawFoodVector(g, id, s, cook);
+  }
 
   var RAF = root.requestAnimationFrame || function (cb) { return root.setTimeout(function () { cb(nowMs()); }, 16); };
   var CAF = root.cancelAnimationFrame || root.clearTimeout;
@@ -1196,6 +1467,13 @@
     b.textContent = text;
     return b;
   }
+  /** 结算面板 / 提示处的 UI 贴图（DOM）：图片加载失败 → 自动摘掉 img，保留后面的 emoji 兜底文案 */
+  function uiIconTag(name, emoji) {
+    var src = groupBase(UI_ICON) + name + UI_ICON.ext;
+    return '<img class="bf-uiico" src="' + src + '" alt=""' +
+           ' onload="this.style.display=\u0027inline-block\u0027;this.nextSibling.style.display=\u0027none\u0027;"' +
+           ' onerror="this.remove()"><span class="bf-emj">' + emoji + '</span>';
+  }
   function escHtml(s) {
     return String(s === undefined || s === null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1223,7 +1501,7 @@
     bar.appendChild(el("div", "bf-tip",
       "① 点食材 → 自动进它正上方那一列的锅 ｜ ② 点上方专属盘 → 自动送给正在等的顾客（优先最急的） ｜ " +
       "③ 双击盘 → 丢垃圾桶（不扣分）· 盘上停留超过 " + SERVE_WINDOW.toFixed(1) + "s 会糊，糊了只能双击丢掉"));
-    var btnEnd = mkBtn("收 摊");
+    var btnEnd = mkBtn("收 摊", "bf-wood");
     bar.appendChild(btnEnd);
     var stage = el("div", "bf-stage");
     var cv = doc.createElement("canvas");
@@ -1435,30 +1713,46 @@
     /* ── 渲染（Canvas 只画食物 / 锅具 / 盘子 / 卡片底与进度环，文字全部用真系统字体）── */
     function fontOf(px, bold) { return (bold ? "bold " : "") + px + "px system-ui,'Segoe UI','Microsoft YaHei',sans-serif"; }
 
+    /* 背景：最底层先铺 art/bg/kitchen.png（整幅铺满画布 = cover；素材已按画布比例
+       裁好，木台面上沿正好落在专属盘带顶部 y=318），再叠两层「可读性压暗」；
+       贴图加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底（功能一点不少）。 */
     function drawBg() {
-      var lg = g.createLinearGradient(0, 0, 0, H);
-      lg.addColorStop(0, "#4d301c"); lg.addColorStop(0.5, "#33200f"); lg.addColorStop(1, "#1d120a");
-      g.fillStyle = lg; g.fillRect(0, 0, W, H);
-      /* 暖木台面木纹 */
-      for (var w = 0; w < 28; w++) {
-        var y = 70 + w * 26;
-        g.strokeStyle = "rgba(255,205,150," + (0.018 + prand(w) * 0.032).toFixed(3) + ")";
-        g.lineWidth = 1 + prand(w + 3) * 2;
-        g.beginPath(); g.moveTo(0, y);
-        for (var x = 0; x <= W; x += 60) g.lineTo(x, y + Math.sin((x + w * 40) / 170) * 3.2);
-        g.stroke();
+      var bimg = bgIcon(), bargs = bimg ? bgDrawArgs(bimg) : null;
+      IA.drawn.bg = !!bargs;
+      IA.drawn.bgMode = bargs ? bargs.mode : "vector";
+      if (bargs) {
+        g.drawImage(bimg, bargs.sx, bargs.sy, bargs.sw, bargs.sh, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
+        IA.drawn.bgW = bargs.sw; IA.drawn.bgH = bargs.sh;
+        g.fillStyle = "rgba(12,7,4," + BG_IMG.scrimAll + ")"; g.fillRect(0, 0, W, H);
+        var sgr = g.createLinearGradient(0, LAY.topH, 0, LAY.legend.y + LAY.legend.h);
+        sgr.addColorStop(0, "rgba(12,7,4," + BG_IMG.scrimTop + ")"); sgr.addColorStop(1, "rgba(12,7,4,0)");
+        g.fillStyle = sgr; g.fillRect(0, LAY.topH, W, LAY.legend.y + LAY.legend.h - LAY.topH);
+      } else {
+        var lg = g.createLinearGradient(0, 0, 0, H);
+        lg.addColorStop(0, "#4d301c"); lg.addColorStop(0.5, "#33200f"); lg.addColorStop(1, "#1d120a");
+        g.fillStyle = lg; g.fillRect(0, 0, W, H);
+        /* 暖木台面木纹 */
+        for (var w = 0; w < 28; w++) {
+          var y = 70 + w * 26;
+          g.strokeStyle = "rgba(255,205,150," + (0.018 + prand(w) * 0.032).toFixed(3) + ")";
+          g.lineWidth = 1 + prand(w + 3) * 2;
+          g.beginPath(); g.moveTo(0, y);
+          for (var x = 0; x <= W; x += 60) g.lineTo(x, y + Math.sin((x + w * 40) / 170) * 3.2);
+          g.stroke();
+        }
+        /* 淡粉樱瓣（低饱和，不抢戏）*/
+        for (var i = 0; i < 44; i++) {
+          var px = prand(i) * W, py = prand(i + 90) * H, r = 3 + prand(i + 7) * 4;
+          g.fillStyle = "rgba(255,170,200," + (0.04 + prand(i + 3) * 0.05).toFixed(3) + ")";
+          g.beginPath(); g.ellipse(px, py, r, r * 0.6, prand(i + 5) * 3, 0, Math.PI * 2); g.fill();
+        }
+        g.fillStyle = "rgba(12,7,4,.34)"; g.fillRect(0, LAY.topH, W, LAY.buckets.y - LAY.topH);
       }
-      /* 淡粉樱瓣（低饱和，不抢戏）*/
-      for (var i = 0; i < 44; i++) {
-        var px = prand(i) * W, py = prand(i + 90) * H, r = 3 + prand(i + 7) * 4;
-        g.fillStyle = "rgba(255,170,200," + (0.04 + prand(i + 3) * 0.05).toFixed(3) + ")";
-        g.beginPath(); g.ellipse(px, py, r, r * 0.6, prand(i + 5) * 3, 0, Math.PI * 2); g.fill();
-      }
-      g.fillStyle = "rgba(12,7,4,.34)"; g.fillRect(0, LAY.topH, W, LAY.buckets.y - LAY.topH);
       var rg = g.createRadialGradient(W / 2, 470, 60, W / 2, 470, 640);
       rg.addColorStop(0, "rgba(255,170,80,.20)"); rg.addColorStop(1, "rgba(255,170,80,0)");
       g.fillStyle = rg; g.fillRect(0, LAY.topH, W, H - LAY.topH);
     }
+
 
     function drawTopBar() {
       g.fillStyle = "rgba(14,9,14,.90)"; g.fillRect(0, 0, W, LAY.topH);
@@ -1477,17 +1771,25 @@
       g.fillStyle = "rgba(255,255,255,.14)"; roundRect(g, pbX, 16, pbW, 16, 8); g.fill();
       g.fillStyle = st.served >= st.cfg.goal ? PAL.green : PAL.gold;
       roundRect(g, pbX, 16, Math.max(4, pbW * Math.min(1, st.served / st.cfg.goal)), 16, 8); g.fill();
-      /* 星级：按完美率 */
+      /* 星级：按完美率 —— 用 art/icons/ui/stars.png 里的单颗星（9 参 drawImage 取源矩形）*/
       var rate = st.served > 0 ? st.perfect / st.served : (st.perfect > 0 ? 1 : 0);
       var stars = Math.max(0, Math.min(5, Math.round(rate * 5)));
+      var starImg = assetOf(UI_ICON, "stars");
       for (var i = 0; i < 5; i++) {
-        starPath(g, pbX + pbW + 30 + i * 30, 24, 12);
-        g.fillStyle = i < stars ? PAL.gold : "rgba(255,255,255,.13)"; g.fill();
+        var sx0 = pbX + pbW + 30 + i * 30;
+        if (starImg && drawStar(g, starImg, i, sx0, 24, 24, i >= stars)) { IA.drawn.uiStars = (IA.drawn.uiStars || 0) + 1; }
+        else {
+          starPath(g, sx0, 24, 12);
+          g.fillStyle = i < stars ? PAL.gold : "rgba(255,255,255,.13)"; g.fill();
+        }
       }
-      /* 得分 */
-      starPath(g, pbX + pbW + 214, 24, 13); g.fillStyle = PAL.gold; g.fill();
+      /* 得分：金币贴图（缺图 → 回退原来的金星）*/
+      var coinImg = assetOf(UI_ICON, "coin");
+      if (coinImg) { IA.drawn.uiCoin = (IA.drawn.uiCoin || 0) + 1; drawAssetFit(g, coinImg, { x: pbX + pbW + 201, y: 10, w: 28, h: 28 }, null); }
+      else { starPath(g, pbX + pbW + 214, 24, 13); g.fillStyle = PAL.gold; g.fill(); }
       g.font = fontOf(FONT.score, true); g.fillStyle = PAL.ink;
       g.fillText(String(st.score), pbX + pbW + 234, 24);
+
       /* 第二行：明细 + 赠送对象 */
       g.font = fontOf(FONT.tiny, false); g.fillStyle = PAL.dim;
       g.fillText("完美 " + st.perfect + " · 温 " + (st.heat.warm || 0) + " · 凉 " + (st.heat.cold || 0) +
@@ -1522,7 +1824,26 @@
       g.beginPath(); g.arc(cx, cy, r * 0.70, 0, Math.PI * 2); g.stroke();
     }
 
+    /** 顾客头像贴图：耐心 > FACE_ICON.urgentAt（40%）→ 平静脸，≤ 40% → 着急脸；
+        贴图不可用 → 回退程序化头像 drawAvatar（离线也能玩，语义不变）。 */
+    function drawCustomerFace(box, c) {
+      var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
+      var name = faceNameOf(c.id, n);
+      var img = assetOf(FACE_ICON, name);
+      if (img && drawAssetFit(g, img, { x: box.x + 10, y: box.y + 22, w: 64, h: 68 }, null)) {
+        IA.drawn.faces = (IA.drawn.faces || 0) + 1;
+        IA.drawn.faceMood = (n > FACE_ICON.urgentAt) ? "calm" : "urgent";
+        IA.drawn.faceName = name;
+        return true;
+      }
+      IA.drawn.faceMood = "vector";
+      IA.drawn.faceName = "";
+      drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
+      return false;
+    }
+
     function drawCustomer(c, box, slot) {
+
       var warn = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
       var low = warn < 0.3;
       var flashOn = low && (Math.floor(nowMs() / 260) % 2 === 0);
@@ -1535,7 +1856,7 @@
       g.lineWidth = (c.angry || flashOn) ? 4 : 2;
       roundRect(g, box.x, box.y, box.w, box.h, 14); g.stroke();
       /* 头像 + 编号 */
-      drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
+      drawCustomerFace(box, c);
       g.textAlign = "left"; g.textBaseline = "middle";
       g.font = fontOf(FONT.cardNo, true); g.fillStyle = PAL.ink;
       g.fillText("顾客 #" + c.id, box.x + 68, box.y + 44);
@@ -1558,23 +1879,49 @@
         g.font = fontOf(FONT.small, true); g.fillStyle = got ? PAL.green : PAL.ink; g.textAlign = "center";
         g.fillText((FOOD[fid] || {}).n, cx, iconY + 50);
         if (got) {
-          g.strokeStyle = PAL.green; g.lineWidth = 5; g.beginPath();
-          g.moveTo(cx + 14, iconY - 22); g.lineTo(cx + 23, iconY - 12); g.lineTo(cx + 38, iconY - 34); g.stroke();
+          if (drawUiIcon(g, "check", cx + 8, iconY - 40, 34)) IA.drawn.uiCheck = (IA.drawn.uiCheck || 0) + 1;
+          else {
+            g.strokeStyle = PAL.green; g.lineWidth = 5; g.beginPath();
+            g.moveTo(cx + 14, iconY - 22); g.lineTo(cx + 23, iconY - 12); g.lineTo(cx + 38, iconY - 34); g.stroke();
+          }
         }
       }
       g.textAlign = "left";
       /* 耐心：大号数字 + 粗条（快走时变红闪烁）*/
       var by = box.y + box.h - 30, bw = box.w - 32 - 96, bx = box.x + 16;
-      g.fillStyle = "rgba(0,0,0,.45)"; roundRect(g, bx, by, bw, 22, 11); g.fill();
       var col = warn > 0.6 ? PAL.green : (warn > 0.3 ? PAL.steelHot : PAL.red);
-      g.fillStyle = flashOn ? "#ffffff" : col;
-      roundRect(g, bx, by, Math.max(4, bw * Math.max(0, Math.min(1, warn))), 22, 11); g.fill();
+      var ratio = Math.max(0, Math.min(1, warn));
+      var barB = assetOf(UI_ICON, "bar_empty"), barF = assetOf(UI_ICON, "bar_full");
+      if (barB) {
+        /* 底槽 = bar_empty 整条铺满；前景 = bar_full **按剩余比例裁源矩形**（不是把整条压扁）*/
+        g.drawImage(barB, bx, by, bw, 22);
+        IA.drawn.uiBar = (IA.drawn.uiBar || 0) + 1;
+        if (barF && ratio > 0.004) {
+          var nwF = barF.naturalWidth || 0, nhF = barF.naturalHeight || 0;
+          g.drawImage(barF, 0, 0, nwF * ratio, nhF, bx, by, Math.max(3, bw * ratio), 22);
+          IA.drawn.uiBarFill = (IA.drawn.uiBarFill || 0) + 1;
+        }
+        /* 旧矢量条的三档配色（绿/橙/红）与「快走闪白」两个语义，用半透明色块压在贴图上保留 */
+        if (warn <= 0.6) {
+          g.fillStyle = warn <= 0.3 ? "rgba(255,77,109,.34)" : "rgba(255,179,71,.26)";
+          roundRect(g, bx, by, Math.max(3, bw * ratio), 22, 11); g.fill();
+        }
+        if (flashOn) { g.fillStyle = "rgba(255,255,255,.55)"; roundRect(g, bx, by, Math.max(3, bw * ratio), 22, 11); g.fill(); }
+      } else {
+        g.fillStyle = "rgba(0,0,0,.45)"; roundRect(g, bx, by, bw, 22, 11); g.fill();
+        g.fillStyle = flashOn ? "#ffffff" : col;
+        roundRect(g, bx, by, Math.max(4, bw * ratio), 22, 11); g.fill();
+      }
+
       g.font = fontOf(FONT.patience, true);
       g.fillStyle = flashOn ? "#ffffff" : col; g.textAlign = "right";
       g.fillText(Math.max(0, c.patience).toFixed(1) + "s", box.x + box.w - 16, by + 11);
       g.textAlign = "left";
       if (c.angry) { g.fillStyle = "rgba(255,77,109,.18)"; roundRect(g, box.x, box.y, box.w, box.h, 14); g.fill(); }
-      if (got2(c)) { g.font = fontOf(40, true); g.fillStyle = "rgba(93,255,160,.9)"; g.textAlign = "center"; g.fillText("✓", box.x + box.w - 40, box.y + 26); g.textAlign = "left"; }
+      if (got2(c)) {
+        if (drawUiIcon(g, "check", box.x + box.w - 58, box.y + 8, 36)) IA.drawn.uiCheck = (IA.drawn.uiCheck || 0) + 1;
+        else { g.font = fontOf(40, true); g.fillStyle = "rgba(93,255,160,.9)"; g.textAlign = "center"; g.fillText("✓", box.x + box.w - 40, box.y + 26); g.textAlign = "left"; }
+      }
     }
     function got2(c) { return c.order.length > 0 && remainOf(c) <= 0; }
     /* ── 列对齐：每列自上而下 = 专属盘 → 锅 → 食材桶，同一 x 中心线（要求 A1）── */
@@ -1633,24 +1980,32 @@
       else { pg.addColorStop(0, "#6d4527"); pg.addColorStop(1, "#2a180d"); }
       /* 焦黑：锅体整个变黑（糊掉的锅一眼可辨） */
       if (s.state === "burnt") { pg = g.createLinearGradient(0, b.y, 0, b.y + b.h); pg.addColorStop(0, "#1a1512"); pg.addColorStop(1, "#050403"); }
+      /* 灶位贴图：汤锅 / 三格煎盘 / 蒸笼 / 木托盘 / 果汁壶（等比塞进灶位框，缺图 → 矢量锅体）*/
+      var gearImg = assetOf(GEAR_ICON, gearNameOfKind(s.kind));
       g.fillStyle = pg;
-      if (s.kind === "pot") { g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill(); }
+      if (gearImg) {
+        drawAssetFit(g, gearImg, { x: b.x + 6, y: b.y + 30, w: b.w - 12, h: b.h - 56 }, null);
+        IA.drawn.gear = (IA.drawn.gear || 0) + 1;
+      } else if (s.kind === "pot") { g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fill(); }
       else { roundRect(g, b.x + 5, b.y + 5, b.w - 10, b.h - 10, 16); g.fill(); }
-      if (s.kind === "pot") {
-        g.strokeStyle = "rgba(200,210,230,.40)"; g.lineWidth = 5;
-        g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
-        g.fillStyle = "rgba(255,255,255,.07)";
-        g.beginPath(); g.arc(cx, cy, R - 9, 0, Math.PI * 2); g.fill();
-      } else if (s.kind === "steamer") {
-        g.strokeStyle = "rgba(255,225,180,.22)"; g.lineWidth = 3;
-        for (var k = 0; k < 3; k++) { g.beginPath(); g.moveTo(b.x + 16 + k * 30, b.y + 26); g.lineTo(b.x + 16 + k * 30, b.y + b.h - 24); g.stroke(); }
-      } else if (s.kind === "counter" || s.kind === "juicer") {
-        g.strokeStyle = "rgba(255,225,180,.14)"; g.lineWidth = 2;
-        for (var k2 = 1; k2 < 4; k2++) { g.beginPath(); g.moveTo(b.x + 10, b.y + 26 + k2 * 26); g.lineTo(b.x + b.w - 10, b.y + 26 + k2 * 26); g.stroke(); }
-      } else {
-        g.strokeStyle = "rgba(255,255,255,.10)"; g.lineWidth = 2;
-        g.beginPath(); g.moveTo(b.x + 14, b.y + b.h - 26); g.lineTo(b.x + b.w - 14, b.y + b.h - 26); g.stroke();
+      if (!gearImg) {
+        if (s.kind === "pot") {
+          g.strokeStyle = "rgba(200,210,230,.40)"; g.lineWidth = 5;
+          g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+          g.fillStyle = "rgba(255,255,255,.07)";
+          g.beginPath(); g.arc(cx, cy, R - 9, 0, Math.PI * 2); g.fill();
+        } else if (s.kind === "steamer") {
+          g.strokeStyle = "rgba(255,225,180,.22)"; g.lineWidth = 3;
+          for (var k = 0; k < 3; k++) { g.beginPath(); g.moveTo(b.x + 16 + k * 30, b.y + 26); g.lineTo(b.x + 16 + k * 30, b.y + b.h - 24); g.stroke(); }
+        } else if (s.kind === "counter" || s.kind === "juicer") {
+          g.strokeStyle = "rgba(255,225,180,.14)"; g.lineWidth = 2;
+          for (var k2 = 1; k2 < 4; k2++) { g.beginPath(); g.moveTo(b.x + 10, b.y + 26 + k2 * 26); g.lineTo(b.x + b.w - 10, b.y + 26 + k2 * 26); g.stroke(); }
+        } else {
+          g.strokeStyle = "rgba(255,255,255,.10)"; g.lineWidth = 2;
+          g.beginPath(); g.moveTo(b.x + 14, b.y + b.h - 26); g.lineTo(b.x + b.w - 14, b.y + b.h - 26); g.stroke();
+        }
       }
+
       if (s.kind === "pot" || s.kind === "griddle") {        // 火口
         for (var f = 0; f < 4; f++) {
           var fx = b.x + 18 + f * ((b.w - 36) / 3);
@@ -1660,6 +2015,10 @@
       }
       /* 进度环：生=浅蓝 / 恰好=绿 / 过火=橙 / 糊=红 */
       var rr = R - 16;
+      /* 环的底：先用深色描一圈当「垫底」，否则进度环压在亮色厨具贴图上会看不清
+         （生=浅蓝 / 恰好=绿 / 过火=橙 / 糊=红 这四档语义一个都没改）*/
+      g.lineWidth = 13; g.strokeStyle = "rgba(10,7,4,.55)";
+      g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
       g.lineWidth = 9; g.strokeStyle = "rgba(255,255,255,.10)";
       g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
       if (fd) {
@@ -1699,10 +2058,13 @@
       g.font = fontOf(FONT.micro, false); g.fillStyle = "rgba(255,255,255,.34)";
       g.fillText(busy ? "盘里还有一份" : (fd ? "在烧" : "空着 · 点食材"), cx, b.y + 29);
       if (s.state === "burnt") {
-        /* 焦黑锅 + 红叉 + 冒烟 */
-        g.strokeStyle = PAL.red; g.lineWidth = 7;
-        g.beginPath(); g.moveTo(cx - 18, cy - 18); g.lineTo(cx + 18, cy + 18);
-        g.moveTo(cx + 18, cy - 18); g.lineTo(cx - 18, cy + 18); g.stroke();
+        /* 焦黑锅 + 红叉（贴图）+ 冒烟 */
+        if (drawUiIcon(g, "cross", cx - 24, cy - 24, 48)) IA.drawn.uiCross = (IA.drawn.uiCross || 0) + 1;
+        else {
+          g.strokeStyle = PAL.red; g.lineWidth = 7;
+          g.beginPath(); g.moveTo(cx - 18, cy - 18); g.lineTo(cx + 18, cy + 18);
+          g.moveTo(cx + 18, cy - 18); g.lineTo(cx - 18, cy + 18); g.stroke();
+        }
         g.fillStyle = "rgba(190,190,190,.60)";
         for (var k3 = 0; k3 < 5; k3++) {
           var sy = b.y + 30 - ((nowMs() / 9 + k3 * 26) % 54);
@@ -1728,26 +2090,38 @@
       var col = p ? (TIER_COLOR[tier] || PAL.steel) : null;
       g.fillStyle = "rgba(0,0,0,.42)";
       g.beginPath(); g.ellipse(cx, cy + 7, rw, rh, 0, 0, Math.PI * 2); g.fill();
-      var pg = g.createLinearGradient(cx - rw, cy - rh, cx + rw, cy + rh);
-      if (!p) { pg.addColorStop(0, "rgba(246,242,232,.22)"); pg.addColorStop(1, "rgba(186,182,174,.07)"); }
-      else { pg.addColorStop(0, "rgba(255,255,255,.38)"); pg.addColorStop(1, col); }
-      g.fillStyle = pg; g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = p ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.26)"; g.lineWidth = 3;
-      g.beginPath(); g.ellipse(cx, cy, rw * 0.72, rh * 0.72, 0, 0, Math.PI * 2); g.stroke();
-      g.strokeStyle = p ? col : "rgba(255,255,255,.38)"; g.lineWidth = p ? 4 : 2.5;
-      g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.stroke();
+      /* 盘位贴图：空盘 / 有食物盘（煎蛋培根盘、包子盘）；糊了 → 半透明压暗（双击丢弃的视觉）*/
+      var ptex = assetOf(GEAR_ICON, plateTexOfFood(p ? p.food : null));
+      if (ptex) {
+        drawAssetFit(g, ptex, { x: b.x + 6, y: cy - 36, w: b.w - 12, h: 72 }, (p && p.state === "burnt") ? 0.55 : null);
+        IA.drawn.plateTex = (IA.drawn.plateTex || 0) + 1;
+      } else {
+        var pg = g.createLinearGradient(cx - rw, cy - rh, cx + rw, cy + rh);
+        if (!p) { pg.addColorStop(0, "rgba(246,242,232,.22)"); pg.addColorStop(1, "rgba(186,182,174,.07)"); }
+        else { pg.addColorStop(0, "rgba(255,255,255,.38)"); pg.addColorStop(1, col); }
+        g.fillStyle = pg; g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = p ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.26)"; g.lineWidth = 3;
+        g.beginPath(); g.ellipse(cx, cy, rw * 0.72, rh * 0.72, 0, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = p ? col : "rgba(255,255,255,.38)"; g.lineWidth = p ? 4 : 2.5;
+        g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.stroke();
+      }
       g.textAlign = "center"; g.textBaseline = "middle";
-      if (!p) {                                              // 空盘：浅色轮廓 + 列归属标签
-        g.font = fontOf(FONT.micro, true); g.fillStyle = "rgba(255,255,255,.46)";
+      if (!p) {                                              // 空盘：贴图 / 矢量轮廓 + 列归属标签
+        g.font = fontOf(FONT.micro, true);
+        g.fillStyle = ptex ? "rgba(74,54,36,.88)" : "rgba(255,255,255,.46)";   // 白瓷盘上要用深色字才读得出
         g.fillText(plateNameOf(s.col) + " · 空", cx, cy);
         g.textAlign = "left";
         return;
       }
-      /* 有食物 */
-      g.save(); g.translate(cx, cy - 6); drawFood(g, p.food, FS.plate, p.state); g.restore();
+      /* 有食物：盘贴图自带食物（煎蛋培根盘 / 包子盘）时不再叠一份，避免一盘两样 */
+      if (!(ptex && plateTexHasFood(p.food))) { g.save(); g.translate(cx, cy - 6); drawFood(g, p.food, FS.plate, p.state); g.restore(); }
+
       if (p.state === "burnt") {                             // 糊：红叉 + 只能双击丢
-        g.strokeStyle = PAL.red; g.lineWidth = 6;
-        g.beginPath(); g.moveTo(cx - 16, cy - 20); g.lineTo(cx + 16, cy + 8); g.moveTo(cx + 16, cy - 20); g.lineTo(cx - 16, cy + 8); g.stroke();
+        if (drawUiIcon(g, "cross", cx - 19, cy - 23, 38)) IA.drawn.uiCross = (IA.drawn.uiCross || 0) + 1;
+        else {
+          g.strokeStyle = PAL.red; g.lineWidth = 6;
+          g.beginPath(); g.moveTo(cx - 16, cy - 20); g.lineTo(cx + 16, cy + 8); g.moveTo(cx + 16, cy - 20); g.lineTo(cx - 16, cy + 8); g.stroke();
+        }
         g.fillStyle = "rgba(0,0,0,.55)"; roundRect(g, b.x + 2, b.y + b.h - 34, b.w - 4, 32, 8); g.fill();
         g.font = fontOf(FONT.micro, true); g.fillStyle = "#ffd0d8";
         g.fillText((FOOD[p.food] || {}).n + "·糊了", cx, b.y + b.h - 24);
@@ -1787,6 +2161,8 @@
       g.font = fontOf(FONT.small, true); g.fillStyle = PAL.ink;
       g.fillText("① 点食材 → 自动下锅（进它那一列）　｜　② 点专属盘 → 送给正在等的顾客　｜　③ 双击盘 → 丢垃圾桶（不扣分）",
                  x + w / 2, y + h / 2);
+      /* 厨具素材里的「锅铲 + 夹子」放在图例条右端的空位（不挤文字，纯装饰）*/
+      if (drawAssetFit(g, assetOf(GEAR_ICON, "tools"), { x: x + w - 60, y: y + 2, w: 54, h: h - 4 }, null)) IA.drawn.gearTools = (IA.drawn.gearTools || 0) + 1;
       g.restore();
       g.textAlign = "left";
       IA.drawn.legend = true;
@@ -1891,7 +2267,7 @@
       /* 信息区走 innerHTML；出口按钮用真实 DOM 节点建 —— 无论浏览器还是无头 DOM，
          document.querySelector("#bfGo") / panel.querySelector("#bfGo") 都取得到。 */
       panel.innerHTML =
-        '<h3>' + (win ? "🍳 送出热乎早餐" : "…早餐烧坏了") + '</h3>' +
+        '<h3>' + uiIconTag(win ? "check" : "cross", win ? "🍳" : "…") + (win ? "送出热乎早餐" : "早餐烧坏了") + '</h3>' +
         '<div class="bf-q">' + escHtml(r.quote) + '</div>' +
         '<div class="bf-grid">' +
           row("服务顾客", r.served + " / " + r.goal) +
@@ -1904,12 +2280,12 @@
           row(tgt.name + " 好感", '<b class="' + (r.bondDelta > 0 ? "up" : "down") + '">' + bondTxt + '</b>') +
         '</div>' +
         '<div class="bf-imp">📌 本局影响 · ' + escHtml(r.impact) + '</div>' +
-        '<div class="bf-imp dim">🎯 接下来 · ' + escHtml(r.quota || quotaOf(win, r.bondDelta, tgt.name)) + '</div>' +
+        '<div class="bf-imp dim">' + uiIconTag("bulb", "🎯") + ' 接下来 · ' + escHtml(r.quota || quotaOf(win, r.bondDelta, tgt.name)) + '</div>' +
         (win ? '' : '<div class="bf-imp dim">失败也有台阶：明天再来一次就行 —— 只要好感还在 20~79 之间。</div>');
       var rowEl = el("div", "bf-row");
       var escHint = el("span", "bf-esc");
       escHint.textContent = "按 ESC 也可以退出（结算结果不会丢）";
-      var go = mkBtn(win ? "收下早餐 · 继续" : "算了，明天再来 · 继续", "primary");
+      var go = mkBtn(win ? "收下早餐 · 继续" : "算了，明天再来 · 继续", "primary bf-red");
       go.id = "bfGo";
       go.setAttribute("data-act", "close");                 // 兼容旧验收脚本选择器
       go.addEventListener("click", function (ev) {
@@ -2068,6 +2444,7 @@
     PREP_PLATES: PREP_PLATES, SERVE_WINDOW: SERVE_WINDOW,
     columnOf: columnOf, foodOfColumn: foodOfColumn, colNameOf: colNameOf,
     stationBox: stationBox, plateBox: plateBox, bucketBox: bucketBox, customerCardBox: customerCardBox,
+    art: art,
     start: start, isBusy: isBusy, dispose: dispose,
     rules: rules, ui: ui,
     debug: {
@@ -2136,11 +2513,64 @@
       view: function () {
         if (!inst) return null;
         return { w:VIEW.w, h:VIEW.h, dpr:inst.dpr, cvW:inst.cv.width, cvH:inst.cv.height,
-                 font:FONT, icon:ICON, lay:LAY,
-                 drawn:inst.drawn, stationCount:inst.st.stations.length, plateCount:inst.st.plates.length };
+                 font:FONT, icon:ICON, lay:LAY, drawn:inst.drawn,
+                 icons:{ span:FOOD_ICON.span, scale:FOOD_ICON.scale, dir:FOOD_ICON.dir, ext:FOOD_ICON.ext,
+                         base:FOOD_ICON.base, spec:FOOD_ICON.spec, ids:FOOD_IDS.slice(),
+                         loaded:FOOD_ICON.loaded, failed:FOOD_ICON.failed,
+                         ready:iconReadyCount(), vector:vectorCount() },
+                 stationCount:inst.st.stations.length, plateCount:inst.st.plates.length };
+      },
+      /** 贴图可用性（给测试看：几张真的能画、几张只能走矢量）*/
+      icons: function () {
+        var out = [];
+        for (var i = 0; i < FOOD_IDS.length; i++) {
+          var id = FOOD_IDS[i], img = FOOD_ICON.map[id], nw = img ? (img.naturalWidth || 0) : 0;
+          out.push({ id:id, has:!!img, loaded:!!(img && nw > 0 && img.complete !== false),
+                     src:(img && typeof img.src === "string") ? img.src : "", naturalWidth:nw,
+                     naturalHeight:(img ? (img.naturalHeight || 0) : 0),
+                     drawAs:foodIcon(id) ? "image" : "vector" });
+        }
+        return out;
       },
       /** 每个灶位 ↔ 专属盘的一一对应关系（现在 9 列每列都有盘）*/
+      /** 背景底图状态（无头验收：背景真的被画出来了吗）*/
+      bg: function () { return art.bg(); },
+      /** 本帧各类贴图的实际使用次数（无头验收读它 —— 贴图真的走 drawImage 了）*/
+      tex: function () {
+        var d = inst ? inst.drawn : {};
+        return { bg:!!d.bg, bgMode:d.bgMode || null, panTex:d.gear || 0, plateTex:d.plateTex || 0,
+                 faces:d.faces || 0, faceMood:d.faceMood || null, faceName:d.faceName || null,
+                 uiBar:d.uiBar || 0, uiBarFill:d.uiBarFill || 0, uiStars:d.uiStars || 0,
+                 uiCoin:d.uiCoin || 0, uiCheck:d.uiCheck || 0, uiCross:d.uiCross || 0,
+                 gearTools:d.gearTools || 0 };
+      },
+      /** 顾客头像：耐心比例 → 该用平静脸还是着急脸（出图与断言都读它）*/
+      faces: function () {
+        var st = curState(); if (!st) return [];
+        return activeCustomers(st).map(function (c, i) {
+          var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
+          var name = faceNameOf(c.id, n);
+          var img = FACE_ICON.map[name];
+          return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,
+                   mood:(n > FACE_ICON.urgentAt ? "calm" : "urgent"),
+                   ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === "string") ? img.src : "",
+                   box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };
+        });
+      },
+      /** 出图 / 测试用：把某位顾客的耐心直接定到「满耐心的百分之几」（r ∈ 0..1）*/
+      setPatience: function (cid, ratio) {
+        var st = curState(); if (!st) return false;
+        var r = Number(ratio); if (!(r >= 0)) r = 1; if (r > 1) r = 1;
+        for (var i = 0; i < st.customers.length; i++) {
+          if (st.customers[i].id === cid) {
+            st.customers[i].patience = st.customers[i].patienceMax * r;
+            return true;
+          }
+        }
+        return false;
+      },
       plateMap: function () {
+
         var st = curState(); if (!st) return [];
         return st.stations.map(function (s, i) {
           var p = plateOfStation(st, i);
@@ -2252,6 +2682,15 @@
       },
       /** 结算面板的出口按钮（结算前为 null）——浏览器 / 无头 DOM 都取得到 #bfGo */
       goBtn: function () { return inst ? (inst.goBtn || null) : null; }
+    },
+    /* ── 贴图相关的测试挂钩（不属规格，页面代码不需要用）───────────────
+       __bfIconFlags()  : 读写 FOOD_ICON 的开关（测试用来分别走「图片」与「矢量回退」）
+       __bfPreloadIcons(): 按当前 base / 开关重新预加载 9 张并返回统计 */
+    __bfIconFlags: function () { return FOOD_ICON; },
+    __bfPreloadIcons: function (baseDir) {
+      initFoodIcons(baseDir);
+      return { base:FOOD_ICON.base, loaded:FOOD_ICON.loaded, failed:FOOD_ICON.failed,
+               ready:iconReadyCount(), vector:vectorCount() };
     }
   };
   root.Breakfast = api;

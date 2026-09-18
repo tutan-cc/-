@@ -1,5 +1,5 @@
 {
- "at": "2026-09-17T11:00:51.609Z",
+ "at": "2026-09-18T09:09:46.931Z",
  "shots": [
   {
    "png": "C:\\Users\\chris\\Desktop\\重生2-原型\\测试截图\\bf_game.png",
@@ -16,7 +16,7 @@
      "alpha": 1
     },
     {
-     "text": "3 样早餐 · 还差 3 样",
+     "text": "2 样早餐 · 还差 2 样",
      "x": 129,
      "y": 204,
      "scale": 1.5,
@@ -27,8 +27,8 @@
      "alpha": 1
     },
     {
-     "text": "清汤",
-     "x": 162,
+     "text": "果汁",
+     "x": 234,
      "y": 354,
      "scale": 1.5,
      "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -38,8 +38,8 @@
      "alpha": 1
     },
     {
-     "text": "热牛奶",
-     "x": 306,
+     "text": "包子",
+     "x": 378,
      "y": 354,
      "scale": 1.5,
      "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -49,18 +49,7 @@
      "alpha": 1
     },
     {
-     "text": "三明治",
-     "x": 450,
-     "y": 354,
-     "scale": 1.5,
-     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
-     "align": "center",
-     "base": "middle",
-     "color": "#f6efe2",
-     "alpha": 1
-    },
-    {
-     "text": "22.5s",
+     "text": "15.0s",
      "x": 561,
      "y": 388.5,
      "scale": 1.5,
@@ -82,7 +71,7 @@
      "alpha": 1
     },
     {
-     "text": "2 样早餐 · 还差 2 样",
+     "text": "3 样早餐 · 还差 3 样",
      "x": 708,
      "y": 204,
      "scale": 1.5,
@@ -94,7 +83,7 @@
     },
     {
      "text": "煎蛋",
-     "x": 813,
+     "x": 741,
      "y": 354,
      "scale": 1.5,
      "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -105,7 +94,7 @@
     },
     {
      "text": "包子",
-     "x": 957,
+     "x": 885,
      "y": 354,
      "scale": 1.5,
      "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -115,7 +104,18 @@
      "alpha": 1
     },
     {
-     "text": "17.0s",
+     "text": "果汁",
+     "x": 1029,
+     "y": 354,
+     "scale": 1.5,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#f6efe2",
+     "alpha": 1
+    },
+    {
+     "text": "24.3s",
      "x": 1140,
      "y": 388.5,
      "scale": 1.5,
@@ -137,7 +137,7 @@
      "alpha": 1
     },
     {
-     "text": "1 样早餐 · 还差 1 样",
+     "text": "2 样早餐 · 还差 2 样",
      "x": 1287,
      "y": 204,
      "scale": 1.5,
@@ -148,8 +148,8 @@
      "alpha": 1
     },
     {
-     "text": "包子",
-     "x": 1464,
+     "text": "沙拉",
+     "x": 1392,
      "y": 354,
      "scale": 1.5,
      "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -159,7 +159,18 @@
      "alpha": 1
     },
     {
-     "text": "11.6s",
+     "text": "培根",
+     "x": 1536,
+     "y": 354,
+     "scale": 1.5,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#f6efe2",
+     "alpha": 1
+    },
+    {
+     "text": "18.9s",
      "x": 1719,
      "y": 388.5,
      "scale": 1.5,
@@ -221,7 +232,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -320,7 +331,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -375,7 +386,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -419,7 +430,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -628,7 +639,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -1480,7 +1491,7 @@
      "alpha": 1
     },
     {
-     "text": "13（热乎 13）",
+     "text": "16（热乎 16）",
      "x": 1197,
      "y": 531,
      "scale": 1.5,
@@ -1502,7 +1513,7 @@
      "alpha": 1
     },
     {
-     "text": "13 / 0 / 0",
+     "text": "16 / 0 / 0",
      "x": 552,
      "y": 600,
      "scale": 1.5,
@@ -1524,7 +1535,7 @@
      "alpha": 1
     },
     {
-     "text": "13 份（9 列专属盘）",
+     "text": "16 份（9 列专属盘）",
      "x": 1197,
      "y": 600,
      "scale": 1.5,
@@ -1568,7 +1579,7 @@
      "alpha": 1
     },
     {
-     "text": "19.0s / 75s",
+     "text": "15.2s / 75s",
      "x": 1197,
      "y": 669,
      "scale": 1.5,
@@ -1590,7 +1601,7 @@
      "alpha": 1
     },
     {
-     "text": "230",
+     "text": "272",
      "x": 552,
      "y": 738,
      "scale": 1.5,
@@ -1877,7 +1888,7 @@
    "png": "C:\\Users\\chris\\Desktop\\重生2-原型\\测试截图\\bf_result_exit.png",
    "texts": [
     {
-     "text": "顾客 #8",
+     "text": "顾客 #9",
      "x": 343.22033898305085,
      "y": 282.228813559322,
      "scale": 1.4618644067796611,
@@ -1899,7 +1910,7 @@
      "alpha": 1
     },
     {
-     "text": "沙拉",
+     "text": "热牛奶",
      "x": 375.3813559322034,
      "y": 463.5,
      "scale": 1.4618644067796611,
@@ -1910,7 +1921,7 @@
      "alpha": 1
     },
     {
-     "text": "培根",
+     "text": "三明治",
      "x": 515.7203389830509,
      "y": 463.5,
      "scale": 1.4618644067796611,
@@ -1921,7 +1932,7 @@
      "alpha": 1
     },
     {
-     "text": "热牛奶",
+     "text": "沙拉",
      "x": 656.0593220338983,
      "y": 463.5,
      "scale": 1.4618644067796611,
@@ -1932,7 +1943,7 @@
      "alpha": 1
     },
     {
-     "text": "27.5s",
+     "text": "26.5s",
      "x": 764.2372881355933,
      "y": 497.12288135593224,
      "scale": 1.4618644067796611,
@@ -1954,7 +1965,7 @@
      "alpha": 1
     },
     {
-     "text": "1 样早餐 · 还差 1 样",
+     "text": "3 样早餐 · 还差 2 样",
      "x": 907.5,
      "y": 317.31355932203394,
      "scale": 1.4618644067796611,
@@ -1965,7 +1976,18 @@
      "alpha": 1
     },
     {
-     "text": "果汁",
+     "text": "白粥",
+     "x": 939.6610169491526,
+     "y": 463.5,
+     "scale": 1.4618644067796611,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#f6efe2",
+     "alpha": 1
+    },
+    {
+     "text": "三明治",
      "x": 1080,
      "y": 463.5,
      "scale": 1.4618644067796611,
@@ -1976,7 +1998,18 @@
      "alpha": 1
     },
     {
-     "text": "15.5s",
+     "text": "沙拉",
+     "x": 1220.3389830508477,
+     "y": 463.5,
+     "scale": 1.4618644067796611,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#5dffa0",
+     "alpha": 1
+    },
+    {
+     "text": "26.6s",
      "x": 1328.5169491525423,
      "y": 497.12288135593224,
      "scale": 1.4618644067796611,
@@ -1998,7 +2031,7 @@
      "alpha": 1
     },
     {
-     "text": "1 样早餐 · 还差 1 样",
+     "text": "3 样早餐 · 还差 3 样",
      "x": 1471.7796610169491,
      "y": 317.31355932203394,
      "scale": 1.4618644067796611,
@@ -2009,7 +2042,18 @@
      "alpha": 1
     },
     {
-     "text": "热牛奶",
+     "text": "果汁",
+     "x": 1503.9406779661017,
+     "y": 463.5,
+     "scale": 1.4618644067796611,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#f6efe2",
+     "alpha": 1
+    },
+    {
+     "text": "包子",
      "x": 1644.2796610169491,
      "y": 463.5,
      "scale": 1.4618644067796611,
@@ -2020,7 +2064,18 @@
      "alpha": 1
     },
     {
-     "text": "16.2s",
+     "text": "煎蛋",
+     "x": 1784.6186440677968,
+     "y": 463.5,
+     "scale": 1.4618644067796611,
+     "font": "bold 14px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
+     "align": "center",
+     "base": "middle",
+     "color": "#f6efe2",
+     "alpha": 1
+    },
+    {
+     "text": "30.0s",
      "x": 1892.7966101694917,
      "y": 497.12288135593224,
      "scale": 1.4618644067796611,
@@ -2049,7 +2104,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2071,7 +2126,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2093,7 +2148,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2115,7 +2170,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2137,7 +2192,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2159,7 +2214,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2181,7 +2236,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2203,7 +2258,7 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
@@ -2225,11 +2280,11 @@
      "font": "bold 13px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
-     "color": "rgba(255,255,255,.46)",
+     "color": "rgba(74,54,36,.88)",
      "alpha": 1
     },
     {
-     "text": "⏱ 0:58",
+     "text": "⏱ 0:57",
      "x": 243.8135593220339,
      "y": 153.58474576271186,
      "scale": 1.4618644067796611,
@@ -2251,7 +2306,7 @@
      "alpha": 1
     },
     {
-     "text": "310",
+     "text": "364",
      "x": 1334.364406779661,
      "y": 153.58474576271186,
      "scale": 1.4618644067796611,
@@ -2262,7 +2317,7 @@
      "alpha": 1
     },
     {
-     "text": "完美 17 · 温 0 · 凉 0 · 糊 0（忘取 0）· 跑单 0 · 上错 0 · 盘上 0/9 · 过火计时 4.5s",
+     "text": "完美 20 · 温 0 · 凉 0 · 糊 0（忘取 0）· 跑单 0 · 上错 0 · 盘上 0/9 · 过火计时 4.5s",
      "x": 243.8135593220339,
      "y": 191.59322033898306,
      "scale": 1.4618644067796611,
@@ -2296,51 +2351,29 @@
     },
     {
      "text": "熟了 · 落到专属盘",
-     "x": 1833.5911016949153,
-     "y": 568.4464763603926,
+     "x": 1645.0105932203392,
+     "y": 590.9130240856377,
      "scale": 1.4618644067796611,
      "font": "bold 20px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
      "color": "#5dffa0",
-     "alpha": 0.05964912280701673
+     "alpha": 0.5719298245614035
     },
     {
      "text": "+14",
      "x": 1644.2796610169491,
-     "y": 425.9531668153434,
+     "y": 448.41971454058876,
      "scale": 1.4618644067796611,
      "font": "bold 30px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
      "align": "center",
      "base": "middle",
      "color": "#ffd76e",
-     "alpha": 0.07719298245613959
+     "alpha": 0.5894736842105264
     },
     {
      "text": "熟了 · 落到专属盘",
-     "x": 513.5275423728814,
-     "y": 584.7578055307761,
-     "scale": 1.4618644067796611,
-     "font": "bold 20px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
-     "align": "center",
-     "base": "middle",
-     "color": "#5dffa0",
-     "alpha": 0.43157894736842106
-    },
-    {
-     "text": "+14",
-     "x": 1644.2796610169491,
-     "y": 442.2644959857271,
-     "scale": 1.4618644067796611,
-     "font": "bold 30px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
-     "align": "center",
-     "base": "middle",
-     "color": "#ffd76e",
-     "alpha": 0.4491228070175439
-    },
-    {
-     "text": "熟了 · 落到专属盘",
-     "x": 890.6885593220339,
+     "x": 1456.4300847457628,
      "y": 603.3773416592328,
      "scale": 1.4618644067796611,
      "font": "bold 22px system-ui,'Segoe UI','Microsoft YaHei',sans-serif",
@@ -2460,7 +2493,7 @@
      "alpha": 1
     },
     {
-     "text": "17（热乎 17）",
+     "text": "20（热乎 20）",
      "x": 1074,
      "y": 930,
      "scale": 1,
@@ -2482,7 +2515,7 @@
      "alpha": 1
     },
     {
-     "text": "热乎 17 · 温 0 · 凉 0",
+     "text": "热乎 20 · 温 0 · 凉 0",
      "x": 1505,
      "y": 930,
      "scale": 1,
@@ -2504,7 +2537,7 @@
      "alpha": 1
     },
     {
-     "text": "17 份（9 列专属盘 ×9）",
+     "text": "20 份（9 列专属盘 ×9）",
      "x": 1937,
      "y": 930,
      "scale": 1,
@@ -2548,7 +2581,7 @@
      "alpha": 1
     },
     {
-     "text": "16.5s / 75s",
+     "text": "17.2s / 75s",
      "x": 1074,
      "y": 981,
      "scale": 1,
@@ -2570,7 +2603,7 @@
      "alpha": 1
     },
     {
-     "text": "310",
+     "text": "364",
      "x": 1505,
      "y": 981,
      "scale": 1,

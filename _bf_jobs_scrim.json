@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "breakfast.js",
+      "from": "    scrimTop: 0.62, scrimAll: 0.10                       // 可读性压暗（木台面基本不受影响）",
+      "text": "    scrimTop: 0.66, scrimAll: 0.32                       // 可读性压暗：整幅 32%（金黄色木台压成深木色，金色小字才读得出）" }
+  ]
+}

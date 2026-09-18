@@ -1,0 +1,171 @@
+  assert.ok(/台阶|明天再来/.test(ltxt), "失败面板同样给台阶");
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   本轮新增：素材贴图（背景 / 厨具 / 头像 / UI）的映射表 · 统一加载器 · 回退路径
+   这些用例**不需要 DOM**：映射表与加载器在模块初始化时就绪，纯逻辑单测就能覆盖
+   「映射完整 / 路径是相对路径 / 缺图时一律回退 / 耐心阈值切换头像」四件事。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** 带「假 Image + location」的装载：只验证统一加载器的行为（src 拼装 / 就绪统计 / 失败回退）
+    ok=true  → 每次 src 赋值都当成功解码（naturalWidth>0、complete=true、触发 onload）
+    ok=false → 一律走 onerror（等价于 34 个文件全丢了） */
+function loadBfWithFakeImage(opts) {
+  const made = [];
+  const ctx = vm.createContext({ console, Math, Date, isFinite, Number, String, Object, Array });
+  function FakeImage() {
+    return {
+      naturalWidth: 0, naturalHeight: 0, complete: false, onload: null, onerror: null, _src: "",
+      get src() { return this._src; },
+      set src(v) {
+        this._src = String(v);
+        made.push(this._src);
+        if (opts && opts.ok === false) { if (typeof this.onerror === "function") this.onerror({ target: this }); return; }
+        this.naturalWidth = 64; this.naturalHeight = 64; this.complete = true;
+        if (typeof this.onload === "function") this.onload({ target: this });
+      }
+    };
+  }
+  ctx.window = ctx;
+  ctx.Image = FakeImage;
+  ctx.location = { href: "file:///C:/proj/reborn2/index.html" };
+  vm.runInContext(SRC + "\n;globalThis.__BF = window.Breakfast;", ctx);
+  return { B: ctx.__BF, srcs: () => made.slice() };
+}
+
+test("素材映射表完整：5 类厨具有贴图；9 样食材都有盘位贴图；6 头像 + 9 UI 全在册", () => {
+  const A = BF.art;
+  assert.ok(A && typeof A.groups === "function", "api.art 已导出（贴图映射与状态的机器可读出口）");
+  /* 厨具：灶位 kind → gear 贴图名，五个 kind 一个都不能漏 */
+  const kinds = [...new Set(R.COLS.map(c => c.kind))].sort();
+  assert.deepEqual(kinds, ["counter", "griddle", "juicer", "pot", "steamer"], "9 列用到 5 种灶位 kind");
+  assert.equal(A.gearIds.length, 9, "厨具贴图 9 张：" + A.gearIds.join("/"));
+  kinds.forEach(k => {
+    const n = A.gearOfKind(k);
+    assert.ok(n && A.gearIds.indexOf(n) >= 0, "灶位 kind=" + k + " → gear/" + n + ".png（在册）");
+  });
+  /* 盘位：每样食材都有盘位贴图，且必须是 gear 组里真实存在的文件 */
+  R.FOOD_IDS.forEach(f => {
+    const t = A.plateTexOf(f);
+    assert.ok(A.gearIds.indexOf(t) >= 0, "食材 " + f + " → 盘位贴图 gear/" + t + ".png（在册）");
+  });
+  assert.equal(A.plateTexOf("egg"), "plate_egg_bacon", "煎蛋 → 煎蛋培根盘");
+  assert.equal(A.plateTexOf("bacon"), "plate_egg_bacon", "培根 → 煎蛋培根盘");
+  assert.equal(A.plateTexOf("bun"), "plate_bun", "包子 → 包子盘");
+  assert.equal(A.plateTexOf("congee"), "plate_empty", "其余食材 → 空盘 + 食物贴图");
+  assert.equal(A.plateTexOf(null), "plate_empty", "空盘位 → plate_empty");
+  assert.ok(A.plateTexHasFood("egg") && A.plateTexHasFood("bacon") && A.plateTexHasFood("bun") &&
+    !A.plateTexHasFood("congee") && !A.plateTexHasFood("juice"),
+    "plateTexHasFood：自带食物的盘（煎蛋培根 / 包子）不再叠一份食物贴图");
+  /* 头像 / UI / 分组 */
+  assert.equal(A.faceIds.length, 6, "6 张头像：" + A.faceIds.join("/"));
+  assert.equal(A.uiIds.length, 9, "9 个 UI 元素：" + A.uiIds.join("/"));
+  ["bar_empty", "bar_full", "stars", "btn_wood", "btn_red", "coin", "bulb", "check", "cross"].forEach(n =>
+    assert.ok(A.uiIds.indexOf(n) >= 0, "UI 元素在册：" + n));
+  assert.deepEqual(A.groups().map(g => g.key + ":" + g.ids.length),
+    ["food:9", "gear:9", "face:6", "ui:9"], "四组贴图都在统一加载器里（food/gear/face/ui）");
+  assert.equal(A.total(), 34, "素材总数 = 9 食材 + 9 厨具 + 6 头像 + 9 UI + 1 背景 = 34");
+});
+
+test("贴图路径一律是「页面目录 + 相对路径」：不写盘符、不写协议、不写 data URI", () => {
+  const A = BF.art;
+  A.groups().forEach(g => {
+    assert.ok(/^art\/icons\//.test(g.dir), g.key + " 组目录是相对路径：" + g.dir);
+    assert.ok(!/^[A-Za-z]:|^\/|^https?:|^data:/i.test(g.dir), g.key + " 组目录不含盘符 / 协议 / data:");
+    assert.equal(g.ext, ".png", g.key + " 扩展名固定 .png");
+    g.ids.forEach(id => assert.ok(/^[a-z_]+$/.test(id), g.key + " 的 id 只用小写字母与下划线：" + id));
+  });
+  const bg = A.bg();
+  assert.equal(bg.dir + bg.name, "art/bg/kitchen.png", "背景路径：art/bg/kitchen.png（相对页面目录）");
+  assert.ok(!/^[A-Za-z]:|^https?:|^data:/i.test(bg.file), "背景路径不含盘符 / 协议 / data:");
+});
+
+test("背景层：几何常量与磁盘上的真图对得上，木台面上沿落在专属盘带上方", () => {
+  const bg = BF.art.bg();
+  const f = path.join(ROOT, bg.file);
+  assert.ok(fs.existsSync(f), "背景文件真实存在：" + bg.file);
+  const b = fs.readFileSync(f);
+  assert.equal(b.readUInt32BE(16), bg.spec.w, "磁盘上背景宽 = 代码里的 spec.w（" + bg.spec.w + "）");
+  assert.equal(b.readUInt32BE(20), bg.spec.h, "磁盘上背景高 = 代码里的 spec.h（" + bg.spec.h + "）");
+  /* 裁切参数与「源图坐标」自洽：crop 必须完全落在原素材里 */
+  assert.ok(bg.crop.x >= 0 && bg.crop.y >= 0 &&
+    bg.crop.x + bg.crop.w <= bg.srcSpec.w && bg.crop.y + bg.crop.h <= bg.srcSpec.h,
+    "裁切框在源图 " + bg.srcSpec.w + "×" + bg.srcSpec.h + " 之内");
+  assert.ok(bg.counterTopSrcY >= bg.crop.y && bg.counterTopSrcY <= bg.crop.y + bg.crop.h,
+    "木台面上沿（源 y=" + bg.counterTopSrcY + "）在裁切框内");
+  /* 关键对齐：木台面上沿必须落在「专属盘带顶部」之上，盘/锅/桶三段才会都在台面上 */
+  assert.ok(Math.abs(bg.counterTopCanvasY - bg.counterTopCanvasYTarget) <= 1.5,
+    "木台面上沿 → 画布 y=" + bg.counterTopCanvasY + "（目标 " + bg.counterTopCanvasYTarget + "）");
+  assert.ok(bg.counterTopCanvasY <= BF.LAY.plate.y,
+    "台面上沿 y=" + bg.counterTopCanvasY + " ≤ 盘带顶部 " + BF.LAY.plate.y + " → 盘/锅/桶三段全在木台面上");
+  assert.ok(BF.LAY.buckets.y + BF.LAY.buckets.h <= BF.VIEW.h, "底排食材桶仍在画面内（没被背景挪动）");
+  assert.ok(bg.view.w === BF.VIEW.w && bg.view.h === BF.VIEW.h, "背景对齐用的画布尺寸与 VIEW 一致");
+  /* 无 Image 的单测环境里，背景也必须判为「不可用」→ 走程序化底 */
+  assert.equal(bg.ready, false, "单测环境没有 Image → 背景判为不可用（回退程序化底）");
+});
+
+test("统一加载器：预加载 34 张本地贴图；就绪判定 / 全失败回退两条路都走得到", () => {
+  /* 这个 vm 环境里没有 Image 构造器（单测就是这么设计的）→ 全部判为「走矢量」 */
+  assert.deepEqual(BF.art.ready(), { food: 0, gear: 0, face: 0, ui: 0, bg: 0 },
+    "无 Image 时全部判为不可用 → 一律回退矢量");
+  /* 换成带「假 Image + location」的环境：验证 src 拼装与就绪统计 */
+  const okCtx = loadBfWithFakeImage({ ok: true });
+  const A1 = okCtx.B.art;
+  assert.deepEqual(A1.ready(), { food: 9, gear: 9, face: 6, ui: 9, bg: 1 }, "有 Image 时 34 张全部就绪");
+  const srcs = okCtx.srcs();
+  assert.equal(srcs.length, 34, "一共预加载 34 张（实际 " + srcs.length + "）");
+  assert.ok(srcs.every(s => s.indexOf("art/") >= 0 && /\.png$/.test(s)), "每张都是 .png 且落在 art/ 下");
+  assert.ok(srcs.every(s => !/^https?:|^data:/i.test(s)), "没有任何 http(s):// 或 data: 外链");
+  assert.ok(srcs.every(s => s.indexOf("C:/proj/reborn2/art/") >= 0), "src = 页面目录 + art/… （相对页面，不写死盘符）");
+  assert.ok(srcs.some(s => /art\/icons\/gear\/pot\.png$/.test(s)), "厨具 src 形如 …/art/icons/gear/pot.png");
+  assert.ok(srcs.some(s => /art\/icons\/faces\/stud_calm\.png$/.test(s)), "头像 src 形如 …/art/icons/faces/stud_calm.png");
+  assert.ok(srcs.some(s => /art\/icons\/ui\/bar_empty\.png$/.test(s)), "UI src 形如 …/art/icons/ui/bar_empty.png");
+  assert.ok(srcs.some(s => /art\/bg\/kitchen\.png$/.test(s)), "背景 src 形如 …/art/bg/kitchen.png");
+  /* 全部加载失败（真实走 onerror 的那条路）→ 计数落到 failed 上，ready 归零 → 回退 */
+  const failCtx = loadBfWithFakeImage({ ok: false });
+  const A2 = failCtx.B.art;
+  assert.deepEqual(A2.ready(), { food: 0, gear: 0, face: 0, ui: 0, bg: 0 }, "34 张全失败 → 全部回退矢量");
+  const failed = A2.groups().reduce((a, g) => a + g.failed, 0) + A2.bg().failed;
+  assert.equal(failed, 34, "34 张的 onerror 全都被接住（failed=" + failed + "）");
+});
+
+test("顾客头像按耐心阈值切换：> 40% 平静 / ≤ 40% 着急（阈值写在常量里）", () => {
+  const A = BF.art;
+  assert.equal(A.faceUrgentAt, 0.4, "阈值常量 FACE_ICON.urgentAt = 0.40（可调）");
+  assert.equal(A.faceOf(0, 1), "stud_calm", "满耐心 → 平静");
+  assert.equal(A.faceOf(0, 0.41), "stud_calm", "41% → 平静（> 40%）");
+  assert.equal(A.faceOf(0, 0.4), "stud_urgent", "40% → 着急（≤ 40%，边界取着急）");
+  assert.equal(A.faceOf(0, 0.39), "stud_urgent", "39% → 着急");
+  assert.equal(A.faceOf(0, 0), "stud_urgent", "耐心耗尽 → 着急");
+  assert.equal(A.faceOf(0, -5), "stud_urgent", "耐心为负（异常输入）→ 也按着急处理，不炸");
+  /* 角色按顾客编号轮换：学生(红帽) / 女白领 / 胖大爷 */
+  assert.equal(A.faceOf(0, 1), "stud_calm");
+  assert.equal(A.faceOf(1, 1), "office_calm");
+  assert.equal(A.faceOf(2, 1), "uncle_calm");
+  assert.equal(A.faceOf(3, 1), "stud_calm", "第 4 位顾客回到第 1 种角色（轮换）");
+  assert.equal(A.faceOf(4, 0.2), "office_urgent");
+  assert.equal(A.faceOf(5, 0.2), "uncle_urgent");
+  /* 生成的名字必须在册（否则 assetOf 拿不到图 → 静默回退，测试就漏了）*/
+  [0, 1, 2, 3, 4, 5].forEach(i => [0, 0.2, 0.4, 0.41, 1].forEach(r =>
+    assert.ok(A.faceIds.indexOf(A.faceOf(i, r)) >= 0, "faceOf(" + i + "," + r + ") 的结果在册")));
+});
+
+test("回退路径写死在源码里：每一处贴图都有矢量兜底（缺素材也能玩）", () => {
+  assert.ok(/function drawFoodVector\(/.test(SRC) && /function drawFoodImg\(/.test(SRC),
+    "食材：drawFoodVector（矢量）+ drawFoodImg（贴图）两条路都在");
+  assert.ok(/function drawAvatar\(/.test(SRC) && /drawAvatar\(g, box\.x \+ 38, box\.y \+ 58, 21, c\.id\);/.test(SRC),
+    "头像：贴图拿不到时回退程序化头像 drawAvatar");
+  assert.ok(/var gearImg = assetOf\(GEAR_ICON, gearNameOfKind\(s\.kind\)\);/.test(SRC) &&
+    /\} else if \(s\.kind === "pot"\)/.test(SRC),
+    "锅位：贴图优先，缺图回退矢量锅体（pot / griddle / steamer / counter / juicer 五条都在）");
+  assert.ok(/var ptex = assetOf\(GEAR_ICON, plateTexOfFood\(p \? p\.food : null\)\);/.test(SRC),
+    "盘位：贴图优先，缺图回退矢量盘");
+  assert.ok(/if \(drawUiIcon\(g, "cross"/.test(SRC) && /g\.strokeStyle = PAL\.red; g\.lineWidth = 7;/.test(SRC),
+    "糊了红叉：贴图优先，缺图回退红色矢量叉");
+  assert.ok(/function bgDrawArgs\(/.test(SRC) && /function drawBg\(\) \{/.test(SRC),
+    "背景：cover 参数 + 加载失败回退程序化底");
+  assert.ok(/function drawStar\(/.test(SRC) && /function starPath\(/.test(SRC),
+    "星级：stars.png 单颗星优先，缺图回退矢量星");
+  assert.ok(/assetOf\(g, id\)/.test(SRC) && /naturalWidth/.test(SRC) && /complete !== false/.test(SRC),
+    "统一就绪判定：naturalWidth > 0 且 complete !== false（未解码完就当没有）");
+});

@@ -1,0 +1,27 @@
+{
+  "jobs": [
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.deepEqual(A.groups().map(g => g.key + \":\" + g.ids.length),\n    [\"food:9\", \"gear:9\", \"face:6\", \"ui:9\"], \"四组贴图都在统一加载器里（food/gear/face/ui）\");",
+      "text": "  /* 注意：api.art 返回的是 vm 里的对象/数组（跨 realm），deepStrictEqual 会因为\n     原型不同而失败 → 这里一律先拼成字符串再比。 */\n  assert.equal(A.groups().map(g => g.key + \":\" + g.ids.length).join(\"|\"),\n    \"food:9|gear:9|face:6|ui:9\", \"四组贴图都在统一加载器里（food/gear/face/ui）\");" },
+
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.deepEqual(BF.art.ready(), { food: 0, gear: 0, face: 0, ui: 0, bg: 0 },\n    \"无 Image 时全部判为不可用 → 一律回退矢量\");",
+      "text": "  assert.equal(readyStr(BF.art), \"0,0,0,0,0\", \"无 Image 时全部判为不可用 → 一律回退矢量\");" },
+
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.deepEqual(A1.ready(), { food: 9, gear: 9, face: 6, ui: 9, bg: 1 }, \"有 Image 时 34 张全部就绪\");",
+      "text": "  assert.equal(readyStr(A1), \"9,9,6,9,1\", \"有 Image 时 34 张全部就绪\");" },
+
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.deepEqual(A2.ready(), { food: 0, gear: 0, face: 0, ui: 0, bg: 0 }, \"34 张全失败 → 全部回退矢量\");",
+      "text": "  assert.equal(readyStr(A2), \"0,0,0,0,0\", \"34 张全失败 → 全部回退矢量\");" },
+
+    { "file": "tests/breakfast.test.cjs",
+      "from": "function loadBfWithFakeImage(opts) {",
+      "text": "/** api.art.ready() 的 5 个计数拼成 \"food,gear,face,ui,bg\"（跨 realm 对象不能 deepStrictEqual） */\nfunction readyStr(A) { return [\"food\", \"gear\", \"face\", \"ui\", \"bg\"].map(k => A.ready()[k]).join(\",\"); }\nfunction loadBfWithFakeImage(opts) {" },
+
+    { "file": "tests/breakfast.test.cjs",
+      "from": "  assert.equal(A.faceOf(0, -5), \"stud_urgent\", \"耐心为负（异常输入）→ 也按着急处理，不炸\");",
+      "text": "  /* 异常输入（负数 / NaN）按「满耐心」处理 —— 真正的钳位在调用点（Math.max(0, patience)），\n     所以负耐心根本不会走到这里；下面两条一起把这个约定钉住。 */\n  assert.equal(A.faceOf(0, -5), \"stud_calm\", \"负数（异常输入）→ 按满耐心，不炸\");\n  assert.equal(A.faceOf(0, NaN), \"stud_calm\", \"NaN（异常输入）→ 按满耐心，不炸\");\n  assert.ok(/Math\\.max\\(0, c\\.patience\\) \\/ Math\\.max\\(0\\.01, c\\.patienceMax\\)/.test(SRC),\n    \"调用点把耐心钳到 ≥ 0（drawCustomerFace）→ 负耐心不会真的传进 faceNameOf\");" }
+  ]
+}
