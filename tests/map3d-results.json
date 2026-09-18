@@ -1,0 +1,29 @@
+{
+ "success": true,
+ "testedAt": "2026-09-15T03:23:13.949Z",
+ "checks": [
+  "map3d.js 已加载并暴露 window.Map3D",
+  "three.min.js 已加载",
+  "Map3D.mount 返回 true（WebGL 可用）",
+  "3D 容器已显示",
+  "3D 模式下 2D SVG 已隐藏",
+  "已回到沙盘（电影层关闭）",
+  "沙盘处于 3D 模式",
+  "可切回 2D 沙盘",
+  "角色面板含 装备/背包/商店 三个标签",
+  "商店商品数 4 ≥ 4"
+ ],
+ "errors": [],
+ "map3d": {
+  "ready": true,
+  "on": "on",
+  "svg": "none",
+  "btn": "🧭 切 2D",
+  "places": 9
+ },
+ "panel": {
+  "on": true,
+  "title": "Lv.1 · 重生者",
+  "tabs": 3
+ }
+}

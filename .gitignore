@@ -1,0 +1,33 @@
+﻿# 实拍素材与音频：授权未核实，不入库（请自行放置到本地）
+video/
+audio/
+
+# 运行/构建产物与临时文件（不入库）
+_prof*/
+_temp/
+_check.js
+*.bak
+*.bak2
+*.bak3
+*.bf2bak
+*.bf3bak
+*.bf4bak
+*.bf5bak
+*.mj2bak
+*.mj3bak
+*.mjbak
+*.pickbak
+*.fixbak
+*.visbak
+*.v14bak
+*.v16bak
+*.w35bak
+*.bfbak
+*.log
+_mj_render_out.txt
+
+# 编辑器/系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

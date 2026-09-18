@@ -1,0 +1,22 @@
+{
+ "success": false,
+ "testedAt": "2026-09-15T09:18:04.722Z",
+ "checks": [
+  "mahjong.js 已加载",
+  "对局已开始（isBusy=true）",
+  "手牌张数 14 ≥13",
+  "四家座位 4",
+  "牌桌 DOM 已渲染（4267 字符）",
+  "驱动出牌成功（60 步）"
+ ],
+ "errors": [
+  "牌墙剩余 undefined"
+ ],
+ "state": {
+  "on": true,
+  "busy": true,
+  "hand": 14,
+  "seats": 4,
+  "dom": 4267
+ }
+}

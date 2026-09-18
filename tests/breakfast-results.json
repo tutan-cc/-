@@ -1,0 +1,18 @@
+{
+ "success": false,
+ "testedAt": "2026-09-17T06:23:20.640Z",
+ "mode": "trident-hta",
+ "checks": [],
+ "errors": [
+  "模式 B 也失败：mshta 探针未产出结果"
+ ],
+ "info": {
+  "tridentShots": []
+ },
+ "screenshots": [
+  "bf_fail.png",
+  "bf_game.png",
+  "bf_pass.png"
+ ],
+ "limitation": "Chrome(headless CDP) 在当前沙箱无法启动：Chrome 未能在 24s 内启动调试端口（沙箱禁止命名管道 / mojo platform_channel 0x5）；已降级用 mshta(Trident/IE11 引擎) 真实渲染 + 真实 DOM 事件 + canvas.toDataURL 截图（同一份 breakfast.js）；注意：Trident 降级下「侧栏入口 / 剧情分支 / 结算面板 DOM」无法覆盖（HTA 里没有 index.html 的页面壳），只验证模块本体；这部分由 _e2e_bf_headless.cjs（Node + 记录式 Canvas2D + 可泵 rAF，66 项）补上。；测试截图/ 下的 bf_game.png / bf_pass.png / bf_fail.png 由 _bf_shots.cjs 用自写软件光栅化器回放同一份 breakfast.js 的真实 Canvas2D 指令生成（**不是浏览器截图**：本沙箱 Chrome/Edge 均 mojo platform_channel 0x5 无法启动、mshta 落盘被拦）。"
+}
