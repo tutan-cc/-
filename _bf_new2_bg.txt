@@ -1,0 +1,78 @@
+  /* ── 背景底图（两级回退）─────────────────────────────────────────────────────
+     首选 art/bg/kitchen2.png（本批 Lovart 新素材：**完整樱花树冠 + 完整开放厨房与货架**，
+     主体离边 ≥5% 安全边距）；加载失败 → art/bg/kitchen.png（上一轮 v1）；
+     再失败 → drawBg 里的程序化木台 / 樱瓣 / 暖光底。功能一点不少。
+
+     v2 的裁切策略与代价（参数全部由 _bf_assets2_gen.cjs 从源图自动求出，
+     写进 art/_assets2_report.json，这里只是把测量结果抄成常量给无头断言校验）：
+       源图 2048×1152，测出「干净木台面上沿」源 y=704；
+       画布 1180×790，若把台面精确对到 LAY.colHeaderY=318，需要放大到 scale≈1.05，
+       左右各裁 464px（源宽的 45%）→ 樱花树冠与右侧货架会被裁掉，正是 v2 要避免的。
+       所以 v2 选择**保整幅宽**：scale = 1180/2048 = 0.5762，左右 0 裁切；
+       代价是台面在画布上落到 y≈406（而非 318），画布底部缺的 126px 用
+       「台面木纹纵向平铺 + 向底端线性压深 40%」补满（木纹横向连续，接缝不可见）。
+       ⇒ 9 列元素（盘带 328..438 / 锅带 450..608 / 桶带 624..776）位置一字未动，
+         台面把它们全部覆盖（台面顶 406 在盘带之内 → 盘/锅/桶三段都画在木台面上）。      */
+  var BG_SLOTS = [
+    { id:"kitchen2", name:"kitchen2.png", img:null, loaded:0, failed:0 },
+    { id:"kitchen",  name:"kitchen.png",  img:null, loaded:0, failed:0 }
+  ];
+  var BG_META = {
+    kitchen2: {
+      srcSpec: { w: 2048, h: 1152 },
+      srcWindow: { x: 0, y: 0, w: 2048, h: 1371 },        // 覆盖源图整幅宽（1371 = 790 / 0.5762）
+      scale: 0.576172,
+      counterTopSrcY: 704, counterTopInCrop: 704, counterTopCanvasY: 405.7,
+      strategy: "full-width", croppedPerSide: 0, croppedPercent: 0, bottomFillPx: 126,
+      aspect: 1180 / 790
+    },
+    kitchen: {
+      srcSpec: { w: 2048, h: 1152 },
+      srcWindow: { x: 428, y: 354, w: 1193, h: 798 },
+      scale: 1.0,
+      counterTopSrcY: 675, counterTopInCrop: 321, counterTopCanvasY: 318,
+      strategy: "v1-cover-crop", croppedPerSide: 0, croppedPercent: 0, bottomFillPx: 0,
+      aspect: 1193 / 798
+    }
+  };
+  var BG_IMG = {
+    dir: "art/bg/", name: "kitchen2.png", img: null, loaded: 0, failed: 0,
+    /* 兼容旧字段（v1 的裁切测量结果仍然保留，断言读得到）*/
+    srcSpec: { w: 2048, h: 1152 },
+    crop: { x: 428, y: 354, w: 1193, h: 798 },
+    counterTopSrcY: 675, counterTopInCrop: 321, counterTopCanvasY: 318,
+    scrimTop: 0.66, scrimAll: 0.32, bottomFillDark: 0.40,     // 可读性压暗：整幅 32%
+    fillFromCounter: true                                     // 底部补带取「木台面木纹条」
+  };
+  /** 当前生效的背景槽（v2 可用 → v2；否则 v1；都不可用 → null）*/
+  function bgSlotActive() {
+    for (var i = 0; i < BG_SLOTS.length; i++) {
+      var s = BG_SLOTS[i];
+      if (s.img) { var nw = s.img.naturalWidth || 0; if (nw > 0 && s.img.complete !== false) return s; }
+    }
+    return null;
+  }
+  function initBackground() {
+    for (var i = 0; i < BG_SLOTS.length; i++) {
+      var s = BG_SLOTS[i];
+      s.img = null; s.loaded = 0; s.failed = 0;
+      if (!root.Image || FOOD_ICON.forceNull) continue;
+      var img = null;
+      try { img = new root.Image(); } catch (e) { img = null; }
+      if (!img) { s.failed++; continue; }
+      s.img = img;
+      if (FOOD_ICON.forceFail) { s.failed++; continue; }
+      (function (slot) {
+        slot.img.onload = function () { slot.loaded++; };
+        slot.img.onerror = function () { slot.failed++; };
+      })(s);
+      try { img.src = (ICON_ROOT || pageDir()) + BG_IMG.dir + s.name; } catch (e) { s.failed++; }
+    }
+    /* 兼容字段：让 art.bg() / 旧断言仍能读到「当前生效那张」的信息 */
+    var act = bgSlotActive();
+    BG_IMG.img = act ? act.img : (BG_SLOTS[0].img || BG_SLOTS[1].img || null);
+    BG_IMG.name = act ? act.name : BG_SLOTS[0].name;
+    BG_IMG.loaded = BG_SLOTS[0].loaded + BG_SLOTS[1].loaded;
+    BG_IMG.failed = BG_SLOTS[0].failed + BG_SLOTS[1].failed;
+    return BG_IMG;
+  }

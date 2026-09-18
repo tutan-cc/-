@@ -1,0 +1,59 @@
+  /** 贴图映射与加载状态（单测 / 无头断言直接读；不需要开局就能问）
+      —— 这是「映射完整 + 回退可用」这两条验收的机器可读出口。 */
+  var art = {
+    groups: function () {
+      return ICON_GROUPS.map(function (g2) {
+        return { key:g2.key, dir:g2.dir, ext:g2.ext, ids:g2.ids.slice(), base:g2.base,
+                 loaded:g2.loaded, failed:g2.failed, ready:readyCount(g2) };
+      });
+    },
+    group: function (key) {
+      for (var i = 0; i < ICON_GROUPS.length; i++) if (ICON_GROUPS[i].key === key) return ICON_GROUPS[i];
+      return null;
+    },
+    /** 背景（两级回退）：ready/id 是**当前生效**那张；slots 是全部候选与各自的加载状态 */
+    bg: function () {
+      var src = bgSource();
+      var meta = src ? src.meta : BG_META.kitchen;
+      var slots = BG_SLOTS.map(function (s) {
+        return { id:s.id, name:s.name, file:"art/bg/" + s.name, loaded:s.loaded, failed:s.failed,
+                 ready:!!(s.img && (s.img.naturalWidth || 0) > 0 && s.img.complete !== false) };
+      });
+      return { dir:BG_IMG.dir, name: src ? src.slot.name : BG_SLOTS[0].name,
+               file: BG_IMG.dir + (src ? src.slot.name : BG_SLOTS[0].name),
+               active: src ? src.id : null, slot: src ? src.slot.id : null, slots: slots,
+               fallback: ["kitchen2", "kitchen", "vector"],
+               spec:{ w: meta.srcWindow.w, h: meta.srcWindow.h }, srcSpec: meta.srcSpec,
+               crop: { x: meta.srcWindow.x, y: meta.srcWindow.y, w: meta.srcWindow.w, h: meta.srcWindow.h },
+               srcWindow: meta.srcWindow, scale: meta.scale, strategy: meta.strategy,
+               croppedPerSide: meta.croppedPerSide, croppedPercent: meta.croppedPercent,
+               bottomFillPx: meta.bottomFillPx,
+               counterTopSrcY: meta.counterTopSrcY, counterTopInCrop: meta.counterTopInCrop,
+               counterTopCanvasY: counterTopCanvasY(), counterTopCanvasYTarget: BG_IMG.counterTopCanvasY,
+               view:{ w:VIEW.w, h:VIEW.h }, ready:!!src, loaded:BG_IMG.loaded, failed:BG_IMG.failed };
+    },
+    bgDraw: function () { var img = bgIcon(); return img ? bgDrawArgs(img) : null; },
+    /** 背景候选清单（断言「v2 优先、v1 兜底」用）*/
+    bgSlots: function () { return BG_SLOTS.map(function (s) { return s.id + ":" + s.name; }); },
+    gearOfKind: gearNameOfKind, plateTexOf: plateTexOfFood, plateTexHasFood: plateTexHasFood,
+    plateTexIds: PLATE_TEX_IDS.slice(),
+    faceOf: faceNameOf, faceOfIn: faceNameIn, faceUrgentAt: FACE_ICON.urgentAt,
+    faceKinds: FACE_KINDS.slice(), faceMoods: FACE_MOODS.slice(), facePoolSeed: FACE_POOL_SEED,
+    facePoolOf: facePoolOf, facePoolFor: facePoolFor, faceMoodOf: faceMoodOf,
+    faceSatisfied: function (c) { return faceSatisfied(c); }, faceSatisfiedRule: FACE_SATISFIED_RULE,
+    foodIds: FOOD_IDS.slice(), gearIds: GEAR_ICON.ids.slice(), faceIds: FACE_ICON.ids.slice(),
+    uiIds: UI_ICON.ids.slice(), starSub: STAR_SUB,
+    ready: function () {
+      return { food:readyCount(FOOD_ICON), gear:readyCount(GEAR_ICON), face:readyCount(FACE_ICON),
+               ui:readyCount(UI_ICON), bg:(bgIcon() ? 1 : 0) };
+    },
+    total: function () {
+      var n = 1;
+      for (var i = 0; i < ICON_GROUPS.length; i++) n += ICON_GROUPS[i].ids.length;
+      return n;
+    }
+  };
+
+
+  var PAL = {
+    ink:"#f6efe2"

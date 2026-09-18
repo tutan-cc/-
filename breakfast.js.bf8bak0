@@ -1023,16 +1023,12 @@
   FOOD_ICON.spec = ICON.food; FOOD_ICON.span = 36; FOOD_ICON.scale = 1;
   FOOD_ICON.forceFail = false; FOOD_ICON.forceNull = false;
   var GEAR_ICON = mkIconGroup("gear", "art/icons/gear/",
-    ["pot", "griddle", "steamer",
-     "plate_empty", "plate_egg", "plate_bacon", "plate_sandwich", "plate_bun", "plate_salad",
-     "juice_jug", "tray", "tools"]);
+    ["pot", "griddle", "steamer", "plate_empty", "plate_egg_bacon", "plate_bun", "juice_jug", "tray", "tools"]);
   var FACE_ICON = mkIconGroup("face", "art/icons/faces/",
-    ["stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent",
-     "fang_calm", "fang_urgent", "fang_happy", "lu_calm", "lu_urgent", "lu_happy"]);
+    ["stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent"]);
   var UI_ICON = mkIconGroup("ui", "art/icons/ui/",
     ["bar_empty", "bar_full", "stars", "btn_wood", "btn_red", "coin", "bulb", "check", "cross"]);
-  /* 头像阈值：耐心 ≤ 40% → 「着急」那张脸；> 40% → 「平静」；全部拿到 → 「满意」（见 faceMoodOf）*/
-  FACE_ICON.urgentAt = 0.40;
+  FACE_ICON.urgentAt = 0.40;             // 耐心 ≤ 40% → 换成「着急」那张脸（阈值常量，可调）
   /** 组基准路径（带结尾 /）：页面目录 + 组目录；测试覆盖时用 ICON_ROOT 顶掉页面目录 */
   function groupBase(g) { return (ICON_ROOT || pageDir()) + g.dir; }
   function initIconGroup(g) {
@@ -1060,85 +1056,27 @@
      于是 盘带 328..438 / 锅带 450..608 / 桶带 624..776 三段**全部**落在木台面上，
      而顾客卡与顶栏落在街景上 —— 游戏元素一个都没动（列对齐有无头断言保护）。
      裁切参数与测量过程在 art/_assets_report.json（脚本 _bf_assets_gen.cjs 自动求出）。 */
-  /* ── 背景底图（两级回退）─────────────────────────────────────────────────────
-     首选 art/bg/kitchen2.png（本批 Lovart 新素材：**完整樱花树冠 + 完整开放厨房与货架**，
-     主体离边 ≥5% 安全边距）；加载失败 → art/bg/kitchen.png（上一轮 v1）；
-     再失败 → drawBg 里的程序化木台 / 樱瓣 / 暖光底。功能一点不少。
-
-     v2 的裁切策略与代价（参数全部由 _bf_assets2_gen.cjs 从源图自动求出，
-     写进 art/_assets2_report.json，这里只是把测量结果抄成常量给无头断言校验）：
-       源图 2048×1152，测出「干净木台面上沿」源 y=704；
-       画布 1180×790，若把台面精确对到 LAY.colHeaderY=318，需要放大到 scale≈1.05，
-       左右各裁 464px（源宽的 45%）→ 樱花树冠与右侧货架会被裁掉，正是 v2 要避免的。
-       所以 v2 选择**保整幅宽**：scale = 1180/2048 = 0.5762，左右 0 裁切；
-       代价是台面在画布上落到 y≈406（而非 318），画布底部缺的 126px 用
-       「台面木纹纵向平铺 + 向底端线性压深 40%」补满（木纹横向连续，接缝不可见）。
-       ⇒ 9 列元素（盘带 328..438 / 锅带 450..608 / 桶带 624..776）位置一字未动，
-         台面把它们全部覆盖（台面顶 406 在盘带之内 → 盘/锅/桶三段都画在木台面上）。      */
-  var BG_SLOTS = [
-    { id:"kitchen2", name:"kitchen2.png", img:null, loaded:0, failed:0 },
-    { id:"kitchen",  name:"kitchen.png",  img:null, loaded:0, failed:0 }
-  ];
-  var BG_META = {
-    kitchen2: {
-      srcSpec: { w: 2048, h: 1152 },
-      srcWindow: { x: 0, y: 0, w: 2048, h: 1371 },        // 覆盖源图整幅宽（1371 = 790 / 0.5762）
-      scale: 0.576172,
-      counterTopSrcY: 704, counterTopInCrop: 704, counterTopCanvasY: 405.7,
-      strategy: "full-width", croppedPerSide: 0, croppedPercent: 0, bottomFillPx: 126,
-      aspect: 1180 / 790
-    },
-    kitchen: {
-      srcSpec: { w: 2048, h: 1152 },
-      srcWindow: { x: 428, y: 354, w: 1193, h: 798 },
-      scale: 1.0,
-      counterTopSrcY: 675, counterTopInCrop: 321, counterTopCanvasY: 318,
-      strategy: "v1-cover-crop", croppedPerSide: 0, croppedPercent: 0, bottomFillPx: 0,
-      aspect: 1193 / 798
-    }
-  };
   var BG_IMG = {
-    dir: "art/bg/", name: "kitchen2.png", img: null, loaded: 0, failed: 0,
-    /* 兼容旧字段（v1 的裁切测量结果仍然保留，断言读得到）*/
-    srcSpec: { w: 2048, h: 1152 },
-    crop: { x: 428, y: 354, w: 1193, h: 798 },
+    dir: "art/bg/", name: "kitchen.png", img: null, loaded: 0, failed: 0,
+    srcSpec: { w: 2048, h: 1152 },                       // 原素材尺寸
+    crop: { x: 428, y: 354, w: 1193, h: 798 },           // 源图里被裁下来的那块
     counterTopSrcY: 675, counterTopInCrop: 321, counterTopCanvasY: 318,
-    scrimTop: 0.66, scrimAll: 0.32, bottomFillDark: 0.40,     // 可读性压暗：整幅 32%
-    fillFromCounter: true                                     // 底部补带取「木台面木纹条」
+    scrimTop: 0.66, scrimAll: 0.32                       // 可读性压暗：整幅 32%（金黄色木台压成深木色，金色小字才读得出）
   };
-  /** 当前生效的背景槽（v2 可用 → v2；否则 v1；都不可用 → null）*/
-  function bgSlotActive() {
-    for (var i = 0; i < BG_SLOTS.length; i++) {
-      var s = BG_SLOTS[i];
-      if (s.img) { var nw = s.img.naturalWidth || 0; if (nw > 0 && s.img.complete !== false) return s; }
-    }
-    return null;
-  }
   function initBackground() {
-    for (var i = 0; i < BG_SLOTS.length; i++) {
-      var s = BG_SLOTS[i];
-      s.img = null; s.loaded = 0; s.failed = 0;
-      if (!root.Image || FOOD_ICON.forceNull) continue;
-      var img = null;
-      try { img = new root.Image(); } catch (e) { img = null; }
-      if (!img) { s.failed++; continue; }
-      s.img = img;
-      if (FOOD_ICON.forceFail) { s.failed++; continue; }
-      (function (slot) {
-        slot.img.onload = function () { slot.loaded++; };
-        slot.img.onerror = function () { slot.failed++; };
-      })(s);
-      try { img.src = (ICON_ROOT || pageDir()) + BG_IMG.dir + s.name; } catch (e) { s.failed++; }
-    }
-    /* 兼容字段：让 art.bg() / 旧断言仍能读到「当前生效那张」的信息 */
-    var act = bgSlotActive();
-    BG_IMG.img = act ? act.img : (BG_SLOTS[0].img || BG_SLOTS[1].img || null);
-    BG_IMG.name = act ? act.name : BG_SLOTS[0].name;
-    BG_IMG.loaded = BG_SLOTS[0].loaded + BG_SLOTS[1].loaded;
-    BG_IMG.failed = BG_SLOTS[0].failed + BG_SLOTS[1].failed;
+    BG_IMG.img = null; BG_IMG.loaded = 0; BG_IMG.failed = 0;
+    if (!root.Image || FOOD_ICON.forceNull) return BG_IMG;
+    var img = null;
+    try { img = new root.Image(); } catch (e) { img = null; }
+    if (!img) { BG_IMG.failed++; return BG_IMG; }
+    BG_IMG.img = img;
+    if (FOOD_ICON.forceFail) { BG_IMG.failed++; return BG_IMG; }
+    img.onload = function () { BG_IMG.loaded++; };
+    img.onerror = function () { BG_IMG.failed++; };
+    try { img.src = (ICON_ROOT || pageDir()) + BG_IMG.dir + BG_IMG.name; } catch (e) { BG_IMG.failed++; }
     return BG_IMG;
   }
-
+  /** 重新预加载**全部**贴图（4 组 + 背景）；baseDir 给测试用来强制「全部加载失败」 */
   function initIcons(baseDir) {
     ICON_ROOT = baseDir ? String(baseDir) : "";
     if (ICON_ROOT && ICON_ROOT.charAt(ICON_ROOT.length - 1) !== "/") ICON_ROOT += "/";
@@ -1154,6 +1092,7 @@
     return (nw > 0 && img.complete !== false) ? img : null;
   }
   function foodIcon(id) { return assetOf(FOOD_ICON, id); }
+  function bgIcon() { var img = BG_IMG.img; if (!img) return null; var nw = img.naturalWidth || 0; return (nw > 0 && img.complete !== false) ? img : null; }
   function readyCount(g) { var n = 0; for (var i = 0; i < g.ids.length; i++) if (assetOf(g, g.ids[i])) n++; return n; }
   /** 9 张食材里有几张真的能画（给 debug / 测试用）*/
   function iconReadyCount() { return readyCount(FOOD_ICON); }
@@ -1170,75 +1109,20 @@
   function initFoodIcons(baseDir) { initIcons(baseDir); return FOOD_ICON; }
 
   /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）─────────────── */
-  /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）───────────────
-     盘位贴图：本批 Lovart 素材把「盘面」拆成了 6 张一一对应的图
-     （空盘 / 只装煎蛋 / 只装培根 / 只装三明治 / 只装包子 / 只装沙拉）。
-     上一轮的缺陷：煎蛋盘与培根盘共用 plate_egg_bacon.png → 盘上分不清食材。
-     现在按「盘上实际食物」映射，每种食物一张：                             */
   var GEAR_OF_KIND = { pot:"pot", griddle:"griddle", steamer:"steamer", counter:"tray", juicer:"juice_jug" };
-  var PLATE_TEX_OF_FOOD = {
-    egg:"plate_egg", bacon:"plate_bacon", sandwich:"plate_sandwich",
-    bun:"plate_bun", salad:"plate_salad"
-  };
-  var PLATE_TEX_IDS = ["plate_empty", "plate_egg", "plate_bacon", "plate_sandwich", "plate_bun", "plate_salad"];
-  /** 盘位贴图：每种食物一张专属盘；没有专属盘的食材（白粥/汤/果汁/牛奶）用空盘 + 食材贴图 */
+  var PLATE_TEX_OF_FOOD = { egg:"plate_egg_bacon", bacon:"plate_egg_bacon", bun:"plate_bun" };
+  var FACE_KINDS = ["stud", "office", "uncle"];          // 学生(红帽) / 女白领 / 胖大爷
+  function gearNameOfKind(kind) { return GEAR_OF_KIND[kind] || null; }
+  /** 盘位贴图：空盘 plate_empty；煎蛋/培根 → 煎蛋培根盘；包子 → 包子盘；其余食物盘 = 空盘 + 食物贴图 */
   function plateTexOfFood(foodId) { return foodId ? (PLATE_TEX_OF_FOOD[foodId] || "plate_empty") : "plate_empty"; }
-  /** 这张盘贴图里自带食物吗（自带就不再叠一份食材贴图，避免一盘两样）*/
+  /** 这张盘贴图里自带食物吗（自带就不再叠一份食物贴图，避免一盘两样）*/
   function plateTexHasFood(foodId) { return !!(foodId && PLATE_TEX_OF_FOOD[foodId]); }
-  /* ── 顾客角色池（要求：5 位外部形象随机分配，固定种子保证可复现）──────────────
-     学生 stud（红帽·双肩包）/ 白领 office / 大爷 uncle 是上一轮的 3 位；
-     本批新增女房东 fang / 女护士 lu。**卡位仍然是 3 张**，只换头像，不改布局。 */
-  var FACE_KINDS = ["stud", "office", "uncle", "fang", "lu"];   // 5 位角色
-  var FACE_MOODS = ["calm", "urgent", "happy"];                 // 三态
-  var FACE_POOL_SEED = 20240918;                                // 固定种子（常量，可调）
-  /** 固定种子的可复现随机角色池：同一 seed 永远得到同一套顺序 → 无头断言 / 出图都稳定。
-      用 prand（纯函数）+ Fisher–Yates；纯函数、无副作用、可单测。            */
-  function facePoolOf(seed) {
-    var s = (seed === undefined || seed === null || !isFinite(Number(seed))) ? FACE_POOL_SEED : Math.round(Number(seed));
-    var pool = FACE_KINDS.slice(), i, k, t;
-    for (i = pool.length - 1; i > 0; i--) {
-      k = Math.floor(prand(i * 7.13 + s * 0.0001) * (i + 1)) % (i + 1);
-      t = pool[i]; pool[i] = pool[k]; pool[k] = t;
-    }
-    return pool;
-  }
-  /** 本局角色池（有 cfg.seed 用 seed，否则用固定常量 → 永远可复现）*/
-  function facePoolFor(state) {
-    var s = (state && state.cfg && state.cfg.seed !== undefined) ? state.cfg.seed : FACE_POOL_SEED;
-    return facePoolOf(s);
-  }
-  /** 「满意」判据 = 订单全部拿到（与 remainOf(c) <= 0 同源，这里显式写清并留常量说明）*/
-  var FACE_SATISFIED_RULE = "order.length > 0 且 done 覆盖全部 order（等价于 remainOf(c) <= 0）";
-  function faceSatisfied(c) {
-    if (!c) return false;
-    var order = c.order || [], done = c.done || [];
-    if (!order.length) return false;
-    for (var i = 0; i < order.length; i++) if (done.indexOf(order[i]) < 0) return false;
-    return true;
-  }
-  /** 情绪判定（纯函数）：全部拿到（正在离场满意）→ happy；耐心 > 40% → calm；≤ 40% → urgent */
-  function faceMoodOf(cid, patienceRatio, satisfied) {
-    if (satisfied === true) return "happy";
+  /** 顾客头像贴图名：耐心 > urgentAt → 平静，≤ urgentAt → 着急；角色按顾客编号轮换 */
+  function faceNameOf(cid, patienceRatio) {
     var n = Number(patienceRatio); if (!(n >= 0)) n = 1;
-    return n > FACE_ICON.urgentAt ? "calm" : "urgent";
+    var k = Math.abs(Math.round(Number(cid) || 0)) % FACE_KINDS.length;
+    return FACE_KINDS[k] + (n > FACE_ICON.urgentAt ? "_calm" : "_urgent");
   }
-  /** 顾客头像贴图名（三态）。cid 可以是顾客编号或顾客对象；state 给了就用本局角色池。 */
-  function faceNameIn(state, cid, patienceRatio, satisfied) {
-    var pool = facePoolFor(state);
-    var n = Math.round(Number(cid)); if (!isFinite(n)) n = 0;
-    var k = pool[Math.abs(n) % pool.length];
-    return k + "_" + faceMoodOf(cid, patienceRatio, satisfied);
-  }
-  /** 兼容旧调用签名 faceNameOf(cid, ratio, satisfied)：用**常量池**（与 facePoolFor(null) 一致）*/
-  function faceNameOf(cid, patienceRatio, satisfied) { return faceNameIn(null, cid, patienceRatio, satisfied); }
-  /** 5 位角色 × 3 种情绪 = 15 张（本批切了女房东/女护士共 6 张，上一轮 3 位角色各有 calm/urgent 两张；
-      缺的「第 3 位角色的 happy」等一律回退矢量头像，见 drawCustomerFace）*/
-  function faceTexIds() {
-    var out = [];
-    for (var i = 0; i < FACE_KINDS.length; i++) for (var j = 0; j < FACE_MOODS.length; j++) out.push(FACE_KINDS[i] + "_" + FACE_MOODS[j]);
-    return out;
-  }
-
   /* stars.png 里三颗星的子框（相对 stars.png 画布的比例）——由 _bf_assets_gen.cjs
      在源图上按「列投影的 3 段独立游程」测出来，写进 art/_assets_report.json */
   var STAR_SUB = [
@@ -1267,8 +1151,6 @@
     return true;
   }
   /** 背景铺满画布的参数：素材比例与画布一致 → 直接整幅铺；换了素材比例不符 → 运行期 cover 裁切 */
-  /* ── 背景铺满参数：优先用**当前生效那张背景自己的比例**（换了素材也不用改常量），
-        比例不符就运行期 cover 居中裁切；比例一致（v1/v2 都是 1180:790）→ 直接整幅铺。 */
   function bgDrawArgs(img) {
     var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
     if (!(nw > 0) || !(nh > 0)) return null;
@@ -1278,26 +1160,11 @@
     if (arImg > arView) { sh = nh; sw = nh * arView; } else { sw = nw; sh = nw / arView; }
     return { sx:(nw - sw) / 2, sy:(nh - sh) / 2, sw:sw, sh:sh, dx:0, dy:0, dw:W, dh:H, mode:"cover" };
   }
-  /** 当前生效的背景源（槽位 + 测量常量）；都不可用 → null（drawBg 走程序化底）*/
-  function bgSource() {
-    var s = bgSlotActive();
-    if (!s) return null;
-    var meta = BG_META[s.id] || BG_META.kitchen;
-    return { img:s.img, slot:s, id:s.id, meta:meta, scale:meta.scale };
-  }
-  /** 兼容旧名：当前背景图（没就绪 → null）*/
-  function bgIcon() { var src = bgSource(); return src ? src.img : null; }
-  /** 木台面上沿真实落在画布上的 y：按「当前生效那张背景」的实际比例算
-      （v1 整幅铺 → 321/798*790 = 317.8；v2 整幅铺 → 704/1371*790 = 405.7）
-      无头 / 单测用它断言「9 列元素一个都没被挪动」。 */
+  /** 木台面上沿落在画布上的 y（无头 / 单测用来断言「游戏元素一个都没被挪动」）*/
   function counterTopCanvasY() {
-    var src = bgSource();
-    if (!src || !src.img) return BG_META.kitchen.counterTopCanvasY;          // 没有贴图 → 报 v1 的几何常量
-    var nw = src.img.naturalWidth || 0, nh = src.img.naturalHeight || 0;
-    if (!(nw > 0) || !(nh > 0)) return BG_META.kitchen.counterTopCanvasY;
-    return Math.round(src.meta.counterTopSrcY * H / nh * 10) / 10;
+    var c = BG_IMG.crop;
+    return Math.round(BG_IMG.counterTopInCrop * H / c.h * 10) / 10;
   }
-
   initIcons();
 
   /** 星级贴图：从 stars.png 里取第 i%3 颗星（9 参 drawImage 的源矩形裁剪）；dim=true 画成空星。
@@ -1324,8 +1191,6 @@
 
   /** 贴图映射与加载状态（单测 / 无头断言直接读；不需要开局就能问）
       —— 这是「映射完整 + 回退可用」这两条验收的机器可读出口。 */
-  /** 贴图映射与加载状态（单测 / 无头断言直接读；不需要开局就能问）
-      —— 这是「映射完整 + 回退可用」这两条验收的机器可读出口。 */
   var art = {
     groups: function () {
       return ICON_GROUPS.map(function (g2) {
@@ -1337,36 +1202,16 @@
       for (var i = 0; i < ICON_GROUPS.length; i++) if (ICON_GROUPS[i].key === key) return ICON_GROUPS[i];
       return null;
     },
-    /** 背景（两级回退）：ready/id 是**当前生效**那张；slots 是全部候选与各自的加载状态 */
     bg: function () {
-      var src = bgSource();
-      var meta = src ? src.meta : BG_META.kitchen;
-      var slots = BG_SLOTS.map(function (s) {
-        return { id:s.id, name:s.name, file:"art/bg/" + s.name, loaded:s.loaded, failed:s.failed,
-                 ready:!!(s.img && (s.img.naturalWidth || 0) > 0 && s.img.complete !== false) };
-      });
-      return { dir:BG_IMG.dir, name: src ? src.slot.name : BG_SLOTS[0].name,
-               file: BG_IMG.dir + (src ? src.slot.name : BG_SLOTS[0].name),
-               active: src ? src.id : null, slot: src ? src.slot.id : null, slots: slots,
-               fallback: ["kitchen2", "kitchen", "vector"],
-               spec:{ w: meta.srcWindow.w, h: meta.srcWindow.h }, srcSpec: meta.srcSpec,
-               crop: { x: meta.srcWindow.x, y: meta.srcWindow.y, w: meta.srcWindow.w, h: meta.srcWindow.h },
-               srcWindow: meta.srcWindow, scale: meta.scale, strategy: meta.strategy,
-               croppedPerSide: meta.croppedPerSide, croppedPercent: meta.croppedPercent,
-               bottomFillPx: meta.bottomFillPx,
-               counterTopSrcY: meta.counterTopSrcY, counterTopInCrop: meta.counterTopInCrop,
-               counterTopCanvasY: counterTopCanvasY(), counterTopCanvasYTarget: BG_IMG.counterTopCanvasY,
-               view:{ w:VIEW.w, h:VIEW.h }, ready:!!src, loaded:BG_IMG.loaded, failed:BG_IMG.failed };
+      return { dir:BG_IMG.dir, name:BG_IMG.name, file:BG_IMG.dir + BG_IMG.name,
+               spec:{ w:BG_IMG.crop.w, h:BG_IMG.crop.h }, srcSpec:BG_IMG.srcSpec, crop:BG_IMG.crop,
+               counterTopSrcY:BG_IMG.counterTopSrcY, counterTopInCrop:BG_IMG.counterTopInCrop,
+               counterTopCanvasY:counterTopCanvasY(), counterTopCanvasYTarget:BG_IMG.counterTopCanvasY,
+               view:{ w:VIEW.w, h:VIEW.h }, ready:!!bgIcon(), loaded:BG_IMG.loaded, failed:BG_IMG.failed };
     },
     bgDraw: function () { var img = bgIcon(); return img ? bgDrawArgs(img) : null; },
-    /** 背景候选清单（断言「v2 优先、v1 兜底」用）*/
-    bgSlots: function () { return BG_SLOTS.map(function (s) { return s.id + ":" + s.name; }); },
     gearOfKind: gearNameOfKind, plateTexOf: plateTexOfFood, plateTexHasFood: plateTexHasFood,
-    plateTexIds: PLATE_TEX_IDS.slice(),
-    faceOf: faceNameOf, faceOfIn: faceNameIn, faceUrgentAt: FACE_ICON.urgentAt,
-    faceKinds: FACE_KINDS.slice(), faceMoods: FACE_MOODS.slice(), facePoolSeed: FACE_POOL_SEED,
-    facePoolOf: facePoolOf, facePoolFor: facePoolFor, faceMoodOf: faceMoodOf,
-    faceSatisfied: function (c) { return faceSatisfied(c); }, faceSatisfiedRule: FACE_SATISFIED_RULE,
+    faceOf: faceNameOf, faceUrgentAt: FACE_ICON.urgentAt,
     foodIds: FOOD_IDS.slice(), gearIds: GEAR_ICON.ids.slice(), faceIds: FACE_ICON.ids.slice(),
     uiIds: UI_ICON.ids.slice(), starSub: STAR_SUB,
     ready: function () {
@@ -1868,49 +1713,16 @@
     /* ── 渲染（Canvas 只画食物 / 锅具 / 盘子 / 卡片底与进度环，文字全部用真系统字体）── */
     function fontOf(px, bold) { return (bold ? "bold " : "") + px + "px system-ui,'Segoe UI','Microsoft YaHei',sans-serif"; }
 
-    /* 背景：最底层先铺 art/bg/kitchen2.png（**两级回退**：kitchen2 → kitchen → 程序化底）。
-       v2 是「整幅宽铺满」（左右 0 裁切，完整樱花树冠 + 完整货架都在画面里），
-       木台面上沿落在画布 y≈406；画布底部比素材多出来的那 126px 用
-       「台面木纹纵向平铺 + 向底端线性压深 40%」补齐（木纹横向连续 → 看不出接缝）。
-       铺完再叠两层「可读性压暗」；两张贴图都加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底。 */
+    /* 背景：最底层先铺 art/bg/kitchen.png（整幅铺满画布 = cover；素材已按画布比例
+       裁好，木台面上沿正好落在专属盘带顶部 y=318），再叠两层「可读性压暗」；
+       贴图加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底（功能一点不少）。 */
     function drawBg() {
-      var src = bgSource();
-      var bimg = src ? src.img : null, bargs = bimg ? bgDrawArgs(bimg) : null;
+      var bimg = bgIcon(), bargs = bimg ? bgDrawArgs(bimg) : null;
       IA.drawn.bg = !!bargs;
       IA.drawn.bgMode = bargs ? bargs.mode : "vector";
-      IA.drawn.bgSlot = src ? src.id : "vector";
-      IA.drawn.bgBand = 0;
       if (bargs) {
-        var nwB = bimg.naturalWidth || 0, nhB = bimg.naturalHeight || 0;
-        var nwS = bargs.sw, nhS = bargs.sh;
-        /* 先整幅铺满（fit / cover 由 bgDrawArgs 定），再补底部木纹带 */
-        g.drawImage(bimg, bargs.sx, bargs.sy, nwS, nhS, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
-        IA.drawn.bgW = nwS; IA.drawn.bgH = nhS;
-        var bandY = VIEW.h, meta = src ? src.meta : null;
-        if (meta && meta.counterTopSrcY > 0 && nhS > 0) {
-          /* 素材底边画到画布哪一行（cover 裁切时算上 sy 偏置） */
-          bandY = Math.max(0, Math.min(VIEW.h, (nhS - bargs.sy) * VIEW.h / nhS));
-        }
-        var bandH = VIEW.h - bandY;
-        if (bandH > 0.5 && meta && nhB > 0) {                      // 需要补带
-          var mTop = meta.counterTopSrcY, sy0 = bargs.sy + mTop;   // 木台面木纹条的起始源行
-          var rowH = Math.max(1, nhB - mTop);
-          var gh = Math.max(1, Math.round(rowH * VIEW.w / nwB));   // 平铺一格在画布上的高度
-          g.save();
-          g.beginPath(); g.rect(0, bandY, VIEW.w, bandH); g.clip();
-          for (var by = bandY; by < VIEW.h + 1; by += gh) {
-            var hh = Math.min(gh, VIEW.h - by);
-            if (hh <= 0) break;
-            g.drawImage(bimg, bargs.sx, sy0, nwB - bargs.sx, rowH, 0, by, VIEW.w, hh);
-          }
-          /* 向画面底端线性压深（台面往前伸出画面的暗部） */
-          var dg = g.createLinearGradient(0, bandY, 0, VIEW.h);
-          dg.addColorStop(0, "rgba(8,5,3,0)");
-          dg.addColorStop(1, "rgba(8,5,3," + BG_IMG.bottomFillDark + ")");
-          g.fillStyle = dg; g.fillRect(0, bandY, VIEW.w, bandH);
-          g.restore();
-          IA.drawn.bgBand = Math.round(bandH);
-        }
+        g.drawImage(bimg, bargs.sx, bargs.sy, bargs.sw, bargs.sh, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
+        IA.drawn.bgW = bargs.sw; IA.drawn.bgH = bargs.sh;
         g.fillStyle = "rgba(12,7,4," + BG_IMG.scrimAll + ")"; g.fillRect(0, 0, W, H);
         var sgr = g.createLinearGradient(0, LAY.topH, 0, LAY.legend.y + LAY.legend.h);
         sgr.addColorStop(0, "rgba(12,7,4," + BG_IMG.scrimTop + ")"); sgr.addColorStop(1, "rgba(12,7,4,0)");
@@ -1940,7 +1752,6 @@
       rg.addColorStop(0, "rgba(255,170,80,.20)"); rg.addColorStop(1, "rgba(255,170,80,0)");
       g.fillStyle = rg; g.fillRect(0, LAY.topH, W, H - LAY.topH);
     }
-
 
 
     function drawTopBar() {
@@ -2013,36 +1824,23 @@
       g.beginPath(); g.arc(cx, cy, r * 0.70, 0, Math.PI * 2); g.stroke();
     }
 
-    /** 顾客头像贴图（三态）：订单全部拿到（正在离场满意）→ happy；耐心 > 40% → calm；
-        ≤ 40% → urgent。角色从**本局角色池**里按顾客编号取（5 位：学生/白领/大爷/女房东/护士）。
-        个别「角色 × 情绪」没切到贴图（例如第 3 位角色的 happy）→ 先退回平静脸，
-        再不行才回退矢量头像 —— 语义不变，离线也能玩。                              */
+    /** 顾客头像贴图：耐心 > FACE_ICON.urgentAt（40%）→ 平静脸，≤ 40% → 着急脸；
+        贴图不可用 → 回退程序化头像 drawAvatar（离线也能玩，语义不变）。 */
     function drawCustomerFace(box, c) {
-      var st0 = curState();
       var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
-      var happy = faceSatisfied(c);
-      var mood = faceMoodOf(c.id, n, happy);
-      var name = faceNameIn(st0, c.id, n, happy);
+      var name = faceNameOf(c.id, n);
       var img = assetOf(FACE_ICON, name);
-      if (!img && mood === "happy") {                    // 缺「满意」贴图 → 退回平静脸（比回退矢量更自然）
-        name = faceNameIn(st0, c.id, n, false);
-        img = assetOf(FACE_ICON, name);
-        IA.drawn.faceHappyFallback = (IA.drawn.faceHappyFallback || 0) + 1;
-      }
       if (img && drawAssetFit(g, img, { x: box.x + 10, y: box.y + 22, w: 64, h: 68 }, null)) {
         IA.drawn.faces = (IA.drawn.faces || 0) + 1;
-        IA.drawn.faceMood = mood;
+        IA.drawn.faceMood = (n > FACE_ICON.urgentAt) ? "calm" : "urgent";
         IA.drawn.faceName = name;
-        IA.drawn.faceHappy = happy;
         return true;
       }
       IA.drawn.faceMood = "vector";
       IA.drawn.faceName = "";
-      IA.drawn.faceMoodWanted = mood;
       drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
       return false;
     }
-
 
     function drawCustomer(c, box, slot) {
 
@@ -2746,17 +2544,15 @@
                  uiCoin:d.uiCoin || 0, uiCheck:d.uiCheck || 0, uiCross:d.uiCross || 0,
                  gearTools:d.gearTools || 0 };
       },
-      /** 顾客头像（三态）：耐心比例 / 是否全部拿到 → calm / urgent / happy；出图与断言都读它 */
+      /** 顾客头像：耐心比例 → 该用平静脸还是着急脸（出图与断言都读它）*/
       faces: function () {
         var st = curState(); if (!st) return [];
         return activeCustomers(st).map(function (c, i) {
           var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
-          var happy = faceSatisfied(c);
-          var name = faceNameIn(st, c.id, n, happy);
+          var name = faceNameOf(c.id, n);
           var img = FACE_ICON.map[name];
           return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,
-                   mood:faceMoodOf(c.id, n, happy), happy:happy, kind:faceKindOf(c.id),
-                   pool:facePoolFor(st), satisfiedRule:FACE_SATISFIED_RULE,
+                   mood:(n > FACE_ICON.urgentAt ? "calm" : "urgent"),
                    ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === "string") ? img.src : "",
                    box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };
         });

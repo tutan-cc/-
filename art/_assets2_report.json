@@ -1,0 +1,1362 @@
+{
+  "at": "2026-09-18T09:31:07.297Z",
+  "view": {
+    "w": 1180,
+    "h": 790
+  },
+  "note": "第二批 Lovart 素材的全部切片/裁切参数（_bf_assets2_gen.cjs 自动求出，未写死）",
+  "sources": [
+    {
+      "slot": "plates",
+      "file": "lovart_d227a60381a7.png"
+    },
+    {
+      "slot": "kitchen2",
+      "file": "lovart_83728cd45e62.png"
+    },
+    {
+      "slot": "faces",
+      "file": "lovart_65d159fe6de7.png"
+    },
+    {
+      "slot": "mahjong",
+      "file": "lovart_1a973d87de0e.png"
+    },
+    {
+      "slot": "mj",
+      "file": "lovart_cef6ccfa89a5.png"
+    }
+  ],
+  "groups": [
+    {
+      "key": "plates",
+      "src": "art/lovart_d227a60381a7.png",
+      "srcW": 1448,
+      "srcH": 1086,
+      "grid": {
+        "rows": 2,
+        "cols": 3,
+        "colsPerRow": null,
+        "cellH": 543
+      },
+      "colCutByRow": [
+        [
+          493,
+          943
+        ],
+        [
+          487,
+          944
+        ]
+      ],
+      "rowCut": [
+        529.5
+      ],
+      "rowCutExact": [
+        true
+      ],
+      "target": 192,
+      "pad": 6,
+      "scale": 0.439024,
+      "maxSpan": 410,
+      "alphaCfg": {
+        "NW_BG": 252,
+        "T1": 244,
+        "UP_MAX": 16,
+        "BAND": 3
+      },
+      "boxScale": [
+        1.1,
+        1.1
+      ],
+      "items": [
+        {
+          "id": "plate_empty",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/gear/plate_empty.png",
+          "crop": {
+            "x": 33,
+            "y": 84,
+            "w": 460,
+            "h": 416
+          },
+          "cellContent": {
+            "x0": 72,
+            "y0": 114,
+            "x1": 465,
+            "y1": 468
+          },
+          "margin": {
+            "l": 39,
+            "r": 27,
+            "t": 30,
+            "b": 31
+          },
+          "target": 192,
+          "kb": 34.1,
+          "coverage": 60.5,
+          "colors": 3231,
+          "meanA": 150.8,
+          "drawSize": [
+            178,
+            159
+          ],
+          "offset": [
+            7,
+            17
+          ],
+          "srcBox": [
+            34,
+            27,
+            438,
+            388
+          ],
+          "alpha": {
+            "bg": 77250,
+            "full": 105640,
+            "semi": 5128,
+            "innerLight": 5599
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_egg",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/gear/plate_egg.png",
+          "crop": {
+            "x": 493,
+            "y": 84,
+            "w": 450,
+            "h": 422
+          },
+          "cellContent": {
+            "x0": 521,
+            "y0": 114,
+            "x1": 917,
+            "y1": 474
+          },
+          "margin": {
+            "l": 28,
+            "r": 25,
+            "t": 30,
+            "b": 31
+          },
+          "target": 192,
+          "kb": 44,
+          "coverage": 61.6,
+          "colors": 7031,
+          "meanA": 153.3,
+          "drawSize": [
+            178,
+            162
+          ],
+          "offset": [
+            7,
+            15
+          ],
+          "srcBox": [
+            24,
+            27,
+            429,
+            394
+          ],
+          "alpha": {
+            "bg": 73874,
+            "full": 106966,
+            "semi": 5440,
+            "innerLight": 6470
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_bacon",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/gear/plate_bacon.png",
+          "crop": {
+            "x": 943,
+            "y": 84,
+            "w": 464,
+            "h": 422
+          },
+          "cellContent": {
+            "x0": 961,
+            "y0": 114,
+            "x1": 1359,
+            "y1": 474
+          },
+          "margin": {
+            "l": 18,
+            "r": 47,
+            "t": 30,
+            "b": 31
+          },
+          "target": 192,
+          "kb": 56.3,
+          "coverage": 62,
+          "colors": 13850,
+          "meanA": 154.4,
+          "drawSize": [
+            179,
+            162
+          ],
+          "offset": [
+            7,
+            15
+          ],
+          "srcBox": [
+            13,
+            27,
+            419,
+            394
+          ],
+          "alpha": {
+            "bg": 78971,
+            "full": 109314,
+            "semi": 5287,
+            "innerLight": 4742
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_sandwich",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/gear/plate_sandwich.png",
+          "crop": {
+            "x": 22,
+            "y": 533,
+            "w": 465,
+            "h": 431
+          },
+          "cellContent": {
+            "x0": 67,
+            "y0": 563,
+            "x1": 464,
+            "y1": 931
+          },
+          "margin": {
+            "l": 45,
+            "r": 22,
+            "t": 30,
+            "b": 32
+          },
+          "target": 192,
+          "kb": 53.7,
+          "coverage": 63.3,
+          "colors": 11837,
+          "meanA": 157.8,
+          "drawSize": [
+            180,
+            166
+          ],
+          "offset": [
+            6,
+            13
+          ],
+          "srcBox": [
+            39,
+            26,
+            448,
+            402
+          ],
+          "alpha": {
+            "bg": 80982,
+            "full": 111961,
+            "semi": 5326,
+            "innerLight": 4575
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_bun",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/gear/plate_bun.png",
+          "crop": {
+            "x": 487,
+            "y": 530,
+            "w": 457,
+            "h": 462
+          },
+          "cellContent": {
+            "x0": 510,
+            "y0": 557,
+            "x1": 919,
+            "y1": 951
+          },
+          "margin": {
+            "l": 23,
+            "r": 24,
+            "t": 27,
+            "b": 40
+          },
+          "target": 192,
+          "kb": 63.6,
+          "coverage": 70.7,
+          "colors": 16810,
+          "meanA": 176.1,
+          "drawSize": [
+            184,
+            177
+          ],
+          "offset": [
+            4,
+            8
+          ],
+          "srcBox": [
+            18,
+            23,
+            437,
+            426
+          ],
+          "alpha": {
+            "bg": 77824,
+            "full": 129844,
+            "semi": 6076,
+            "innerLight": 506
+          },
+          "warn": ""
+        },
+        {
+          "id": "plate_salad",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/gear/plate_salad.png",
+          "crop": {
+            "x": 944,
+            "y": 532,
+            "w": 465,
+            "h": 433
+          },
+          "cellContent": {
+            "x0": 964,
+            "y0": 563,
+            "x1": 1361,
+            "y1": 933
+          },
+          "margin": {
+            "l": 20,
+            "r": 47,
+            "t": 31,
+            "b": 31
+          },
+          "target": 192,
+          "kb": 63,
+          "coverage": 63.6,
+          "colors": 17815,
+          "meanA": 158.6,
+          "drawSize": [
+            179,
+            166
+          ],
+          "offset": [
+            7,
+            13
+          ],
+          "srcBox": [
+            15,
+            27,
+            422,
+            405
+          ],
+          "alpha": {
+            "bg": 81333,
+            "full": 113564,
+            "semi": 5367,
+            "innerLight": 3588
+          },
+          "warn": ""
+        }
+      ],
+      "slot": "plates"
+    },
+    {
+      "key": "faces",
+      "src": "art/lovart_65d159fe6de7.png",
+      "srcW": 2016,
+      "srcH": 1344,
+      "grid": {
+        "rows": 2,
+        "cols": 3,
+        "colsPerRow": null,
+        "cellH": 672
+      },
+      "colCutByRow": [
+        [
+          672,
+          1344
+        ],
+        [
+          672,
+          1344
+        ]
+      ],
+      "rowCut": [
+        657
+      ],
+      "rowCutExact": [
+        true
+      ],
+      "target": 192,
+      "pad": 8,
+      "scale": 0.278922,
+      "maxSpan": 631,
+      "alphaCfg": {
+        "NW_BG": 248,
+        "T1": 236,
+        "UP_MAX": 20,
+        "BAND": 3
+      },
+      "boxScale": [
+        1,
+        1
+      ],
+      "items": [
+        {
+          "id": "fang_calm",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/faces/fang_calm.png",
+          "crop": {
+            "x": 162,
+            "y": 21,
+            "w": 468,
+            "h": 636
+          },
+          "cellContent": {
+            "x0": 175,
+            "y0": 39,
+            "x1": 615,
+            "y1": 637
+          },
+          "margin": {
+            "l": 13,
+            "r": 14,
+            "t": 18,
+            "b": 19
+          },
+          "target": 192,
+          "kb": 37.4,
+          "coverage": 41.5,
+          "colors": 9129,
+          "meanA": 102.9,
+          "drawSize": [
+            126,
+            169
+          ],
+          "offset": [
+            33,
+            12
+          ],
+          "srcBox": [
+            7,
+            15,
+            456,
+            619
+          ],
+          "alpha": {
+            "bg": 105435,
+            "full": 190407,
+            "semi": 8691,
+            "innerLight": 51
+          },
+          "warn": ""
+        },
+        {
+          "id": "fang_urgent",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/faces/fang_urgent.png",
+          "crop": {
+            "x": 717,
+            "y": 21,
+            "w": 539,
+            "h": 636
+          },
+          "cellContent": {
+            "x0": 732,
+            "y0": 41,
+            "x1": 1239,
+            "y1": 639
+          },
+          "margin": {
+            "l": 15,
+            "r": 16,
+            "t": 20,
+            "b": 17
+          },
+          "target": 192,
+          "kb": 42.7,
+          "coverage": 46,
+          "colors": 10676,
+          "meanA": 113.9,
+          "drawSize": [
+            144,
+            168
+          ],
+          "offset": [
+            24,
+            12
+          ],
+          "srcBox": [
+            12,
+            16,
+            528,
+            619
+          ],
+          "alpha": {
+            "bg": 129855,
+            "full": 210739,
+            "semi": 10532,
+            "innerLight": 52
+          },
+          "warn": ""
+        },
+        {
+          "id": "fang_happy",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/faces/fang_happy.png",
+          "crop": {
+            "x": 1397,
+            "y": 20,
+            "w": 467,
+            "h": 637
+          },
+          "cellContent": {
+            "x0": 1410,
+            "y0": 38,
+            "x1": 1849,
+            "y1": 637
+          },
+          "margin": {
+            "l": 13,
+            "r": 14,
+            "t": 18,
+            "b": 19
+          },
+          "target": 192,
+          "kb": 37.9,
+          "coverage": 42,
+          "colors": 9350,
+          "meanA": 104.2,
+          "drawSize": [
+            126,
+            169
+          ],
+          "offset": [
+            33,
+            12
+          ],
+          "srcBox": [
+            7,
+            14,
+            456,
+            620
+          ],
+          "alpha": {
+            "bg": 102851,
+            "full": 192900,
+            "semi": 8376,
+            "innerLight": 56
+          },
+          "warn": ""
+        },
+        {
+          "id": "lu_calm",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/faces/lu_calm.png",
+          "crop": {
+            "x": 159,
+            "y": 657,
+            "w": 457,
+            "h": 669
+          },
+          "cellContent": {
+            "x0": 172,
+            "y0": 676,
+            "x1": 601,
+            "y1": 1305
+          },
+          "margin": {
+            "l": 13,
+            "r": 14,
+            "t": 19,
+            "b": 20
+          },
+          "target": 192,
+          "kb": 39.2,
+          "coverage": 44,
+          "colors": 9357,
+          "meanA": 109.5,
+          "drawSize": [
+            123,
+            177
+          ],
+          "offset": [
+            35,
+            8
+          ],
+          "srcBox": [
+            7,
+            16,
+            448,
+            649
+          ],
+          "alpha": {
+            "bg": 101467,
+            "full": 202023,
+            "semi": 8368,
+            "innerLight": 698
+          },
+          "warn": ""
+        },
+        {
+          "id": "lu_urgent",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/faces/lu_urgent.png",
+          "crop": {
+            "x": 715,
+            "y": 657,
+            "w": 528,
+            "h": 670
+          },
+          "cellContent": {
+            "x0": 730,
+            "y0": 675,
+            "x1": 1226,
+            "y1": 1305
+          },
+          "margin": {
+            "l": 15,
+            "r": 16,
+            "t": 18,
+            "b": 21
+          },
+          "target": 192,
+          "kb": 43.5,
+          "coverage": 48.8,
+          "colors": 10543,
+          "meanA": 121.5,
+          "drawSize": [
+            141,
+            177
+          ],
+          "offset": [
+            26,
+            8
+          ],
+          "srcBox": [
+            10,
+            16,
+            515,
+            651
+          ],
+          "alpha": {
+            "bg": 127026,
+            "full": 222781,
+            "semi": 8936,
+            "innerLight": 2175
+          },
+          "warn": ""
+        },
+        {
+          "id": "lu_happy",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/faces/lu_happy.png",
+          "crop": {
+            "x": 1390,
+            "y": 657,
+            "w": 461,
+            "h": 670
+          },
+          "cellContent": {
+            "x0": 1403,
+            "y0": 676,
+            "x1": 1836,
+            "y1": 1306
+          },
+          "margin": {
+            "l": 13,
+            "r": 14,
+            "t": 19,
+            "b": 20
+          },
+          "target": 192,
+          "kb": 40.4,
+          "coverage": 44.1,
+          "colors": 9717,
+          "meanA": 109.6,
+          "drawSize": [
+            123,
+            178
+          ],
+          "offset": [
+            35,
+            7
+          ],
+          "srcBox": [
+            10,
+            15,
+            451,
+            651
+          ],
+          "alpha": {
+            "bg": 104451,
+            "full": 202361,
+            "semi": 8271,
+            "innerLight": 564
+          },
+          "warn": ""
+        }
+      ],
+      "slot": "faces"
+    },
+    {
+      "key": "mj",
+      "src": "art/lovart_cef6ccfa89a5.png",
+      "srcW": 1024,
+      "srcH": 1024,
+      "grid": {
+        "rows": 3,
+        "cols": 3,
+        "colsPerRow": null,
+        "cellH": 341.333
+      },
+      "colCutByRow": [
+        [
+          341,
+          658
+        ],
+        [
+          339,
+          677
+        ],
+        [
+          327,
+          656
+        ]
+      ],
+      "rowCut": [
+        358.5,
+        648
+      ],
+      "rowCutExact": [
+        true,
+        true
+      ],
+      "target": 256,
+      "pad": 8,
+      "scale": 0.797342,
+      "maxSpan": 301,
+      "alphaCfg": {
+        "NW_BG": 252,
+        "T1": 244,
+        "UP_MAX": 16,
+        "BAND": 3
+      },
+      "boxScale": [
+        1,
+        1
+      ],
+      "items": [
+        {
+          "id": "tile_white",
+          "row": 0,
+          "col": 0,
+          "file": "art/icons/mj/tile_white.png",
+          "crop": {
+            "x": 79,
+            "y": 33,
+            "w": 223,
+            "h": 310
+          },
+          "cellContent": {
+            "x0": 85,
+            "y0": 42,
+            "x1": 294,
+            "y1": 332
+          },
+          "margin": {
+            "l": 6,
+            "r": 7,
+            "t": 9,
+            "b": 10
+          },
+          "target": 256,
+          "kb": 50.8,
+          "coverage": 59.4,
+          "colors": 11952,
+          "meanA": 145.8,
+          "drawSize": [
+            174,
+            238
+          ],
+          "offset": [
+            41,
+            9
+          ],
+          "srcBox": [
+            2,
+            6,
+            219,
+            303
+          ],
+          "alpha": {
+            "bg": 9424,
+            "full": 57470,
+            "semi": 4209,
+            "innerLight": 521
+          },
+          "warn": ""
+        },
+        {
+          "id": "tile_fa",
+          "row": 0,
+          "col": 1,
+          "file": "art/icons/mj/tile_fa.png",
+          "crop": {
+            "x": 389,
+            "y": 36,
+            "w": 219,
+            "h": 310
+          },
+          "cellContent": {
+            "x0": 395,
+            "y0": 45,
+            "x1": 600,
+            "y1": 335
+          },
+          "margin": {
+            "l": 6,
+            "r": 7,
+            "t": 9,
+            "b": 10
+          },
+          "target": 256,
+          "kb": 63.2,
+          "coverage": 58.5,
+          "colors": 13579,
+          "meanA": 143.8,
+          "drawSize": [
+            171,
+            238
+          ],
+          "offset": [
+            43,
+            9
+          ],
+          "srcBox": [
+            2,
+            5,
+            216,
+            303
+          ],
+          "alpha": {
+            "bg": 8772,
+            "full": 56610,
+            "semi": 4042,
+            "innerLight": 371
+          },
+          "warn": ""
+        },
+        {
+          "id": "dice",
+          "row": 0,
+          "col": 2,
+          "file": "art/icons/mj/dice.png",
+          "crop": {
+            "x": 665,
+            "y": 131,
+            "w": 307,
+            "h": 212
+          },
+          "cellContent": {
+            "x0": 674,
+            "y0": 137,
+            "x1": 961,
+            "y1": 335
+          },
+          "margin": {
+            "l": 9,
+            "r": 10,
+            "t": 6,
+            "b": 7
+          },
+          "target": 256,
+          "kb": 59.2,
+          "coverage": 45.3,
+          "colors": 12280,
+          "meanA": 110.9,
+          "drawSize": [
+            235,
+            165
+          ],
+          "offset": [
+            11,
+            46
+          ],
+          "srcBox": [
+            6,
+            2,
+            300,
+            208
+          ],
+          "alpha": {
+            "bg": 19554,
+            "full": 42707,
+            "semi": 3680,
+            "innerLight": 1177
+          },
+          "warn": ""
+        },
+        {
+          "id": "chip_blue",
+          "row": 1,
+          "col": 0,
+          "file": "art/icons/mj/chip_blue.png",
+          "crop": {
+            "x": 59,
+            "y": 384,
+            "w": 253,
+            "h": 226
+          },
+          "cellContent": {
+            "x0": 66,
+            "y0": 390,
+            "x1": 303,
+            "y1": 602
+          },
+          "margin": {
+            "l": 7,
+            "r": 8,
+            "t": 6,
+            "b": 7
+          },
+          "target": 256,
+          "kb": 59.9,
+          "coverage": 42.3,
+          "colors": 14640,
+          "meanA": 103.9,
+          "drawSize": [
+            197,
+            178
+          ],
+          "offset": [
+            30,
+            39
+          ],
+          "srcBox": [
+            2,
+            1,
+            248,
+            223
+          ],
+          "alpha": {
+            "bg": 14528,
+            "full": 40555,
+            "semi": 3189,
+            "innerLight": 614
+          },
+          "warn": ""
+        },
+        {
+          "id": "chip_red",
+          "row": 1,
+          "col": 1,
+          "file": "art/icons/mj/chip_red.png",
+          "crop": {
+            "x": 367,
+            "y": 383,
+            "w": 254,
+            "h": 233
+          },
+          "cellContent": {
+            "x0": 374,
+            "y0": 390,
+            "x1": 612,
+            "y1": 607
+          },
+          "margin": {
+            "l": 7,
+            "r": 8,
+            "t": 7,
+            "b": 8
+          },
+          "target": 256,
+          "kb": 59.6,
+          "coverage": 43.3,
+          "colors": 15489,
+          "meanA": 106.7,
+          "drawSize": [
+            196,
+            181
+          ],
+          "offset": [
+            30,
+            38
+          ],
+          "srcBox": [
+            3,
+            2,
+            248,
+            228
+          ],
+          "alpha": {
+            "bg": 15342,
+            "full": 41844,
+            "semi": 3096,
+            "innerLight": 371
+          },
+          "warn": ""
+        },
+        {
+          "id": "chip_gold",
+          "row": 1,
+          "col": 2,
+          "file": "art/icons/mj/chip_gold.png",
+          "crop": {
+            "x": 705,
+            "y": 380,
+            "w": 254,
+            "h": 248
+          },
+          "cellContent": {
+            "x0": 712,
+            "y0": 387,
+            "x1": 950,
+            "y1": 619
+          },
+          "margin": {
+            "l": 7,
+            "r": 8,
+            "t": 7,
+            "b": 8
+          },
+          "target": 256,
+          "kb": 66.5,
+          "coverage": 49,
+          "colors": 18414,
+          "meanA": 120.8,
+          "drawSize": [
+            196,
+            192
+          ],
+          "offset": [
+            30,
+            32
+          ],
+          "srcBox": [
+            3,
+            3,
+            248,
+            243
+          ],
+          "alpha": {
+            "bg": 13439,
+            "full": 47487,
+            "semi": 3421,
+            "innerLight": 307
+          },
+          "warn": ""
+        },
+        {
+          "id": "tile_back",
+          "row": 2,
+          "col": 0,
+          "file": "art/icons/mj/tile_back.png",
+          "crop": {
+            "x": 63,
+            "y": 648,
+            "w": 237,
+            "h": 310
+          },
+          "cellContent": {
+            "x0": 70,
+            "y0": 654,
+            "x1": 291,
+            "y1": 944
+          },
+          "margin": {
+            "l": 7,
+            "r": 8,
+            "t": 6,
+            "b": 13
+          },
+          "target": 256,
+          "kb": 70.3,
+          "coverage": 56.6,
+          "colors": 14534,
+          "meanA": 139.5,
+          "drawSize": [
+            183,
+            237
+          ],
+          "offset": [
+            37,
+            10
+          ],
+          "srcBox": [
+            4,
+            3,
+            232,
+            299
+          ],
+          "alpha": {
+            "bg": 16325,
+            "full": 55290,
+            "semi": 3953,
+            "innerLight": 7
+          },
+          "warn": ""
+        },
+        {
+          "id": "ruler",
+          "row": 2,
+          "col": 1,
+          "file": "art/icons/mj/ruler.png",
+          "crop": {
+            "x": 345,
+            "y": 660,
+            "w": 278,
+            "h": 279
+          },
+          "cellContent": {
+            "x0": 353,
+            "y0": 668,
+            "x1": 613,
+            "y1": 929
+          },
+          "margin": {
+            "l": 8,
+            "r": 9,
+            "t": 8,
+            "b": 9
+          },
+          "target": 256,
+          "kb": 49,
+          "coverage": 30.3,
+          "colors": 8586,
+          "meanA": 73.7,
+          "drawSize": [
+            214,
+            215
+          ],
+          "offset": [
+            21,
+            21
+          ],
+          "srcBox": [
+            4,
+            4,
+            272,
+            273
+          ],
+          "alpha": {
+            "bg": 47072,
+            "full": 28743,
+            "semi": 3097,
+            "innerLight": 20
+          },
+          "warn": ""
+        },
+        {
+          "id": "ashtray",
+          "row": 2,
+          "col": 2,
+          "file": "art/icons/mj/ashtray.png",
+          "crop": {
+            "x": 661,
+            "y": 683,
+            "w": 320,
+            "h": 257
+          },
+          "cellContent": {
+            "x0": 670,
+            "y0": 690,
+            "x1": 970,
+            "y1": 931
+          },
+          "margin": {
+            "l": 9,
+            "r": 10,
+            "t": 7,
+            "b": 8
+          },
+          "target": 256,
+          "kb": 73.5,
+          "coverage": 60.5,
+          "colors": 16897,
+          "meanA": 149.5,
+          "drawSize": [
+            246,
+            199
+          ],
+          "offset": [
+            5,
+            29
+          ],
+          "srcBox": [
+            5,
+            3,
+            312,
+            252
+          ],
+          "alpha": {
+            "bg": 21024,
+            "full": 58872,
+            "semi": 3911,
+            "innerLight": 544
+          },
+          "warn": ""
+        }
+      ],
+      "slot": "mj"
+    }
+  ],
+  "backgrounds": [
+    {
+      "file": "art/bg/kitchen2.png",
+      "dir": "art/bg/",
+      "name": "kitchen2.png",
+      "spec": {
+        "w": 1180,
+        "h": 790
+      },
+      "srcSpec": {
+        "w": 2048,
+        "h": 1152
+      },
+      "srcWindow": {
+        "x": 0,
+        "y": 0,
+        "w": 2048,
+        "h": 1371
+      },
+      "scale": 0.576172,
+      "strategy": "full-width",
+      "scaleFullWidth": 0.576172,
+      "scaleCounterAligned": 1.053571,
+      "hVisMin": 750,
+      "croppedPerSide": 0,
+      "croppedPercent": 0,
+      "bottomFillPx": 126,
+      "bottomFill": "台面木纹条（源 y≥counterTop）纵向平铺 + 向画面底端线性压深 40%，无纯色渐变、无接缝",
+      "counterTopSrcY": 704,
+      "counterTopInCrop": 704,
+      "counterTopCanvasY": 405.7,
+      "counterTopCanvasYTarget": 318,
+      "counterTopDelta": 87.7,
+      "counterTopEnergy": 106.8,
+      "counterBelowColor": [
+        244,
+        177,
+        89
+      ],
+      "view": {
+        "w": 1180,
+        "h": 790
+      },
+      "bandX": [
+        512,
+        1536
+      ],
+      "topCandidates": [
+        {
+          "y": 1006,
+          "e": 158.69
+        },
+        {
+          "y": 1007,
+          "e": 151.23
+        },
+        {
+          "y": 983,
+          "e": 118.09
+        },
+        {
+          "y": 1005,
+          "e": 109.72
+        },
+        {
+          "y": 704,
+          "e": 106.8
+        },
+        {
+          "y": 1008,
+          "e": 106.45
+        },
+        {
+          "y": 702,
+          "e": 105.12
+        },
+        {
+          "y": 703,
+          "e": 102.3
+        },
+        {
+          "y": 981,
+          "e": 101.78
+        },
+        {
+          "y": 698,
+          "e": 100.39
+        },
+        {
+          "y": 696,
+          "e": 99.46
+        },
+        {
+          "y": 980,
+          "e": 99.24
+        }
+      ],
+      "key": "kitchen2",
+      "src": "art/lovart_83728cd45e62.png",
+      "srcName": "lovart_83728cd45e62.png"
+    },
+    {
+      "file": "art/bg/mahjong.png",
+      "dir": "art/bg/",
+      "name": "mahjong.png",
+      "spec": {
+        "w": 1721,
+        "h": 1152
+      },
+      "srcSpec": {
+        "w": 2048,
+        "h": 1152
+      },
+      "crop": {
+        "x": 164,
+        "y": 0,
+        "w": 1721,
+        "h": 1152
+      },
+      "aspectErr": 0.00016919726930325713,
+      "view": {
+        "w": 1180,
+        "h": 790
+      },
+      "anchor": {
+        "cx": 0.5,
+        "cy": 0.5
+      },
+      "cut": {
+        "l": 164,
+        "r": 163,
+        "t": 0,
+        "b": 0
+      },
+      "key": "mahjong",
+      "src": "art/lovart_1a973d87de0e.png",
+      "srcName": "lovart_1a973d87de0e.png"
+    }
+  ]
+}

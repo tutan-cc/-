@@ -1,0 +1,29 @@
+    /** 顾客头像贴图（三态）：订单全部拿到（正在离场满意）→ happy；耐心 > 40% → calm；
+        ≤ 40% → urgent。角色从**本局角色池**里按顾客编号取（5 位：学生/白领/大爷/女房东/护士）。
+        个别「角色 × 情绪」没切到贴图（例如第 3 位角色的 happy）→ 先退回平静脸，
+        再不行才回退矢量头像 —— 语义不变，离线也能玩。                              */
+    function drawCustomerFace(box, c) {
+      var st0 = curState();
+      var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
+      var happy = faceSatisfied(c);
+      var mood = faceMoodOf(c.id, n, happy);
+      var name = faceNameIn(st0, c.id, n, happy);
+      var img = assetOf(FACE_ICON, name);
+      if (!img && mood === "happy") {                    // 缺「满意」贴图 → 退回平静脸（比回退矢量更自然）
+        name = faceNameIn(st0, c.id, n, false);
+        img = assetOf(FACE_ICON, name);
+        IA.drawn.faceHappyFallback = (IA.drawn.faceHappyFallback || 0) + 1;
+      }
+      if (img && drawAssetFit(g, img, { x: box.x + 10, y: box.y + 22, w: 64, h: 68 }, null)) {
+        IA.drawn.faces = (IA.drawn.faces || 0) + 1;
+        IA.drawn.faceMood = mood;
+        IA.drawn.faceName = name;
+        IA.drawn.faceHappy = happy;
+        return true;
+      }
+      IA.drawn.faceMood = "vector";
+      IA.drawn.faceName = "";
+      IA.drawn.faceMoodWanted = mood;
+      drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
+      return false;
+    }

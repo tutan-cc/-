@@ -1,0 +1,3 @@
+  /** 灶位 kind → 厨具贴图名（锅/煎盘/蒸笼/木托盘/果汁壶）*/
+  function gearNameOfKind(kind) { return GEAR_OF_KIND[kind] || null; }
+  /* ── 贴图映射表（纯数据 + 纯函数：单测直接断言「映射完整」）───────────────

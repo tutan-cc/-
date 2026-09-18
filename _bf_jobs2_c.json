@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    { "file": "breakfast.js",
+      "from": "  function foodIcon(id) { return assetOf(FOOD_ICON, id); }\n  function bgIcon() { var img = BG_IMG.img; if (!img) return null; var nw = img.naturalWidth || 0; return (nw > 0 && img.complete !== false) ? img : null; }\n  function readyCount(g) {",
+      "text": "  function foodIcon(id) { return assetOf(FOOD_ICON, id); }\n  function readyCount(g) {" },
+    { "file": "breakfast.js",
+      "from": "      /** 顾客头像：耐心比例 → 该用平静脸还是着急脸（出图与断言都读它）*/\n      faces: function () {\n        var st = curState(); if (!st) return [];\n        return activeCustomers(st).map(function (c, i) {\n          var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);\n          var name = faceNameOf(c.id, n);\n          var img = FACE_ICON.map[name];\n          return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,\n                   mood:(n > FACE_ICON.urgentAt ? \"calm\" : \"urgent\"),\n                   ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === \"string\") ? img.src : \"\",\n                   box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };\n        });",
+      "text": "      /** 顾客头像（三态）：耐心比例 / 是否全部拿到 → calm / urgent / happy；出图与断言都读它 */\n      faces: function () {\n        var st = curState(); if (!st) return [];\n        return activeCustomers(st).map(function (c, i) {\n          var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);\n          var happy = faceSatisfied(c);\n          var name = faceNameIn(st, c.id, n, happy);\n          var img = FACE_ICON.map[name];\n          return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,\n                   mood:faceMoodOf(c.id, n, happy), happy:happy, kind:faceKindOf(c.id),\n                   pool:facePoolFor(st), satisfiedRule:FACE_SATISFIED_RULE,\n                   ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === \"string\") ? img.src : \"\",\n                   box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };\n        });" }
+  ]
+}

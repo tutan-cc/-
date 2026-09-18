@@ -1154,6 +1154,7 @@
     return (nw > 0 && img.complete !== false) ? img : null;
   }
   function foodIcon(id) { return assetOf(FOOD_ICON, id); }
+  function bgIcon() { var img = BG_IMG.img; if (!img) return null; var nw = img.naturalWidth || 0; return (nw > 0 && img.complete !== false) ? img : null; }
   function readyCount(g) { var n = 0; for (var i = 0; i < g.ids.length; i++) if (assetOf(g, g.ids[i])) n++; return n; }
   /** 9 张食材里有几张真的能画（给 debug / 测试用）*/
   function iconReadyCount() { return readyCount(FOOD_ICON); }
@@ -1380,8 +1381,6 @@
     }
   };
 
-
-  var PAL = {
     ink:"#f6efe2", dim:"#b0a08c", gold:"#ffd76e", green:"#5dffa0", red:"#ff4d6d",
     steel:"#7c8296", steelHot:"#ffb347", card:"#2f1e2c", cardLine:"#6b4670", sakura:"#ff9ec7",
     wood:"#5a3a22", woodDark:"#2a1a12", plateRim:"#e8e2d6", panDark:"#191620"
@@ -1868,49 +1867,16 @@
     /* ── 渲染（Canvas 只画食物 / 锅具 / 盘子 / 卡片底与进度环，文字全部用真系统字体）── */
     function fontOf(px, bold) { return (bold ? "bold " : "") + px + "px system-ui,'Segoe UI','Microsoft YaHei',sans-serif"; }
 
-    /* 背景：最底层先铺 art/bg/kitchen2.png（**两级回退**：kitchen2 → kitchen → 程序化底）。
-       v2 是「整幅宽铺满」（左右 0 裁切，完整樱花树冠 + 完整货架都在画面里），
-       木台面上沿落在画布 y≈406；画布底部比素材多出来的那 126px 用
-       「台面木纹纵向平铺 + 向底端线性压深 40%」补齐（木纹横向连续 → 看不出接缝）。
-       铺完再叠两层「可读性压暗」；两张贴图都加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底。 */
+    /* 背景：最底层先铺 art/bg/kitchen.png（整幅铺满画布 = cover；素材已按画布比例
+       裁好，木台面上沿正好落在专属盘带顶部 y=318），再叠两层「可读性压暗」；
+       贴图加载失败 → 回退原来的程序化木台 / 樱瓣 / 暖光底（功能一点不少）。 */
     function drawBg() {
-      var src = bgSource();
-      var bimg = src ? src.img : null, bargs = bimg ? bgDrawArgs(bimg) : null;
+      var bimg = bgIcon(), bargs = bimg ? bgDrawArgs(bimg) : null;
       IA.drawn.bg = !!bargs;
       IA.drawn.bgMode = bargs ? bargs.mode : "vector";
-      IA.drawn.bgSlot = src ? src.id : "vector";
-      IA.drawn.bgBand = 0;
       if (bargs) {
-        var nwB = bimg.naturalWidth || 0, nhB = bimg.naturalHeight || 0;
-        var nwS = bargs.sw, nhS = bargs.sh;
-        /* 先整幅铺满（fit / cover 由 bgDrawArgs 定），再补底部木纹带 */
-        g.drawImage(bimg, bargs.sx, bargs.sy, nwS, nhS, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
-        IA.drawn.bgW = nwS; IA.drawn.bgH = nhS;
-        var bandY = VIEW.h, meta = src ? src.meta : null;
-        if (meta && meta.counterTopSrcY > 0 && nhS > 0) {
-          /* 素材底边画到画布哪一行（cover 裁切时算上 sy 偏置） */
-          bandY = Math.max(0, Math.min(VIEW.h, (nhS - bargs.sy) * VIEW.h / nhS));
-        }
-        var bandH = VIEW.h - bandY;
-        if (bandH > 0.5 && meta && nhB > 0) {                      // 需要补带
-          var mTop = meta.counterTopSrcY, sy0 = bargs.sy + mTop;   // 木台面木纹条的起始源行
-          var rowH = Math.max(1, nhB - mTop);
-          var gh = Math.max(1, Math.round(rowH * VIEW.w / nwB));   // 平铺一格在画布上的高度
-          g.save();
-          g.beginPath(); g.rect(0, bandY, VIEW.w, bandH); g.clip();
-          for (var by = bandY; by < VIEW.h + 1; by += gh) {
-            var hh = Math.min(gh, VIEW.h - by);
-            if (hh <= 0) break;
-            g.drawImage(bimg, bargs.sx, sy0, nwB - bargs.sx, rowH, 0, by, VIEW.w, hh);
-          }
-          /* 向画面底端线性压深（台面往前伸出画面的暗部） */
-          var dg = g.createLinearGradient(0, bandY, 0, VIEW.h);
-          dg.addColorStop(0, "rgba(8,5,3,0)");
-          dg.addColorStop(1, "rgba(8,5,3," + BG_IMG.bottomFillDark + ")");
-          g.fillStyle = dg; g.fillRect(0, bandY, VIEW.w, bandH);
-          g.restore();
-          IA.drawn.bgBand = Math.round(bandH);
-        }
+        g.drawImage(bimg, bargs.sx, bargs.sy, bargs.sw, bargs.sh, bargs.dx, bargs.dy, bargs.dw, bargs.dh);
+        IA.drawn.bgW = bargs.sw; IA.drawn.bgH = bargs.sh;
         g.fillStyle = "rgba(12,7,4," + BG_IMG.scrimAll + ")"; g.fillRect(0, 0, W, H);
         var sgr = g.createLinearGradient(0, LAY.topH, 0, LAY.legend.y + LAY.legend.h);
         sgr.addColorStop(0, "rgba(12,7,4," + BG_IMG.scrimTop + ")"); sgr.addColorStop(1, "rgba(12,7,4,0)");
@@ -1940,7 +1906,6 @@
       rg.addColorStop(0, "rgba(255,170,80,.20)"); rg.addColorStop(1, "rgba(255,170,80,0)");
       g.fillStyle = rg; g.fillRect(0, LAY.topH, W, H - LAY.topH);
     }
-
 
 
     function drawTopBar() {
@@ -2013,36 +1978,23 @@
       g.beginPath(); g.arc(cx, cy, r * 0.70, 0, Math.PI * 2); g.stroke();
     }
 
-    /** 顾客头像贴图（三态）：订单全部拿到（正在离场满意）→ happy；耐心 > 40% → calm；
-        ≤ 40% → urgent。角色从**本局角色池**里按顾客编号取（5 位：学生/白领/大爷/女房东/护士）。
-        个别「角色 × 情绪」没切到贴图（例如第 3 位角色的 happy）→ 先退回平静脸，
-        再不行才回退矢量头像 —— 语义不变，离线也能玩。                              */
+    /** 顾客头像贴图：耐心 > FACE_ICON.urgentAt（40%）→ 平静脸，≤ 40% → 着急脸；
+        贴图不可用 → 回退程序化头像 drawAvatar（离线也能玩，语义不变）。 */
     function drawCustomerFace(box, c) {
-      var st0 = curState();
       var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
-      var happy = faceSatisfied(c);
-      var mood = faceMoodOf(c.id, n, happy);
-      var name = faceNameIn(st0, c.id, n, happy);
+      var name = faceNameOf(c.id, n);
       var img = assetOf(FACE_ICON, name);
-      if (!img && mood === "happy") {                    // 缺「满意」贴图 → 退回平静脸（比回退矢量更自然）
-        name = faceNameIn(st0, c.id, n, false);
-        img = assetOf(FACE_ICON, name);
-        IA.drawn.faceHappyFallback = (IA.drawn.faceHappyFallback || 0) + 1;
-      }
       if (img && drawAssetFit(g, img, { x: box.x + 10, y: box.y + 22, w: 64, h: 68 }, null)) {
         IA.drawn.faces = (IA.drawn.faces || 0) + 1;
-        IA.drawn.faceMood = mood;
+        IA.drawn.faceMood = (n > FACE_ICON.urgentAt) ? "calm" : "urgent";
         IA.drawn.faceName = name;
-        IA.drawn.faceHappy = happy;
         return true;
       }
       IA.drawn.faceMood = "vector";
       IA.drawn.faceName = "";
-      IA.drawn.faceMoodWanted = mood;
       drawAvatar(g, box.x + 38, box.y + 58, 21, c.id);
       return false;
     }
-
 
     function drawCustomer(c, box, slot) {
 
@@ -2746,17 +2698,15 @@
                  uiCoin:d.uiCoin || 0, uiCheck:d.uiCheck || 0, uiCross:d.uiCross || 0,
                  gearTools:d.gearTools || 0 };
       },
-      /** 顾客头像（三态）：耐心比例 / 是否全部拿到 → calm / urgent / happy；出图与断言都读它 */
+      /** 顾客头像：耐心比例 → 该用平静脸还是着急脸（出图与断言都读它）*/
       faces: function () {
         var st = curState(); if (!st) return [];
         return activeCustomers(st).map(function (c, i) {
           var n = Math.max(0, c.patience) / Math.max(0.01, c.patienceMax);
-          var happy = faceSatisfied(c);
-          var name = faceNameIn(st, c.id, n, happy);
+          var name = faceNameOf(c.id, n);
           var img = FACE_ICON.map[name];
           return { slot:i, id:c.id, ratio:Math.round(n * 1000) / 1000, name:name,
-                   mood:faceMoodOf(c.id, n, happy), happy:happy, kind:faceKindOf(c.id),
-                   pool:facePoolFor(st), satisfiedRule:FACE_SATISFIED_RULE,
+                   mood:(n > FACE_ICON.urgentAt ? "calm" : "urgent"),
                    ready:!!assetOf(FACE_ICON, name), src:(img && typeof img.src === "string") ? img.src : "",
                    box:customerCardBox(Math.min(i, LAY.cards.n - 1)) };
         });
