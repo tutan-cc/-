@@ -1,4 +1,4 @@
-# 素材来源与授权清单（SOURCES）
+﻿# 素材来源与授权清单（SOURCES）
 
 > 借鉴自参考项目 `tutan123/tianshu` 的 `assets/SOURCES.md` 纪律：**每一项素材都要写清来源与授权状态**。
 > 本文件随项目更新；⚠ 标记项在公开发布前必须处理。
@@ -9,7 +9,7 @@
 |---|---|---|
 | `video/*.mp4`（33 段实拍） | `D:\重生2视频提取`（第三方素材库，按人物/场景分类） | ⚠ **未核实**。发布前必须替换为自有素材或取得授权 |
 | `video/poster/*.jpg`（35 张剧照） | 由上表视频用 ffmpeg 抽帧生成 | ⚠ 随源视频，同上 |
-| `video/fx_market.mp4`、`video/fx_flood.mp4` | 本项目 `_genanim2.ps1` 生成（PowerShell + System.Drawing 逐帧绘图 → ffmpeg 合成） | ✅ 原创，可自由使用 |
+| `video/fx_market.mp4`、`video/fx_flood.mp4` | 本项目 `_genanim2.ps1` 生成（PowerShell + System.Drawing 逐帧绘图 → ffmpeg 合成） | ✅ 原创，**已入库**（其余实拍素材不入库） |
 
 ## 二、音频
 

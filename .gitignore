@@ -1,6 +1,11 @@
 ﻿# 实拍素材与音频：授权未核实，不入库（请自行放置到本地）
-video/
-audio/
+video/*
+audio/*
+# 程序化动画为原创，入库
+!video/fx_market.mp4
+!video/fx_flood.mp4
+!video/poster/fx_market.jpg
+!video/poster/fx_flood.jpg
 
 # 运行/构建产物与临时文件（不入库）
 _prof*/
