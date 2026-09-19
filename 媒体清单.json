@@ -1342,8 +1342,8 @@
                   },
                   {
                       "path":  "audio/sfx/sfx-bf-plate.mp3",
-                      "bytes":  13101,
-                      "sha256":  "98592b9d5b67f89125289b4144893f31d7cde005233abe09d6c61b93466f12f8",
+                      "bytes":  4653,
+                      "sha256":  "3673213f55445cc14ddee28ad894bc66686396a3bf2c5b2eddcc77847dd0c3f7",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
@@ -1524,8 +1524,8 @@
                   },
                   {
                       "path":  "audio/sfx/sfx-mj-clack.mp3",
-                      "bytes":  6189,
-                      "sha256":  "d212ad78d1bcfa2a6c900e14bea9960d81b8eabe1544ca1da1ec7e5ead544a9b",
+                      "bytes":  5037,
+                      "sha256":  "17efe546e7d146420f7dae5ba0dcbe632fc16eab1216e240cd734dbd3ab2236d",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
@@ -1762,8 +1762,8 @@
                   },
                   {
                       "path":  "audio/sfx/ui-type.mp3",
-                      "bytes":  14253,
-                      "sha256":  "c03b27cbe0ab890b4ff24b2d200ee9f6cd5c04bcafd5b95d2478f5fe31916da6",
+                      "bytes":  26541,
+                      "sha256":  "3633b1f499df24ee1ffc7d0c65bfde33e2046aea23402a88e91a967de6474acd",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },

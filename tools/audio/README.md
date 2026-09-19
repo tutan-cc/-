@@ -88,6 +88,8 @@ python tools\audio\process_sfx.py --src RAW --out FINAL --preset word --only 西
 | `verify_audio_content.py` | 长台词内容核对（ASR 全文比对） |
 | `verify_mj_asr.py` | 牌名内容核对（拼音同音匹配 + **跨座位共识**） |
 | `verify_pairwise.py` | 同词跨座位交叉验证：`--len` 有声段时长 / `--content` ASR+提示泄漏 / `--acoustic` MFCC-DTW |
+| `audio_eval.py` | **四层综合评估器**（推荐日常用）：声学 + 音色 + 内容 + 感知。`--audit-sfx` 全量音色审计 |
+| `regen_sfx_noise.py` | 重做「本该是物理音却做成了纯音」的音效（强噪声提示词 + 平坦度验收） |
 | `omni_judge.py` | 用全模态模型（Qwen-Omni）做**感知层**验收：音效/音乐/环境音 —— ASR 完全看不到的那部分 |
 | `asr_local.py` | 本地 SenseVoice 转录（离线，免 API 费用） |
 
@@ -124,8 +126,10 @@ python tools\audio\verify_audio_content.py <目录>     # 台词
 python tools\audio\verify_mj_asr.py                   # 牌名（跨座位共识）
 python tools\audio\verify_pairwise.py --len           # 牌名有声段时长（抓截断）
 python tools\audio\verify_pairwise.py --content       # 牌名内容 + 提示泄漏
+python tools\audio\audio_eval.py <目录> --no-omni     # 四层里的前三层（离线免费）
+python tools\audio\audio_eval.py --audit-sfx          # 全量音色审计：物理音 vs 纯音
 python tools\audio\omni_judge.py --selftest           # 感知层：先验模型可信度
-python tools\audio\omni_judge.py --batch --per-cat 3  # 感知层：真实素材判类
+python tools\audio\audio_eval.py <目录>               # 四层全开（需 DASHSCOPE_API_KEY）
 
 # 3. 接线 + 入库（最关键，能抓到「断言全绿但没声音」）
 powershell -File .\pack-media.ps1      # 更新 媒体清单.json 与分发包
