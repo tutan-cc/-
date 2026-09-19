@@ -23,6 +23,12 @@ const PROBE_OUT = path.join(OUT, "_mj_panels_out.txt");
 const PROBE_HTA = path.join(OUT, "_mj_panels.hta");
 const RENDER_PS1 = path.join(OUT, "tools/mjsys/render.ps1");
 
+/* 产物目录：测试截图/ 已 gitignore（由脚本重新生成），所以干净 clone 上并不存在。
+   本脚本要往里写 PNG，必须先自建 —— 否则渲染器因目标目录缺失而 exit=1。
+   （tools/bf/shots/*.js 等出图脚本都有这一行，本脚本此前漏了。） */
+const SHOT = path.join(OUT, "测试截图");
+if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
+
 /* ── 探针：在 mshta 里跑生产代码，把面板数据抓成 JSON ── */
 function buildProbeHta() {
   const L2 = [];
