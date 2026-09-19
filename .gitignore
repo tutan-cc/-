@@ -12,9 +12,21 @@ _prof*/
 _temp/
 _check.js
 # 构建与测试产物（不入库）
-#   dist/ 装两样东西：素材分发包（体积大，走 GitHub Release 附件）+ 测试结果 JSON
-#   （测试结果带时间戳，每次跑测试都会改写 —— 落在这里就不会污染 git status）
-dist/
+#   dist/ 装三样东西：素材分发包（体积大，私下复制给协作者，不上 GitHub Release）
+#   + 测试结果 JSON（带时间戳，每次跑测试都会改写 —— 落在这里就不会污染 git status）
+#   + 分发说明 README（**入库**：它是协作流程的唯一说明）
+#
+# ⚠ 注意 git 的规则：**父目录被排除后，`!` 无法重新包含它里面的文件**。
+#   所以不能写 `dist/` 再 `!dist/素材分发/README.md` —— 那样 README 仍被忽略（实测确认）。
+#   正确做法：按「内容类型」上锁（大文件与产物），而不是锁整个 dist/。
+dist/test-results/
+dist/media-*.zip
+dist/*.zip
+dist/**/*.zip
+dist/**/*.sha256
+# 兜底：其它未知的大产物也别进库（README/manifest 之类小文本不受影响）
+dist/**/*.png
+dist/**/*.mp4
 # 兜底：万一有脚本仍把结果写进 tests/，也不要进库（tests/ 只应放测试源码）
 tests/*-results.json
 tests/*_text.json
