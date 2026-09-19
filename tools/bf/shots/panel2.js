@@ -136,7 +136,11 @@ function gameShot() {
   d.setPatience(ids[0], 1); d.setPatience(ids[1], 1); d.setPatience(ids[2], 0.2);
   texts.length = 0;
   d.serveAll(ids[0]);          // 只改状态、不推进时间（satisfiedAt → happy 脸，不离场）
-  game.pump(1);                // 同一次渲染里三张卡同时在，第 1 张就是 happy
+  /* ⚠ 这里必须用**1ms** 的那一帧：loop() 是「先 step 再 render」，而 step() 会在订单完成时
+     立刻把顾客置 left（让出座位），render() 又只画 activeCustomers（!left）→ 用默认的
+     16ms 泵，满意脸永远抓不到（这是本轮发现的老问题，已在报告里写明）。
+     1ms < 1/60s 的步长阈值 → 这一帧只渲染、不推进 → 「满意」那张脸才真的画出来。 */
+  game.pump(1, 1);             // 同一次渲染里三张卡同时在，第 1 张就是 happy
   const tex = d.tex(), faces = d.faces(), ready = B.art.ready(), bg = B.art.bg();
   /* 拼一张「画面 + 底部说明条」的成品：光栅化器画不了中文，说明条的文字交给
      tools/lib/text-compose.ps1 用系统字体合成（与上一轮同一条证据链）。 */
@@ -159,7 +163,7 @@ function gameShot() {
     "左右各裁 " + bg.croppedPerSide + "px；木台面上沿落画布 y=" + bg.counterTopCanvasY + "，底部 " + bg.bottomFillPx + "px 木纹补带）" +
     " · 6 种盘面按食物映射（煎蛋/培根各一张）· 5 人池三态头像（满意 / 平静 / 着急）· 糊了红叉", VW / 2, VH + 17);
   out.fillStyle = "#cbb894"; out.font = "12px system-ui";
-  out.fillText("贴图可用 food " + ready.food + "/9 · gear " + ready.gear + "/12 · face " + ready.face + "/12 · ui " + ready.ui + "/9 · bg " + ready.bg + "/1" +
+  out.fillText("贴图可用 food " + ready.food + "/9 · gear " + ready.gear + "/12 · face " + ready.face + "/15 · ui " + ready.ui + "/9 · bg " + ready.bg + "/1" +
     "　｜　本帧 drawImage：背景 " + (tex.bg ? 1 : 0) + " · 锅位 " + tex.panTex + " · 盘位 " + tex.plateTex + " · 头像 " + tex.faces +
     " · 耐心条 " + tex.uiBar + " · 星级 " + tex.uiStars + " · 金币 " + tex.uiCoin + " · 勾 " + tex.uiCheck + " · 叉 " + tex.uiCross +
     "　｜　头像：" + faces.map(f => f.name + "(" + f.mood + ")").join(" / "), VW / 2, VH + 37);
@@ -218,7 +222,7 @@ console.log("[bf_game_bg2.png] " + VW + "×" + VH + "  " + (fs.statSync(path.joi
 console.log("   bg: " + g.bg.file + " active=" + g.bg.active + " counter y=" + g.bg.counterTopCanvasY + " croppedPerSide=" + g.bg.croppedPerSide + " bottomFill=" + g.bg.bottomFillPx);
 console.log("   plates: " + [...new Set(g.plates)].join(" / "));
 console.log("   faces: " + g.faces.map(f => f.name + "(" + f.mood + ")").join(" / "));
-console.log("   ready: food " + g.ready.food + "/9 gear " + g.ready.gear + "/12 face " + g.ready.face + "/12 ui " + g.ready.ui + "/9 bg " + g.ready.bg + "/1");
+console.log("   ready: food " + g.ready.food + "/9 gear " + g.ready.gear + "/12 face " + g.ready.face + "/15 ui " + g.ready.ui + "/9 bg " + g.ready.bg + "/1");
 const m = mjShot();
 console.log("[mj_bg.png] " + m.MW + "×" + m.MH + "  " + (fs.statSync(path.join(SHOT, "mj_bg.png")).size / 1024).toFixed(1) + "KB"
   + "  start=" + m.started + " phase=" + (m.st && m.st.phase));

@@ -2318,7 +2318,170 @@
     g.strokeStyle = "rgba(255,215,110,.22)"; g.lineWidth = 2;
     rr(g, LAYOUT.felt.x + 8, LAYOUT.felt.y + 8, LAYOUT.felt.w - 16, LAYOUT.felt.h - 16, LAYOUT.felt.r - 6); g.stroke();
   }
+  /* ── 牌桌静态装饰：骰子 / 筹码 / 牌尺 / 烟灰缸（纯装饰，不参与任何规则）───────────
+     本批 art/icons/mj/ 里早有 dice / chip_blue / chip_red / chip_gold / ruler / ashtray，
+     之前只有 tile_back 接进了渲染。这里把它们点缀到牌桌上，**只增加「画什么」**：
+     不碰赣麻规则、不碰 AI、不碰智脑提示算法、不碰结算逻辑、不碰点击热区、不碰牌河布局。
+
+     位置纪律（每一块都按「会变的东西」的保守外接矩形验算过，零相交；见 decorCheck）：
+       · 牌墙 4 段：下 x958..1196 y814..842 / 左 x30..58 y552..788
+                   上 x34..270 y30..58     / 右 x1182..1210 y34..236
+       · 四家手牌：下 x189..1051 y700..778（14 张最宽）/ 右 x1133..1171 y243..617
+                   上 x433..807 y65..103   / 左 x60..98 y243..617
+       · 副露：下 y632..678（右对齐到 x1057）/ 右 x1032..1060 y296..636
+               上 x430.. y118..148         / 左 x112..140 y296..
+       · 牌河：下 x512..752 y466..624 / 上 x508..748 y272..430
+               右 x900..1048 y272..512 / 左 x224..372 y272..512
+       · 中央「余 N 张」面板 x550..690 y396..468（LAYOUT.center）
+       · 结算亮牌板铺满 18..W-18 × 18..H-18 —— **结算分支根本不画装饰**（见 renderTable），
+         所以结构上不可能被结算面板遮住，也不可能遮住它
+       · DOM 覆盖层：智脑提示在左上（1.2%/1.0%），牌局记录 + 按钮在右下
+     于是只剩两块空地（都在中央深色绒面圈 250..990 × 240..620 内，且留 3px 以上余量）：
+       A x 761..1031 y 497..629 —— 玩家右手边：两枚骰子（dice.png 素材本身就是两枚）
+                                   + 一摞金筹码 + 红 / 蓝筹码各一枚
+       B x 375..501  y 237..629 —— 桌子左侧窄条：牌尺（ruler.png）+ 烟灰缸（ashtray.png）
+     ⚠ tile_white / tile_fa 故意**不接**：立着的白板 / 发财与牌河里打出去的牌长得一模一样，
+        摆上去就是凭空多两张「假弃牌」，直接破坏牌河与手牌的可读性 —— 明确不做（报告里写明）。
+
+     回退（规格「贴图优先 + 矢量 / 不画 回退」三档都实现）：
+       · 骰子：贴图不可用 → 矢量两枚骰子（点数写成常量 FACE，不随机 → 出图 / 截图可复现）
+       · 筹码：贴图不可用 → 矢量圆片（同色外圈 + 白内环；金筹码画 4 片表示一摞）
+       · 牌尺 / 烟灰缸：贴图不可用 → **不画**（纯点缀，少一件玩法一点不受影响）
+     载入器仍是 artOf()（预加载 + naturalWidth > 0 + complete !== false），
+     路径仍由 pageDir() + art/icons/mj/ 拼出来 —— 无盘符 / 无协议 / 无 data URI。 */
+  var DECOR = {
+    /* dice.png 素材本身就是「两枚骰子」一版画 → 只画一次就是桌上两枚，避免四枚的怪画面 */
+    dice:    { x: 826, y: 560, s: 104, rot: -0.10, id: "dice" },
+    /* chip_gold.png 本身就是一摞四片；红 / 蓝是单片 → 三件摆成一小簇 */
+    chips:   [ { x: 958, y: 556, s: 80, id: "chip_gold", color: "#e0a92e", n: 4 },
+               { x: 910, y: 604, s: 50, id: "chip_red",  color: "#c0392b", n: 1 },
+               { x: 1002, y: 600, s: 50, id: "chip_blue", color: "#2a6bb5", n: 1 } ],
+    ruler:   { x: 438, y: 300, s: 126, id: "ruler" },
+    ashtray: { x: 438, y: 566, s: 66,  id: "ashtray" }
+  };
+  /** 贴图装饰：以 (cx,cy) 为中心等比画 s 宽（可按 rot 旋转）→ 返回是否真的画了 */
+  function decorTex(g, id, cx, cy, s, rot) {
+    var img = artOf(id);
+    if (!img) return false;
+    var nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+    if (!(nw > 0) || !(nh > 0)) return false;
+    var w = s, h = s * (nh / nw);
+    g.save();
+    if (rot) { g.translate(cx, cy); g.rotate(rot); g.drawImage(img, -w / 2, -h / 2, w, h); }
+    else g.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+    g.restore();
+    return true;
+  }
+  /** 骰子点数在牌面内的 3×3 位置（比例）；与矢量兜底共用 */
+  var DICE_PIP = [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72], [0.50, 0.50]];
+  /** 矢量骰子（兜底）：两枚白方 + 红点；点数是常量（不随机），出图 / 截图可复现 */
+  function decorDiceVector(g, cx, cy, s) {
+    var FACE = [[0, 1, 4, 2, 3], [0, 4, 3]];              // 第 1 枚 5 点 / 第 2 枚 3 点
+    var d = s * 0.46, k, j, x, y, px, py;
+    for (k = 0; k < 2; k++) {
+      x = cx - s * 0.50 + k * (s * 0.54);
+      y = cy - d / 2 + (k ? s * 0.07 : -s * 0.07);
+      g.save();
+      g.fillStyle = "#f6efe0"; g.strokeStyle = "rgba(84,54,34,.85)"; g.lineWidth = Math.max(1, s * 0.018);
+      rr(g, x, y, d, d, d * 0.20); g.fill(); g.stroke();
+      g.fillStyle = "#c0392b";
+      for (j = 0; j < FACE[k].length; j++) {
+        px = x + d * DICE_PIP[FACE[k][j]][0]; py = y + d * DICE_PIP[FACE[k][j]][1];
+        g.beginPath(); g.arc(px, py, d * 0.085, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+    }
+  }
+  /** 矢量筹码（兜底）：同色外圈 + 白内环；n 片叠成一摞 */
+  function decorChipVector(g, cx, cy, s, color, n) {
+    var r = s / 2, step = s * 0.15, i, yy;
+    g.save();
+    for (i = 0; i < n; i++) {
+      yy = cy + (n - 1) * step / 2 - i * step;
+      g.fillStyle = color; g.strokeStyle = "rgba(40,24,12,.6)"; g.lineWidth = Math.max(1, s * 0.035);
+      if (g.ellipse) { g.beginPath(); g.ellipse(cx, yy, r, r * 0.62, 0, 0, Math.PI * 2); g.fill(); g.stroke(); }
+      else { g.beginPath(); g.arc(cx, yy, r * 0.8, 0, Math.PI * 2); g.fill(); g.stroke(); }
+      g.strokeStyle = "rgba(255,255,255,.8)"; g.lineWidth = Math.max(1, s * 0.05);
+      if (g.ellipse) { g.beginPath(); g.ellipse(cx, yy, r * 0.60, r * 0.36, 0, 0, Math.PI * 2); g.stroke(); }
+      else { g.beginPath(); g.arc(cx, yy, r * 0.48, 0, Math.PI * 2); g.stroke(); }
+    }
+    g.restore();
+  }
+  /** 每个装饰框（中心 + 边长；旋转的按 1.24 倍外接方框保守放大）*/
+  function decorFrames() {
+    var out = [], i, d, die = DECOR.dice, chips = DECOR.chips;
+    out.push({ name: "dice", x: die.x - die.s * 0.62, y: die.y - die.s * 0.62, w: die.s * 1.24, h: die.s * 1.24 });
+    for (i = 0; i < chips.length; i++) {
+      d = chips[i];
+      out.push({ name: "chip" + i, x: d.x - d.s / 2, y: d.y - d.s / 2, w: d.s, h: d.s });
+    }
+    out.push({ name: "ruler", x: DECOR.ruler.x - DECOR.ruler.s / 2, y: DECOR.ruler.y - DECOR.ruler.s / 2, w: DECOR.ruler.s, h: DECOR.ruler.s });
+    out.push({ name: "ashtray", x: DECOR.ashtray.x - DECOR.ashtray.s / 2, y: DECOR.ashtray.y - DECOR.ashtray.s / 2, w: DECOR.ashtray.s, h: DECOR.ashtray.s });
+    return out;
+  }
+  /** 牌桌上「会变的东西」的保守外接矩形（宁可估大也不能漏；数字与上面注释一一对应）*/
+  function decorReserved() {
+    var out = [], i, s, slots = wallSlots(), d = LAYOUT.disc;
+    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: "wall", x: s.x, y: s.y, w: s.w, h: s.h }); }
+    out.push({ name: "hand0", x: 189, y: LAYOUT.hand.y, w: 862, h: LAYOUT.hand.th });
+    out.push({ name: "hand1", x: 1133, y: 243, w: 38, h: 374 });
+    out.push({ name: "hand2", x: 433, y: 65, w: 374, h: 38 });
+    out.push({ name: "hand3", x: 60, y: 243, w: 38, h: 374 });
+    out.push({ name: "melds0", x: 437, y: LAYOUT.meld0.y, w: 620, h: LAYOUT.meld0.th });
+    out.push({ name: "melds1", x: 1032, y: 296, w: 28, h: 340 });
+    out.push({ name: "melds2", x: 430, y: 118, w: 600, h: LAYOUT.meldTop.th });
+    out.push({ name: "melds3", x: 112, y: 296, w: 28, h: 340 });
+    /* 牌河：上下两家 perRow=8（最多 8 列）· 左右两家 perRow=6（最多 6 行）；
+       行 / 列组数按「一轮长局最多 4 组」保守估（大于真实牌局的弃牌数）。 */
+    out.push({ name: "disc0", x: 512, y: 586 - 3 * d.sy, w: 8 * d.sx, h: 3 * d.sy + d.th });
+    out.push({ name: "disc2", x: 508, y: 272, w: 8 * d.sx, h: 3 * d.sy + d.th });
+    out.push({ name: "disc1", x: 900, y: 272, w: 4 * d.sx + d.tw, h: 6 * d.sy });
+    out.push({ name: "disc3", x: 344 - 4 * d.sx, y: 272, w: 4 * d.sx + d.tw, h: 6 * d.sy });
+    out.push({ name: "center", x: LAYOUT.center.x - LAYOUT.center.w / 2, y: LAYOUT.center.y - LAYOUT.center.h / 2,
+               w: LAYOUT.center.w, h: LAYOUT.center.h });
+    return out;
+  }
+  function decorOverlap(a, b) {
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+  }
+  /** 装饰安全区自检（纯几何、不依赖 canvas）：每个装饰框 ①落在牌桌绒面内 ②与保留区零相交 */
+  function decorCheck() {
+    var fr = decorFrames(), rv = decorReserved(), hits = [], i, j, f = null, r = null, felt = LAYOUT.felt;
+    for (i = 0; i < fr.length; i++) {
+      f = fr[i];
+      if (f.x < felt.x || f.y < felt.y || f.x + f.w > felt.x + felt.w || f.y + f.h > felt.y + felt.h)
+        hits.push(f.name + "≠felt");
+      for (j = 0; j < rv.length; j++) { r = rv[j]; if (decorOverlap(f, r)) hits.push(f.name + "×" + r.name); }
+    }
+    return { ok: hits.length === 0, hits: hits, frames: fr, reserved: rv.length,
+             note: "结算亮牌板铺满整屏 → 结算分支不画装饰（结构上不可能互相遮挡）" };
+  }
+  /** 装饰绘制统计（每帧 renderTable 归零；无头断言 / 出图脚本都读它）*/
+  function decorStat() {
+    var d = G.decor || {}, ck = decorCheck();
+    return { dice: d.dice || 0, chips: d.chips || 0, ruler: d.ruler || 0, ashtray: d.ashtray || 0,
+             vecDice: d.vecDice || 0, vecChip: d.vecChip || 0, skipped: d.skipped || 0,
+             safe: ck.ok, hits: ck.hits };
+  }
+  /** 每帧画一遍（drawFelt 之后、牌墙 / 手牌 / 牌河 / 中央面板之前 → 永远被压在下面，挡不住任何东西）*/
+  function drawTableDecor(g) {
+    var i, d, chips = DECOR.chips, ok;
+    if (!G.decor) G.decor = { dice: 0, chips: 0, ruler: 0, ashtray: 0, vecDice: 0, vecChip: 0, skipped: 0 };
+    d = DECOR.dice;
+    if (decorTex(g, d.id, d.x, d.y, d.s, d.rot)) G.decor.dice++;
+    else { decorDiceVector(g, d.x, d.y, d.s); G.decor.vecDice++; }
+    for (i = 0; i < chips.length; i++) {
+      d = chips[i];
+      if (decorTex(g, d.id, d.x, d.y, d.s, 0)) G.decor.chips++;
+      else { decorChipVector(g, d.x, d.y, d.s, d.color, d.n); G.decor.vecChip++; }
+    }
+    if (decorTex(g, DECOR.ruler.id, DECOR.ruler.x, DECOR.ruler.y, DECOR.ruler.s, 0)) G.decor.ruler++;
+    else G.decor.skipped++;
+    if (decorTex(g, DECOR.ashtray.id, DECOR.ashtray.x, DECOR.ashtray.y, DECOR.ashtray.s, 0)) G.decor.ashtray++;
+    else G.decor.skipped++;
+  }
   /** 牌墙：4 段，按 108/4 墩排列，随摸牌变短 */
+
   function wallSlots() {
     if (G.wallSlots) return G.wallSlots;
     var out = [], st = LAYOUT.wall.step, w = LAYOUT.wall.tw, h = LAYOUT.wall.th;
@@ -2715,6 +2878,7 @@
     } catch (e) {}
     g.clearRect(0, 0, W, H);
     G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, resHands: 0, resHandTiles: 0 };
+    G.decor = { dice: 0, chips: 0, ruler: 0, ashtray: 0, vecDice: 0, vecChip: 0, skipped: 0 };
     if (G.sheet) { G.sheetTiles = []; drawFaceSheet(g, G.sheet); G.stat.sheetTiles = G.sheetTiles.length; G.stat.frame = (G.stat.frame || 0) + 1; return G.stat; }
     updateHint();                                            // 先算提示 → drawMyHand 用的 G.hintIdx 与金框一致
     if (G.E && G.E.phase === "over") {                       // 结算 → 直接在牌桌上亮四家牌
@@ -2726,6 +2890,7 @@
       return G.stat;
     }
     drawFelt(g);
+    drawTableDecor(g);            // 静态装饰：骰子 / 筹码 / 牌尺 / 烟灰缸（每张图块都验算过不遮任何会变的东西）
     drawWall(g, G.E.wall.length);
     drawSeat(g, 2); drawSeat(g, 3); drawSeat(g, 1);
     drawDiscards(g, 2); drawDiscards(g, 3); drawDiscards(g, 1); drawDiscards(g, 0);
@@ -2754,7 +2919,7 @@
     host: null, cv: null, ctx: null, dpr: 1,
     E: null, opts: null, timers: [], raf: 0,
     hover: -1, handRects: [], wallSlots: null, noise: null, stat: null, tickTimer: 0, frames: 0,
-    roomBg: false, tileBackTex: 0,
+    roomBg: false, tileBackTex: 0, decor: null,
     anim: { drawAt: 0 }, win: null, uiLock: 0, logRendered: 0,
     idleTimer: 0, winTimer: 0, result: null, resultShown: false, noiseCv: null, sheet: null, demo: null,
     hintOn: true, hint: null, hintIdx: -1, hintKey: "", hintPane: "", hintCalcN: 0, hintLastMs: 0, hintWorstMs: 0,
@@ -4067,8 +4232,14 @@
                        ready: !!(bnw > 0 && bimg.complete !== false), naturalWidth: bnw,
                        loaded: MJ_BG.loaded, failed: MJ_BG.failed },
                  roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0,
-                 fallback: ["tile_back-texture", "procedural-stripe", "procedural-felt"] };
+                 decor: decorStat(),
+                 fallback: ["tile_back-texture", "procedural-stripe", "procedural-felt",
+                            "dice-texture>vector-dice", "chip-texture>vector-chip",
+                            "ruler/ashtray-texture>（不画）", "tile_white/tile_fa>（故意不接：会伪造牌河）"] };
       },
+      /** 牌桌装饰的安全区自检（纯几何，不依赖 canvas）：无头断言 / 出图脚本直接读 */
+      decor: decorCheck,
+      decorStat: decorStat,
       forceWin: dbgForceWin,
       showResult: dbgShowResult,
       continueGame: dbgContinue,

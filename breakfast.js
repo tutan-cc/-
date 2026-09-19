@@ -992,7 +992,7 @@
 
        food  art/icons/<foodId>.png   9 张食材（上一轮已接入）
        gear  art/icons/gear/*.png     9 张厨具（汤锅/三格煎盘/蒸笼 · 空盘/煎蛋培根盘/包子盘 · 果汁壶/木托盘/锅铲夹子）
-       face  art/icons/faces/*.png    6 张顾客头像（学生/女白领/胖大爷 × 平静/着急）
+       face  art/icons/faces/*.png   15 张顾客头像（5 位角色：学生/白领/大爷/房东/护士 × 平静/着急/满意）
        ui    art/icons/ui/*.png       9 个 UI 元素（耐心条底/满、三星、木牌按钮、红漆按钮、金币、灯泡、绿勾、红叉）
        bg    art/bg/kitchen.png       场景背景（木台面 + 樱花街 + 右后开放厨房）
 
@@ -1027,7 +1027,8 @@
      "plate_empty", "plate_egg", "plate_bacon", "plate_sandwich", "plate_bun", "plate_salad",
      "juice_jug", "tray", "tools"]);
   var FACE_ICON = mkIconGroup("face", "art/icons/faces/",
-    ["stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent",
+    ["stud_calm", "stud_urgent", "stud_happy", "office_calm", "office_urgent", "office_happy",
+     "uncle_calm", "uncle_urgent", "uncle_happy",
      "fang_calm", "fang_urgent", "fang_happy", "lu_calm", "lu_urgent", "lu_happy"]);
   var UI_ICON = mkIconGroup("ui", "art/icons/ui/",
     ["bar_empty", "bar_full", "stars", "btn_wood", "btn_red", "coin", "bulb", "check", "cross"]);
@@ -1239,8 +1240,11 @@
   }
   /** 兼容旧调用签名 faceNameOf(cid, ratio, satisfied)：用**常量池**（与 facePoolFor(null) 一致）*/
   function faceNameOf(cid, patienceRatio, satisfied) { return faceNameIn(null, cid, patienceRatio, satisfied); }
-  /** 5 位角色 × 3 种情绪 = 15 张（本批切了女房东/女护士共 6 张，上一轮 3 位角色各有 calm/urgent 两张；
-      缺的「第 3 位角色的 happy」等一律回退矢量头像，见 drawCustomerFace）*/
+  /** 5 位角色 × 3 种情绪 = 15 张，**本轮已全部切齐**：
+      上一轮 3 位老角色各有 calm/urgent 两张；素材二批补了女房东/女护士 ×3（6 张）；
+      本轮（_bf_faces_happy3_gen.cjs，源 art/lovart_cca01cd7ba70.png 3 列 × 1 行）补了
+      学生/女白领/胖大爷的 happy 三张 → 15 张在册，happy 态不再回退平静脸。
+      回退链仍然保留两级：happy 缺图 → calm → 矢量头像（见 drawCustomerFace）。*/
   function faceTexIds() {
     var out = [];
     for (var i = 0; i < FACE_KINDS.length; i++) for (var j = 0; j < FACE_MOODS.length; j++) out.push(FACE_KINDS[i] + "_" + FACE_MOODS[j]);
@@ -2034,7 +2038,7 @@
 
     /** 顾客头像贴图（三态）：订单全部拿到（正在离场满意）→ happy；耐心 > 40% → calm；
         ≤ 40% → urgent。角色从**本局角色池**里按顾客编号取（5 位：学生/白领/大爷/女房东/护士）。
-        个别「角色 × 情绪」没切到贴图（例如第 3 位角色的 happy）→ 先退回平静脸，
+        15 张（5 角色 × 3 情绪）本轮已切齐；万一某张缺图 / 没解码完 → 先退回平静脸，
         再不行才回退矢量头像 —— 语义不变，离线也能玩。                              */
     function drawCustomerFace(box, c) {
       var st0 = curState();

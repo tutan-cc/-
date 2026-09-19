@@ -1,0 +1,205 @@
+{
+  "at": "2026-09-18T11:22:24.279Z",
+  "note": "三位顾客「满意」头像的切片参数（由 _bf_faces_happy3_gen.cjs 调用 _bf_assets2_gen.cjs 的 sliceGrid 自动求出，未写死）",
+  "reuse": "sliceGrid() / whiteToAlphaCfg() / fitCanvas() 全部来自 _bf_assets2_gen.cjs，未重写",
+  "source": "art/lovart_cca01cd7ba70.png",
+  "param": {
+    "rows": 1,
+    "cols": 3,
+    "target": 192,
+    "pad": 8,
+    "out": "icons/faces",
+    "alpha": {
+      "NW_BG": 248,
+      "T1": 236,
+      "UP_MAX": 20,
+      "BAND": 3
+    }
+  },
+  "group": {
+    "key": "faces_happy3",
+    "src": "art/lovart_cca01cd7ba70.png",
+    "srcW": 2172,
+    "srcH": 724,
+    "grid": {
+      "rows": 1,
+      "cols": 3,
+      "colsPerRow": null,
+      "cellH": 724
+    },
+    "colCutByRow": [
+      [
+        742,
+        1408
+      ]
+    ],
+    "rowCut": [],
+    "rowCutExact": [],
+    "target": 192,
+    "pad": 8,
+    "scale": 0.244444,
+    "maxSpan": 720,
+    "alphaCfg": {
+      "NW_BG": 248,
+      "T1": 236,
+      "UP_MAX": 20,
+      "BAND": 3
+    },
+    "boxScale": [
+      1,
+      1
+    ],
+    "items": [
+      {
+        "id": "stud_happy",
+        "row": 0,
+        "col": 0,
+        "file": "art/icons/faces/stud_happy.png",
+        "crop": {
+          "x": 119,
+          "y": 6,
+          "w": 620,
+          "h": 718
+        },
+        "cellContent": {
+          "x0": 137,
+          "y0": 36,
+          "x1": 719,
+          "y1": 712
+        },
+        "margin": {
+          "l": 18,
+          "r": 19,
+          "t": 30,
+          "b": 11
+        },
+        "target": 192,
+        "kb": 34.7,
+        "coverage": 40,
+        "colors": 7514,
+        "meanA": 99.3,
+        "drawSize": [
+          146,
+          166
+        ],
+        "offset": [
+          23,
+          13
+        ],
+        "srcBox": [
+          12,
+          27,
+          607,
+          707
+        ],
+        "alpha": {
+          "bg": 203377,
+          "full": 239080,
+          "semi": 10701,
+          "innerLight": 45
+        },
+        "warn": ""
+      },
+      {
+        "id": "office_happy",
+        "row": 0,
+        "col": 1,
+        "file": "art/icons/faces/office_happy.png",
+        "crop": {
+          "x": 814,
+          "y": 19,
+          "w": 594,
+          "h": 705
+        },
+        "cellContent": {
+          "x0": 848,
+          "y0": 46,
+          "x1": 1407,
+          "y1": 709
+        },
+        "margin": {
+          "l": 34,
+          "r": 0,
+          "t": 27,
+          "b": 14
+        },
+        "target": 192,
+        "kb": 38.1,
+        "coverage": 42.9,
+        "colors": 8456,
+        "meanA": 106.8,
+        "drawSize": [
+          138,
+          164
+        ],
+        "offset": [
+          27,
+          14
+        ],
+        "srcBox": [
+          31,
+          24,
+          593,
+          692
+        ],
+        "alpha": {
+          "bg": 159061,
+          "full": 256849,
+          "semi": 9021,
+          "innerLight": 468
+        },
+        "warn": ""
+      },
+      {
+        "id": "uncle_happy",
+        "row": 0,
+        "col": 2,
+        "file": "art/icons/faces/uncle_happy.png",
+        "crop": {
+          "x": 1408,
+          "y": 0,
+          "w": 764,
+          "h": 724
+        },
+        "cellContent": {
+          "x0": 1408,
+          "y0": 29,
+          "x1": 2127,
+          "y1": 720
+        },
+        "margin": {
+          "l": 0,
+          "r": 44,
+          "t": 29,
+          "b": 3
+        },
+        "target": 192,
+        "kb": 39.7,
+        "coverage": 50.1,
+        "colors": 8366,
+        "meanA": 125.3,
+        "drawSize": [
+          177,
+          170
+        ],
+        "offset": [
+          8,
+          11
+        ],
+        "srcBox": [
+          0,
+          26,
+          724,
+          721
+        ],
+        "alpha": {
+          "bg": 249074,
+          "full": 301982,
+          "semi": 9325,
+          "innerLight": 21
+        },
+        "warn": ""
+      }
+    ]
+  }
+}

@@ -858,10 +858,11 @@ function runMain() {
     const st4 = b4.B.debug.view().icons;
     A(st4.ready === 0 && st4.vector === 9, "开局后仍然 9 张不可用（不做二次加载）", "ready=" + st4.ready);
     b4.pump(3);
-    /* 素材从 9 张（食材）扩到 34 张（9 食材 + 9 厨具 + 6 头像 + 9 UI + 1 背景），
-       所以「被接住的 onerror 次数」也跟着变成 34 —— 断言同步改成 34，而不是删掉这条。 */
-    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 44,
-      "加载失败时一条 drawImage 都不发，44 个 onerror 全被接住（含背景两张候选）",
+    /* 素材总数随每一批新图同步增长：9 食材 + 12 厨具/盘位 + 15 头像（5 角色 × 平急喜）
+       + 9 UI + 1 背景首选 = 46；再加背景兜底那张 kitchen.png = 47 个 src，
+       坏目录下这 47 个 onerror 必须全被接住 —— 断言跟着数字改，而不是删掉这条。 */
+    A(b4.record.drawImage.length === 0 && b4.record.imgErrors.length === 47,
+      "加载失败时一条 drawImage 都不发，47 个 onerror 全被接住（含背景两张候选）",
       "errors=" + b4.record.imgErrors.length + " / drawImage=" + b4.record.drawImage.length);
     A(b4.canvas()._m.log.fills > 80, "加载失败也照旧画满整屏（矢量兜底生效）");
     b4.B.dispose();
@@ -1026,7 +1027,12 @@ function runMain() {
     A(pool6.length === 5 && new Set(pool6).size === 5, "本局角色池是 5 位的一个排列：" + pool6.join("/"));
     A(b6.B.art.facePoolSeed === 20240918 && JSON.stringify(b6.B.art.facePoolOf(20240918)) === JSON.stringify(pool6),
       "角色池由固定种子决定（seed=" + b6.B.art.facePoolSeed + " → " + pool6.join("/") + "，可复现）");
-    /* ★ 第三态：该顾客订单全部拿到 → 立刻换「满意」脸 */
+    /* ★ 第三态：该顾客订单全部拿到 → 立刻换「满意」脸。
+       时序注意：真实玩法里「订单完成」会在**下一次 step()** 里把顾客置 left（立刻让出座位），
+       而 render() 只画 activeCustomers（!left）→ 满意脸只存在于「完成的那一帧」。
+       所以这里用一帧 1ms 的泵（1ms < 1/60s 的步长阈值）**只渲染、不推进 step**，
+       才能稳定抓到那一帧 —— 本轮把断言收紧成「必须真的画出 *_happy.png」，
+       不再允许用「顾客已离场」这条捷径蒙过去（三位角色的 happy 已切齐）。 */
     const fBefore = d6.faces();
     const cH = fBefore.length > 1 ? fBefore[1].id : (fBefore[0] ? fBefore[0].id : -1);
     const kindH = fBefore.length > 1 ? fBefore[1].kind : (fBefore[0] ? fBefore[0].kind : "");
@@ -1034,15 +1040,18 @@ function runMain() {
     /* debug.serveAll 把某位顾客的订单一次补齐（不推进游戏时间）*/
     d6.serveAll(cH);
     b6.record.drawImage.length = 0;
-    b6.pump(1);
+    b6.pump(1, 1);
     const hitH = d6.faces().filter(f => f.id === cH)[0];
-    A(!hitH || (hitH.happy === true && hitH.mood === "happy"),
+    A(!!hitH && hitH.happy === true && hitH.mood === "happy",
       "订单全部拿到 → 该顾客头像进入第三态 happy",
-      hitH ? (hitH.name + " mood=" + hitH.mood + " happy=" + hitH.happy) : "（顾客已离场，属正常：满单 1.3s 后离开）");
+      hitH ? (hitH.name + " mood=" + hitH.mood + " happy=" + hitH.happy) : "（顾客已离场：满单后 step() 置 left）");
     const happyDrawn = b6.record.drawImage.filter(x => /_happy\.png$/.test(x.src));
-    A(happyDrawn.length > 0 || !hitH,
+    A(happyDrawn.length > 0,
       "帧里真的画了「满意」那张头像贴图",
-      happyDrawn.map(x => x.src.split("/").pop()).join(" ") || ("没画（kind=" + kindH + " 的 happy 可能未切图 → 回退平静脸）"));
+      happyDrawn.map(x => x.src.split("/").pop()).join(" ") || ("没画（kind=" + kindH + "）"));
+    A(happyDrawn.length > 0 && happyDrawn.every(x => new RegExp("art/icons/faces/" + kindH + "_happy\\.png$").test(x.src)),
+      "画出来的正是这位顾客（" + kindH + "）自己的 *_happy.png（不是别人的、也不是回退的平静脸）",
+      [...new Set(happyDrawn.map(x => x.src.split("/").pop()))].join(" "));
 
     /* UI：耐心条底槽 bar_empty + 前景 bar_full 按剩余比例裁**源矩形** */
     d6.setPatience(pid[0], 0.8); d6.setPatience(pid[1], 0.5); d6.setPatience(pid[2], 0.2);

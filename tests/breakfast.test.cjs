@@ -1398,7 +1398,7 @@ function loadBfWithFakeImage(opts) {
   return { B: ctx.__BF, srcs: () => made.slice() };
 }
 
-test("素材映射表完整：5 类厨具有贴图；9 样食材都有盘位贴图；6 头像 + 9 UI 全在册", () => {
+test("素材映射表完整：5 类厨具有贴图；9 样食材都有盘位贴图；15 头像 + 9 UI 全在册", () => {
   const A = BF.art;
   assert.ok(A && typeof A.groups === "function", "api.art 已导出（贴图映射与状态的机器可读出口）");
   /* 厨具：灶位 kind → gear 贴图名，五个 kind 一个都不能漏 */
@@ -1436,7 +1436,7 @@ test("素材映射表完整：5 类厨具有贴图；9 样食材都有盘位贴�
   assert.ok(!A.plateTexHasFood("congee") && !A.plateTexHasFood("juice"),
     "plateTexHasFood：白粥 / 果汁仍走「空盘 + 食材贴图」");
   /* 头像 / UI / 分组 */
-  assert.equal(A.faceIds.length, 12, "12 张头像（3 位老角色 ×2 + 女房东/女护士 ×3）：" + A.faceIds.join("/"));
+  assert.equal(A.faceIds.length, 15, "15 张头像（5 位角色 × 平静/着急/满意；本轮把 stud/office/uncle 的 happy 补齐）：" + A.faceIds.join("/"));
   assert.equal(JSON.stringify(A.faceKinds), JSON.stringify(["stud", "office", "uncle", "fang", "lu"]),
     "顾客角色池 5 位：" + A.faceKinds.join("/"));
   assert.equal(JSON.stringify(A.faceMoods), JSON.stringify(["calm", "urgent", "happy"]),
@@ -1447,9 +1447,9 @@ test("素材映射表完整：5 类厨具有贴图；9 样食材都有盘位贴�
   /* 注意：api.art 返回的是 vm 里的对象/数组（跨 realm），deepStrictEqual 会因为
      原型不同而失败 → 这里一律先拼成字符串再比。 */
   assert.equal(A.groups().map(g => g.key + ":" + g.ids.length).join("|"),
-    "food:9|gear:12|face:12|ui:9", "四组贴图都在统一加载器里（food/gear/face/ui）");
-  assert.equal(A.total(), 43, "素材总数 = 9 食材 + 12 厨具/盘位 + 12 头像 + 9 UI + 1 背景 = 43");
-  assert.equal(A.totalFiles(), 44, "磁盘上的候选文件 44 = 43 + 背景兜底那一张（kitchen2 之外还有 kitchen）");
+    "food:9|gear:12|face:15|ui:9", "四组贴图都在统一加载器里（food/gear/face/ui）");
+  assert.equal(A.total(), 46, "素材总数 = 9 食材 + 12 厨具/盘位 + 15 头像 + 9 UI + 1 背景 = 46");
+  assert.equal(A.totalFiles(), 47, "磁盘上的候选文件 47 = 46 + 背景兜底那一张（kitchen2 之外还有 kitchen）");
 });
 
 test("贴图路径一律是「页面目录 + 相对路径」：不写盘符、不写协议、不写 data URI", () => {
@@ -1507,21 +1507,23 @@ test("背景层：几何常量与磁盘上的真图对得上，木台面上沿�
   assert.equal(bg.ready, false, "单测环境没有 Image → 背景判为不可用（回退程序化底）");
 });
 
-test("统一加载器：预加载 34 张本地贴图；就绪判定 / 全失败回退两条路都走得到", () => {
+test("统一加载器：预加载 45 张本地贴图；就绪判定 / 全失败回退两条路都走得到", () => {
   /* 这个 vm 环境里没有 Image 构造器（单测就是这么设计的）→ 全部判为「走矢量」 */
   assert.equal(readyStr(BF.art), "0,0,0,0,0", "无 Image 时全部判为不可用 → 一律回退矢量");
   /* 换成带「假 Image + location」的环境：验证 src 拼装与就绪统计 */
   const okCtx = loadBfWithFakeImage({ ok: true });
   const A1 = okCtx.B.art;
-  assert.equal(readyStr(A1), "9,12,12,9,1", "有 Image 时外挂 43 张贴图全部就绪（背景算 1）");
+  assert.equal(readyStr(A1), "9,12,15,9,1", "有 Image 时外挂 46 张贴图全部就绪（背景算 1；头像 15 = 5 角色 × 3 情绪）");
   const srcs = okCtx.srcs();
-  assert.equal(A1.totalFiles(), 44, "磁盘候选文件 44 张（背景 2 张候选）");
-  assert.equal(srcs.length, 44, "一共预加载 44 个 src（43 贴图 + 背景兜底那一张，实际 " + srcs.length + "）");
+  assert.equal(A1.totalFiles(), 47, "磁盘候选文件 47 张（背景 2 张候选）");
+  assert.equal(srcs.length, 47, "一共预加载 47 个 src（46 贴图 + 背景兜底那一张，实际 " + srcs.length + "）");
   assert.ok(srcs.every(s => s.indexOf("art/") >= 0 && /\.png$/.test(s)), "每张都是 .png 且落在 art/ 下");
   assert.ok(srcs.every(s => !/^https?:|^data:/i.test(s)), "没有任何 http(s):// 或 data: 外链");
   assert.ok(srcs.every(s => s.indexOf("C:/proj/reborn2/art/") >= 0), "src = 页面目录 + art/… （相对页面，不写死盘符）");
   assert.ok(srcs.some(s => /art\/icons\/gear\/pot\.png$/.test(s)), "厨具 src 形如 …/art/icons/gear/pot.png");
   assert.ok(srcs.some(s => /art\/icons\/faces\/stud_calm\.png$/.test(s)), "头像 src 形如 …/art/icons/faces/stud_calm.png");
+  assert.ok(srcs.some(s => /art\/icons\/faces\/stud_happy\.png$/.test(s)) && srcs.some(s => /art\/icons\/faces\/uncle_happy\.png$/.test(s)),
+    "本批补的三个 happy 也在预加载清单里（stud_happy / uncle_happy）");
   assert.ok(srcs.some(s => /art\/icons\/ui\/bar_empty\.png$/.test(s)), "UI src 形如 …/art/icons/ui/bar_empty.png");
   assert.ok(srcs.some(s => /art\/bg\/kitchen2\.png$/.test(s)), "背景优先 src 形如 …/art/bg/kitchen2.png");
   assert.ok(srcs.some(s => /art\/bg\/kitchen\.png$/.test(s)), "背景兜底 src 形如 …/art/bg/kitchen.png（两级回退）");
@@ -1530,7 +1532,7 @@ test("统一加载器：预加载 34 张本地贴图；就绪判定 / 全失败�
   const A2 = failCtx.B.art;
   assert.equal(readyStr(A2), "0,0,0,0,0", "全部加载失败 → 全部回退矢量");
   const failed = A2.groups().reduce((a, g) => a + g.failed, 0) + A2.bg().failed;
-  assert.equal(failed, 44, "44 个 onerror 全都被接住（failed=" + failed + "，含背景两张候选）");
+  assert.equal(failed, 47, "47 个 onerror 全都被接住（failed=" + failed + "，含背景两张候选）");
 });
 
 test("顾客头像按耐心阈值切换：> 40% 平静 / ≤ 40% 着急（阈值写在常量里）", () => {
@@ -1580,7 +1582,8 @@ test("顾客头像按耐心阈值切换：> 40% 平静 / ≤ 40% 着急（阈值
   assert.ok(A.faceIds.indexOf("fang_happy") >= 0 && A.faceIds.indexOf("lu_happy") >= 0,
     "女房东 / 女护士的「满意」贴图都切好了");
   /* 生成的名字必须在册（否则 assetOf 拿不到图 → 静默回退，测试就漏了）*/
-  const MISSING = { uncle:"happy", stud:"happy", office:"happy" };   // 这 3 张本轮没切（只有 calm/urgent）
+  /* 本轮已把 stud / office / uncle 的 happy 三张补齐（见文件末尾新增测试）→
+     15 张全在册；将来若再出现缺图，应在这里重新列一份 MISSING 并断言「运行期回退平静脸」。*/
   [0, 1, 2, 3, 4, 5].forEach(i => [0, 0.2, 0.4, 0.41, 1].forEach(r => {
     const n = A.faceOf(i, r);
     assert.ok(A.faceIds.indexOf(n) >= 0, "faceOf(" + i + "," + r + ") 的结果在册：" + n);
@@ -1588,8 +1591,7 @@ test("顾客头像按耐心阈值切换：> 40% 平静 / ≤ 40% 着急（阈值
   [0, 1, 2, 3, 4, 5].forEach(i => {
     const n = A.faceOf(i, 1, true);
     const kind = n.replace(/^([a-z]+)_happy$/, "$1");
-    if (MISSING[kind]) assert.ok(A.faceIds.indexOf(n) < 0, "已知缺图（未接）：" + n + " —— 运行期回退平静脸");
-    else assert.ok(A.faceIds.indexOf(n) >= 0, "happy 态在册：" + n);
+    assert.ok(A.faceIds.indexOf(n) >= 0, "happy 态在册（15 张已切齐，不再回退平静脸）：" + n + "（角色 " + kind + "）");
   });
 });
 
@@ -1754,7 +1756,7 @@ test("本轮新增：顾客头像三态 + 5 人形象池（固定种子、可复
   assert.equal(A.faceMoodOf(0, 0.99, true), "happy", "满意优先于耐心（即使耐心 99%）");
   assert.equal(A.faceMoodOf(0, 0.41, false), "calm");
   assert.equal(A.faceMoodOf(0, 0.40, false), "urgent");
-  /* 三态都真的切到了文件（除已知缺图的 3 位角色 happy）*/
+  /* 三态都真的切到了文件（5 位角色 × 3 情绪 = 15 张，本轮已全部切齐）*/
   const moods = {};
   [0, 1, 2, 3, 4].forEach(i => { [false, true].forEach(h => {
     const n = (h ? A.faceOf(i, 1, true) : A.faceOf(i, 0.9, false));
@@ -1770,13 +1772,14 @@ test("本轮新增：顾客头像三态 + 5 人形象池（固定种子、可复
 test("本轮新增：5 位角色头像贴图在磁盘上齐全（女房东 / 女护士 × 平急喜），且与上一轮 6 张并存", () => {
   const A = BF.art;
   const need = ["fang_calm", "fang_urgent", "fang_happy", "lu_calm", "lu_urgent", "lu_happy",
-                "stud_calm", "stud_urgent", "office_calm", "office_urgent", "uncle_calm", "uncle_urgent"];
+                "stud_calm", "stud_urgent", "stud_happy", "office_calm", "office_urgent", "office_happy",
+                "uncle_calm", "uncle_urgent", "uncle_happy"];
   need.forEach(id => {
     const f = path.join(ROOT, "art", "icons", "faces", id + ".png");
     assert.ok(fs.existsSync(f), "头像贴图真实存在：" + id + ".png");
     assert.ok(A.faceIds.indexOf(id) >= 0, "头像贴图在册：" + id);
   });
-  assert.equal(A.faceIds.length, 12, "头像贴图 12 张：" + A.faceIds.join("/"));
+  assert.equal(A.faceIds.length, 15, "头像贴图 15 张（5 位角色 × 平急喜）：" + A.faceIds.join("/"));
   /* 女房东的三态必须真的互不相同（平静 / 着急 / 满意 各一张）*/
   const f1 = meanColorOf(decodePngRGBA(path.join(ROOT, "art", "icons", "faces", "fang_calm.png")));
   const f2 = meanColorOf(decodePngRGBA(path.join(ROOT, "art", "icons", "faces", "fang_urgent.png")));
@@ -1788,3 +1791,84 @@ test("本轮新增：5 位角色头像贴图在磁盘上齐全（女房东 / 女
   assert.ok(colorDist(l1, l3) > 6, "女护士平静 ≠ 满意（色差 " + colorDist(l1, l3).toFixed(1) + "）");
   assert.ok(colorDist(f1, l1) > 6, "女房东 ≠ 女护士（两个角色不是同一张图）");
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   本轮新增：三位顾客（学生 / 女白领 / 胖大爷）的「满意」贴图补齐
+     · 贴图真的在磁盘上、真的在统一加载器在册、三个角色映射各自正确
+     · 三张与各自的 calm 不是同一张图（真的换了表情，不是复制文件名）
+     · 回退链仍是两级：happy 缺图 → calm → 矢量头像（源码里两条路都在）
+   ═══════════════════════════════════════════════════════════════════════════ */
+test("本轮新增：stud/office/uncle 的 happy 贴图补齐（15 张齐全）+ 映射 + 两级回退", () => {
+  const A = BF.art;
+  const THREE = ["stud_happy", "office_happy", "uncle_happy"];
+
+  /* ① 文件真的在磁盘上，且是 192×192 的透明底 PNG（与既有 calm/urgent 同规格） */
+  THREE.forEach(id => {
+    const f = path.join(ROOT, "art", "icons", "faces", id + ".png");
+    assert.ok(fs.existsSync(f), "满意的三张头像贴图真实存在：art/icons/faces/" + id + ".png");
+    const p = decodePngRGBA(f);
+    assert.equal(p.w, 192, id + " 是 192 宽（与既有头像同规格）");
+    assert.equal(p.h, 192, id + " 是 192 高");
+    /* 去白底：四角必须基本透明（白底已被抠成 alpha=0） */
+    const corner = [[1, 1], [190, 1], [1, 190], [190, 190]];
+    let opaqueCorner = 0;
+    corner.forEach(function (c) { if (p.data[(c[1] * p.w + c[0]) * 4 + 3] > 40) opaqueCorner++; });
+    assert.ok(opaqueCorner <= 1, id + " 四角已去白底（不透明角 " + opaqueCorner + "/4）");
+  });
+
+  /* ② 15 张（5 角色 × 3 情绪）全部在册 —— 一张不缺，happy 态不再靠回退 */
+  const ALL = [];
+  A.faceKinds.forEach(k => A.faceMoods.forEach(m => ALL.push(k + "_" + m)));
+  assert.equal(ALL.length, 15, "期望 15 个「角色 × 情绪」组合");
+  ALL.forEach(n => assert.ok(A.faceIds.indexOf(n) >= 0, "15 张全在统一加载器在册：" + n));
+  assert.equal(A.faceIds.length, 15, "5 位角色 × 3 情绪，总数 15：" + A.faceIds.join("/"));
+
+  /* ③ 映射：固定种子池顺序 → 每个角色都能拿到自己的 happy 名（不是都退到同一张） */
+  const pool = A.facePoolFor(null);
+  assert.equal(pool.length, 5, "角色池 5 位");
+  const happyOf = {};
+  for (let i = 0; i < 5; i++) {
+    const n = A.faceOfIn(null, i, 1, true);          // 耐心 100 + 满意 → 必须是 happy
+    const kind = n.replace(/_happy$/, "");
+    assert.equal(n, pool[i] + "_happy", "顾客 #" + i + "（角色 " + pool[i] + "）满意态 → " + n);
+    assert.ok(THREE.indexOf(n) >= 0 || /^(fang|lu)_happy$/.test(n), "happy 名落在 15 张清单里：" + n);
+    happyOf[kind] = n;
+  }
+  assert.equal(new Set(Object.keys(happyOf)).size, 5, "5 位角色拿到 5 个不同的 happy 名");
+  assert.equal(happyOf.stud, "stud_happy", "学生 → stud_happy");
+  assert.equal(happyOf.office, "office_happy", "女白领 → office_happy");
+  assert.equal(happyOf.uncle, "uncle_happy", "胖大爷 → uncle_happy");
+  /* 满意优先于耐心：耐心 0 也是 happy（离场那一刻就是这张脸） */
+  assert.equal(A.faceMoodOf(0, 0, true), "happy", "耐心 0 + 全部拿到 → 仍是 happy");
+
+  /* ④ 三张 happy 与各自的 calm 必须是不同图（真的换了表情，不是同一张改名） */
+  ["stud", "office", "uncle"].forEach(k => {
+    const c = meanColorOf(decodePngRGBA(path.join(ROOT, "art", "icons", "faces", k + "_calm.png")));
+    const h = meanColorOf(decodePngRGBA(path.join(ROOT, "art", "icons", "faces", k + "_happy.png")));
+    assert.ok(colorDist(c, h) > 6, k + " 的 calm 与 happy 是两张不同的图（平均色差 " + colorDist(c, h).toFixed(1) + "）");
+  });
+  /* 三张 happy 互不相同（不是同一张图复制三份） */
+  const hs = ["stud", "office", "uncle"].map(k => meanColorOf(decodePngRGBA(path.join(ROOT, "art", "icons", "faces", k + "_happy.png"))));
+  for (let i = 0; i < hs.length; i++) for (let j = i + 1; j < hs.length; j++) {
+    assert.ok(colorDist(hs[i], hs[j]) > 6, "三位顾客的 happy 互不相同（" + i + "/" + j + " 色差 " + colorDist(hs[i], hs[j]).toFixed(1) + "）");
+  }
+
+  /* ⑤ 两级回退仍写死在源码里：happy 缺图 → 平静脸 → 矢量头像 */
+  assert.ok(/if \(!img && mood === "happy"\) \{/.test(SRC),
+    "drawCustomerFace：happy 取不到图时先退回平静脸（第二级）");
+  assert.ok(/name = faceNameIn\(st0, c\.id, n, false\);/.test(SRC),
+    "第二级用的正是「同一位角色的平静脸」（不是随便换人）");
+  assert.ok(/drawAvatar\(g, box\.x \+ 38, box\.y \+ 58, 21, c\.id\);/.test(SRC),
+    "第三级回退矢量头像 drawAvatar（缺素材也玩得下去）");
+  assert.ok(/IA\.drawn\.faceHappyFallback/.test(SRC),
+    "happy → calm 这一跳有计数（IA.drawn.faceHappyFallback），出图/探针可自证");
+  /* 切片管线可复现：新三张由「3 列 × 1 行」图集脚本产出，脚本真的复用了既有 sliceGrid */
+  const gen = fs.readFileSync(path.join(ROOT, "_bf_faces_happy3_gen.cjs"), "utf8");
+  assert.ok(/require\("\.\/_bf_assets2_gen\.cjs"\)/.test(gen) && /A2\.sliceGrid\(/.test(gen),
+    "切片脚本复用 _bf_assets2_gen.cjs 的 sliceGrid（未重写抠图/缩放算法）");
+  assert.ok(/rows: 1, cols: 3/.test(gen) && /target: 192, pad: 8/.test(gen),
+    "切片参数：3 列 × 1 行、192px、pad 8（与既有 faces 组一致）");
+  assert.ok(fs.existsSync(path.join(ROOT, "art", "lovart_cca01cd7ba70.png")),
+    "源图集留在 art/ 里：lovart_cca01cd7ba70.png（3 列 × 1 行满意表情表）");
+});
+
