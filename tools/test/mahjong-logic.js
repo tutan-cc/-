@@ -1557,8 +1557,13 @@ group("17. 结算亮牌数据结构");
   eq(T.voiceFile("中"), "中.mp3", "字牌映射：中 → 中.mp3");
   eq(T.voiceFile("碰"), "碰.mp3", "动作映射：碰 → 碰.mp3");
   eq(T.voiceFile("杠"), "杠.mp3", "动作映射：杠 → 杠.mp3");
-  eq(T.voiceFile("暗杠"), "暗杠.mp3", "动作映射：暗杠 → 暗杠.mp3");
-  eq(T.voiceFile("补杠"), "补杠.mp3", "动作映射：补杠 → 补杠.mp3");
+  /* 暗杠 / 补杠 **不是语音词**：它们是手上动作，出牌碰实音（sfx-mj-clack）。
+     素材侧 gen_mj_by_seat_tts.py 的 SILENT 常量同样把它们排除在 TTS 之外。
+     曾经把它们登记进词表，结果每个座位都去请求不存在的 seatN/暗杠.mp3：
+     4 次 404、完全无声，还不会让任何测试失败（AudioSys 静默吞掉）。
+     现在明确断言「解析为空」，防止以后又被加回去。 */
+  eq(T.voiceFile("暗杠"), "", "暗杠不是语音词 → 空（改出牌碰实音 mj-clack）");
+  eq(T.voiceFile("补杠"), "", "补杠不是语音词 → 空（改出牌碰实音 mj-clack）");
   eq(T.voiceFile("胡"), "胡.mp3", "动作映射：胡 → 胡.mp3");
   eq(T.voiceFile("自摸"), "自摸.mp3", "动作映射：自摸 → 自摸.mp3（按用户原话优先「自摸！」）");
   eq(T.voiceFile("抢杠"), "抢杠.mp3", "动作映射：抢杠 → 抢杠.mp3");
@@ -1576,15 +1581,15 @@ group("17. 结算亮牌数据结构");
   eq(T.voiceFile("100万"), "", "越界数字 → 空");
   let nk = 0;
   for (const k of Object.keys(T.VOICE_NAMES)) nk++;
-  eq(nk, 45, "语音词表共 45 条（27 序数牌 + 7 字牌 + 11 动作）");
+  eq(nk, 43, "语音词表共 43 条（27 序数牌 + 7 字牌 + 9 动作；暗杠/补杠不喊牌）");
   let files = 0, namesOk = true;
   for (const k of Object.keys(T.VOICE_NAMES)) { if (T.voiceFile(k)) files++; else namesOk = false; }
-  eq(files, 45, "45 个词条全部能解析到文件名（无死词条）");
+  eq(files, 43, "43 个词条全部能解析到文件名（无死词条）");
   eq(namesOk, true, "词表里没有解析不出来的词条");
   eq(T.VOICE_KEY, "mjVoiceOn", "localStorage 键名 = mjVoiceOn");
   const fileList = [];
   for (const k of Object.keys(T.VOICE_NAMES)) fileList.push(T.voiceFile(k));
-  eq(fileList.filter((v, i) => fileList.indexOf(v) === i).length, 45, "45 个文件名互不重复");
+  eq(fileList.filter((v, i) => fileList.indexOf(v) === i).length, 43, "43 个文件名互不重复");
 
   /* ② URL / 基址（HTA 里是绝对 file:// 路径，index.html 里是相对路径） */
   const vbase = MJ.debug.voiceBase();
@@ -1595,7 +1600,7 @@ group("17. 结算亮牌数据结构");
   eq(MJ.debug.voiceUrl("不存在"), "", "无法映射的名字返回空串");
   eq(u1.indexOf("?") < 0 && u1.indexOf("&") < 0, true, "URL 不带查询串（静态素材）");
   ok(MJ.debug.voiceRelBase().length > 0, "voiceRelBase() 可读 → " + MJ.debug.voiceRelBase());
-  eq(MJ.debug.voiceStats().total, 45, "voiceStats().total = 45 条素材");
+  eq(MJ.debug.voiceStats().total, 43, "voiceStats().total = 43 条素材");
 
   /* ③ 开关：切换 / 持久化 / 关闭后不播 */
   eq(typeof MJ.debug.voiceToggle(), "boolean", "voiceToggle() 无参 = 切换，返回布尔");

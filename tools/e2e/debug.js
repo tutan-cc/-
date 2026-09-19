@@ -1,4 +1,4 @@
-﻿// 验证调试跳转：点「跳到谈判」→ 应直接进入谈判玩法
+// 验证调试跳转：点「跳到谈判」→ 应直接进入谈判玩法
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
@@ -43,6 +43,7 @@ async function ev(e){ const r=await send("Runtime.evaluate",{expression:e,return
   assert(st.done===15, `前置已解锁 ${st.done} 个节点`);
   assert(st.hong>=20 && st.man>=20, "羁绊加成条件满足（红姐/顾曼 ≥20）");
   const r=await send("Page.captureScreenshot",{format:"png"});
+  fs.mkdirSync(path.join(OUT,"测试截图"),{recursive:true});   // 干净 clone 上目录不存在，不自建会 ENOENT 崩掉
   fs.writeFileSync(OUT+"\\测试截图\\debug_jump_talk.png", Buffer.from(r.result.data,"base64"));
   console.log(`[结果] 通过 ${checks.length}，失败 ${errors.length}` + (errors.length?(" | "+errors.join(" | ")):""));
   chrome.kill(); process.exit(errors.length?1:0);

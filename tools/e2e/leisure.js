@@ -15,7 +15,9 @@ function send(m,p){ return new Promise((res,rej)=>{ const i=++id; pend[i]=res; w
 async function ev(e){ const r=await send("Runtime.evaluate",{expression:e,returnByValue:true});
   if(r.result&&r.result.exceptionDetails) return "EXC:"+((r.result.exceptionDetails.exception||{}).description||"");
   return r.result&&r.result.result?r.result.result.value:undefined; }
-async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png"}); fs.writeFileSync(OUT+"\\测试截图\\"+n+".png", Buffer.from(r.result.data,"base64")); }
+async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png"});
+  fs.mkdirSync(path.join(OUT,"测试截图"),{recursive:true});   // 干净 clone 上目录不存在，不自建会 ENOENT 崩掉
+  fs.writeFileSync(OUT+"\\测试截图\\"+n+".png", Buffer.from(r.result.data,"base64")); }
 (async()=>{
   const checks=[], errors=[]; const assert=(ok,n)=>{ ok?checks.push(n):errors.push(n); };
   const chrome=spawn(CHROME,["--headless=new",`--remote-debugging-port=${PORT}`,"--window-size=1440,900",
@@ -57,25 +59,37 @@ async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png
 
   /* 麻将 */
   await ev('localStorage.clear()'); await send("Page.navigate",{url:BASE+"/index.html"}); await sleep(2500);
-  await ev('document.getElementById("dbgMj").click()'); await sleep(5000);
-  await ev('document.getElementById("skipnode").click()'); await sleep(2500);
-  st=JSON.parse(await ev(`JSON.stringify({ on:document.getElementById("mj").classList.contains("on"),
-    hand:(window.__cs2&&__cs2.mj)?__cs2.mj.hand.length:-1 })`));
-  console.log("[麻将] 面板:", st.on, "手牌:", st.hand);
-  assert(st.on===true && st.hand===13, "麻将面板打开且手牌 13 张");
-  let mjWin=false;
-  for(let i=0;i<24;i++){
-    const s=JSON.parse(await ev(`JSON.stringify({ on:document.getElementById("mj").classList.contains("on"),
-      drawn:(window.__cs2&&__cs2.mj)?__cs2.mj.drawn:null, can:(window.__cs2&&__cs2.mj)?__cs2.mj.canWin():false })`));
-    if(!s.on) break;
-    if(s.can){ await ev('(window.__cs2&&__cs2.mj)?__cs2.mj.win():null'); mjWin=true; break; }
-    if(!s.drawn){ await ev('(window.__cs2&&__cs2.mj)?__cs2.mj.draw():null'); }
-    else { await ev('(window.__cs2&&__cs2.mj)?__cs2.mj.discard(0):null'); }
-    await sleep(300);
+  await ev('document.getElementById("dbgMj").click()');
+  /* ⚠ 这里必须「等条件」而不是「等固定时间」：
+     麻将节点带 2 段剧情视频（NODES.mahjong.shots 有 2 条），
+     点 dbgMj 后要先看完两段才进牌局。原先 sleep(5000) 后直接断言手牌张数，
+     实测视频还没放完 => 拿到 hand=0 => 误报「手牌 13 张」失败 + 「麻将已结算」失败。
+     实测牌局真的发牌了：等够时间后 hand=14、wall=83。这是测试的时序竞态，不是游戏 bug。 */
+  for(let i=0;i<40;i++){
+    const on=await ev('document.getElementById("mj").classList.contains("on")');
+    if(on===true) break;
+    await ev('document.getElementById("skipnode").click()');
+    await sleep(600);
   }
-  await sleep(2200);
+  // 再等到真发牌（手牌 13 张 = 已摸牌前的常态；庄家摸牌后 14 张也接受）
+  let mjSt={on:false,hand:-1};
+  for(let i=0;i<40;i++){
+    mjSt=JSON.parse(await ev(`JSON.stringify({ on:document.getElementById("mj").classList.contains("on"),
+      hand:(window.__cs2&&__cs2.mj)?__cs2.mj.hand().length:-1 })`));
+    if(mjSt.on===true && mjSt.hand>=13) break;
+    await sleep(400);
+  }
+  console.log("[麻将] 面板:", mjSt.on, "手牌:", mjSt.hand);
+  assert(mjSt.on===true && mjSt.hand>=13, "麻将面板打开且手牌 13 张");
+  // 用内置调试口直接判胡结算（比逐张 discard 驱动稳定：后者依赖随机牌型，常常等不到可胡）
+  const mjWin = await ev('(window.__cs2&&__cs2.mj&&__cs2.mj.forceWin)?(__cs2.mj.forceWin(),true):false');
+  await sleep(1200);
+  // 结算后要点结算板的「继 续」(#mjmGo) 才走 onFinish 关面板 ——
+  // 只调 forceWin 不点按钮，面板会一直停在结算页。
+  const goClicked = await ev('(function(){var b=document.getElementById("mjmGo"); if(!b) return false; b.click(); return true;})()');
+  await sleep(2500);
   const mjDone=JSON.parse(await ev(`JSON.stringify({ on:document.getElementById("mj").classList.contains("on"), win:S.mjWin===true })`));
-  console.log("[麻将] 结束:", JSON.stringify(mjDone), "驱动胡牌:", mjWin);
+  console.log("[麻将] 结束:", JSON.stringify(mjDone), "驱动胡牌:", mjWin, "点继续:", goClicked);
   assert(mjDone.on===false, "麻将已结算");
   await shot("lud_mahjong");
 

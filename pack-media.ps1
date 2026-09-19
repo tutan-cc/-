@@ -16,7 +16,7 @@
     <仓库>\dist\素材分发\media-<版本>.zip.sha256  校验文件
 #>
 param(
-  [string]$Version = "v1.15",
+  [string]$Version = "v2.0",
   [string]$MediaDir
 )
 
@@ -56,15 +56,24 @@ Write-Host "媒体素材库：$MediaDir" -ForegroundColor Cyan
 #   video/poster/ 同上，由实拍视频抽帧
 #   video/original/  原创程序化生成（可自由分发）
 #   audio/       配音等音频：可能是自产 TTS、也可能是从素材截取，故按目录名再细分
+#
+# 下划线开头的目录/文件一律排除：那是加工中间产物（TTS 原始件备份 _seat1_src、
+# 处理前素材 _sfx_src 等），不是要给协作者的东西。
+# 曾因为没排除，把三份座位原始备份一起打进了分发包（多 3.5MB 且清单被污染）。
+# 处理完的原始件统一放在仓库外的 audio-工作区\_原始件备份\。
 $files = Get-ChildItem $MediaDir -Recurse -File |
          Where-Object { $_.FullName -notlike "*\README.md" } |
+         Where-Object { $_.Name -notlike "_*" } |
+         Where-Object { $_.FullName -notmatch '\\_[^\\]*\\' } |
          Sort-Object FullName
 
 function Get-SourceOf([string]$rel) {
   if ($rel -like "video/original/*")                 { return "original" }
   if ($rel -like "video/fx_*")                       { return "original" }   # 历史位置，兼容
-  if ($rel -like "audio/vo_actor/*")                 { return "thirdparty" } # 从实拍视频截取的演员原声
-  if ($rel -like "audio/*")                          { return "self" }       # 自产语音（TTS 合成等）
+  # audio/vo_real/ 是本项目的主配音目录（StepAudio TTS 生成，自产）
+  # audio/vo_actor/ 保留给「从实拍视频截取的演员原声」——那是第三方，不该混作自产
+  if ($rel -like "audio/vo_actor/*")                 { return "thirdparty" }
+  if ($rel -like "audio/*")                          { return "self" }
   return "thirdparty"
 }
 function Get-LicenseOf([string]$src) {
@@ -131,11 +140,19 @@ if (Test-Path $zip) { Remove-Item $zip -Force }
 
 Write-Host "打包中..." -ForegroundColor Cyan
 # 压到临时目录再 Compress-Archive，保证 zip 内是 video\ / audio\ 顶层结构
+# 同样排除下划线开头的加工中间产物（与清单计算保持一致的过滤规则）
 $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("medstage_" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 foreach ($d in @("video","audio")) {
   $src = Join-Path $MediaDir $d
-  if (Test-Path $src) { Copy-Item $src (Join-Path $stage $d) -Recurse -Force }
+  if (-not (Test-Path $src)) { continue }
+  $dest = Join-Path $stage $d
+  New-Item -ItemType Directory -Path $dest -Force | Out-Null
+  Get-ChildItem $src -Force | Where-Object {
+    $_.Name -notlike "_*"
+  } | ForEach-Object {
+    Copy-Item $_.FullName $dest -Recurse -Force
+  }
 }
 # 素材库自己的 README 也带上，方便拿到包的人理解结构
 Copy-Item (Join-Path $MediaDir "README.md") (Join-Path $stage "README.md") -Force -ErrorAction SilentlyContinue
