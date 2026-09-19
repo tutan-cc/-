@@ -206,8 +206,11 @@ node tools/dev/check-inline.js      # index.html 内联脚本语法闸
 - **单元测试**：`node tests/core.test.cjs` → 8/8（素材存在性、剧情图连通、效果键白名单、时间线单调、装备只改玩法参数、坏档拒绝与旧档迁移、续播快照校验、早餐店存档字段兼容）
   - 注：`node --test` 会 spawn 子进程，在被沙盒限制的终端里会报 EPERM；直接 `node tests/core.test.cjs` 等价且可运行
 - **E2E 全流程**：`node tools/e2e/main.js` → 16/16 节点全通（含线路取证、信号复原、躲避、股市、两种 QTE、两套答题、双章末卡），验收 **7/7 通过**
-- **小游戏专项**：麻将逻辑 `node tools/test/mahjong-logic.js` **847/847**；早餐店 `node tools/bf/headless.js` **350/350**
+- **小游戏专项**：麻将逻辑 `node tools/test/mahjong-logic.js` **847/847**；早餐店 `node tools/bf/headless.js` **351/351**
 - 结果落盘 `dist/test-results/*.json`（不入库，避免每次跑测试污染 `git status`）；截图存于 `测试截图\`
+- **一条命令跑全部**：`powershell -NoProfile -ExecutionPolicy Bypass -File run-all-tests.ps1`
+  （`-SkipBrowser` 跳过要开浏览器的第三层）。分层原理、断言写法、常见坑见
+  **[`小游戏自动化调测指南.md`](小游戏自动化调测指南.md)**
 
 ## 文件
 
@@ -218,6 +221,7 @@ node tools/dev/check-inline.js      # index.html 内联脚本语法闸
 | `link-media.ps1` / `pack-media.ps1` | 素材对接 / 打包（素材不入库） |
 | `媒体清单.json` | 素材契约：184 个文件的路径/字节/SHA256/来源 |
 | `协作者上手指南.md` | 拿到代码后如何三步跑通 |
+| `小游戏自动化调测指南.md` | 三层测试金字塔：怎么跑、怎么加用例、断言口径与常见坑 |
 | `docs/` | 剧本、架构文档、历次改造报告 |
 | `tools/` | 开发与验收工具（见 `tools/README.md`） |
 | `dist/` | **不入库**。装两样东西：`素材分发/`（要复制给协作者的分发包）+ `test-results/`（测试产物 JSON） |

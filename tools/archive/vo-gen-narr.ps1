@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Continue"
-$root = "C:\Users\chris\Desktop\重生2-原型"
-$voDir = "$root\audio\vo"
-$lines = Get-Content "$root\tools/voice/lines.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+$repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # tools/archive/ → 仓库根（自定位，不写死本机路径）
+$voDir = Join-Path $repo "audio\vo"
+$lines = Get-Content (Join-Path $repo "tools/voice/lines.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 $v = New-Object -ComObject SAPI.SpVoice
 $hui = @($v.GetVoices()) | Where-Object { $_.GetDescription() -like "*Huihui*" } | Select-Object -First 1
 if ($hui) { $v.Voice = $hui }

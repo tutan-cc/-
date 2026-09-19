@@ -12,11 +12,13 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const MSHTA = "C:\\Windows\\System32\\mshta.exe";
 const PORT = 9231;
-const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const OUT = path.join(__dirname, "..", "..");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const PROF = OUT + "\\_prof_mj2";
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -880,7 +882,10 @@ async function runTrident() {
   const pngRH = grab("_mj_result_hands_b64.txt", "mahjong_result_hands.png");
   const pngFS = grab("_mj_facesheet_b64.txt", "mahjong_faces_sheet.png");
   const pngV = grab("_mj_voice_b64.txt", "mahjong_voice.png");
-  if (out) { try { fs.rmSync(htaPath, { force: true }); } catch (e) {} for (const f of files) { try { fs.rmSync(OUT + "\\" + f, { force: true }); } catch (e) {} } }
+  /* 临时文件一律清掉 —— **成功失败都清**。原来只在成功时清 .hta，失败时把它留在仓库根，
+     既不美观又不在 .gitignore 里（会脏 git status）。出图已经 grab 完了，这里删干净是安全的。 */
+  try { fs.rmSync(htaPath, { force: true }); } catch (e) {}
+  for (const f of files) { try { fs.rmSync(OUT + "\\" + f, { force: true }); } catch (e) {} }
   return { ok: !!out, why: out ? "" : "mshta 探针未产出结果", out, png, png2, pngZ, pngF, pngM, pngH, pngRH, pngFS, pngV };
 }
 
@@ -1123,7 +1128,7 @@ async function runChrome() {
     const tri = await runTrident();
     if (!tri.ok) {
       console.error("FATAL: 浏览器实测无法执行 → " + tri.why);
-      fs.writeFileSync(OUT + "\\dist\\test-results\\mahjong2-results.json", JSON.stringify({
+      fs.writeFileSync(resultsFile("mahjong2-results.json"), JSON.stringify({
         success: false, testedAt: new Date().toISOString(), mode, checks, errors: [extraNote, tri.why], info
       }, null, 1), "utf8");
       process.exit(3);
@@ -1188,7 +1193,7 @@ async function runChrome() {
     success: errors.length === 0, mode, testedAt: new Date().toISOString(),
     note: extraNote, checks, errors, info
   };
-  fs.writeFileSync(OUT + "\\dist\\test-results\\mahjong2-results.json", JSON.stringify(res, null, 1), "utf8");
+  fs.writeFileSync(resultsFile("mahjong2-results.json"), JSON.stringify(res, null, 1), "utf8");
   console.log("\n════════════════════════════════");
   console.log("模式 " + mode + " · 通过 " + checks.length + "，失败 " + errors.length + (errors.length ? " | " + errors.join(" | ") : "，全部通过 ✔"));
   setTimeout(() => process.exit(errors.length ? 1 : 0), 300);

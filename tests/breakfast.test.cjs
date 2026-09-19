@@ -1863,12 +1863,19 @@ test("本轮新增：stud/office/uncle 的 happy 贴图补齐（15 张齐全）+
   assert.ok(/IA\.drawn\.faceHappyFallback/.test(SRC),
     "happy → calm 这一跳有计数（IA.drawn.faceHappyFallback），出图/探针可自证");
   /* 切片管线可复现：新三张由「3 列 × 1 行」图集脚本产出，脚本真的复用了既有 sliceGrid */
-  const gen = fs.readFileSync(path.join(ROOT, "_bf_faces_happy3_gen.cjs"), "utf8");
-  assert.ok(/require\("\.\/_bf_assets2_gen\.cjs"\)/.test(gen) && /A2\.sliceGrid\(/.test(gen),
-    "切片脚本复用 _bf_assets2_gen.cjs 的 sliceGrid（未重写抠图/缩放算法）");
+  const gen = fs.readFileSync(path.join(ROOT, "tools", "bf", "assets", "faces-happy-gen.js"), "utf8");
+  assert.ok(/require\("\.\/gen2\.js"\)/.test(gen) && /A2\.sliceGrid\(/.test(gen),
+    "切片脚本复用 tools/bf/assets/gen2.js 的 sliceGrid（未重写抠图/缩放算法）");
   assert.ok(/rows: 1, cols: 3/.test(gen) && /target: 192, pad: 8/.test(gen),
     "切片参数：3 列 × 1 行、192px、pad 8（与既有 faces 组一致）");
-  assert.ok(fs.existsSync(path.join(ROOT, "art", "lovart_cca01cd7ba70.png")),
-    "源图集留在 art/ 里：lovart_cca01cd7ba70.png（3 列 × 1 行满意表情表）");
+  /* 源图集按「素材契约」属于可选的原始生成物：在库就一并校验，不在库不算失败
+     ——避免留下一条只有本机才过的断言（素材不入库是既有纪律，见 SOURCES.md 第五节）。 */
+  const grid = path.join(ROOT, "art", "lovart_cca01cd7ba70.png");
+  if (fs.existsSync(grid)) {
+    const g = decodePngRGBA(grid);
+    assert.ok(g.w === 2172 && g.h === 724, "源图集尺寸仍是 3 列 × 1 行（2172×724），切片参数未过时");
+  } else {
+    console.log("  [skip] art/lovart_cca01cd7ba70.png 不在库（素材分发体系下属可选项）；三张切片产物已单独校验");
+  }
 });
 

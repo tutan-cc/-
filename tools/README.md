@@ -54,9 +54,13 @@ tools/
 
 ```bash
 node tools/test/mahjong-logic.js    # 麻将纯逻辑单测（847 项）
-node tools/bf/headless.js           # 早餐店无头验收（350 项）
+node tools/bf/headless.js           # 早餐店无头验收（351 项）
 node tools/dev/check-inline.js      # index.html 内联脚本语法闸（改内联胶水层后必跑）
 ```
+
+> 想「一条命令跑完全部三层」而不是一条条敲：
+> `powershell -NoProfile -ExecutionPolicy Bypass -File run-all-tests.ps1`（`-SkipBrowser` 跳过浏览器层）。
+> 分层原理、怎么给新玩法加用例、断言口径与踩坑清单见根目录 **`小游戏自动化调测指南.md`**。
 
 ## 依赖关系
 

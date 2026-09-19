@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = "Continue"
-$root = "C:\Users\chris\Desktop\重生2-原型"
-$dir  = "$root\audio\mj"
+$repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # tools/archive/ → 仓库根（自定位，不写死本机路径）
+$dir  = Join-Path $repo "audio\mj"            # 旧 TTS 牌名播报（已废弃，脚本仅作追溯）
 New-Item -ItemType Directory -Force $dir | Out-Null
 
 # 词条：文件名 → 朗读文本

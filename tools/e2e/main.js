@@ -2,11 +2,13 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
+const path = require("path");
 
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9223;
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
-const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
+const OUT = path.join(__dirname, "..", "..");
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -182,8 +184,7 @@ window.__driveLog = "running";
   assert(fin.achv.length >= 3, `成就解锁 ${fin.achv.length} 枚`);
   const results = { success: errors.length === 0, testedAt: new Date().toISOString(),
     checks, errors, error: null, path: result, state: fin };
-  fs.mkdirSync(OUT + "\\tests", { recursive: true });
-  fs.writeFileSync(OUT + "\\dist\\test-results\\e2e-results.json", JSON.stringify(results, null, 1), "utf8");
+  fs.writeFileSync(resultsFile("e2e-results.json"), JSON.stringify(results, null, 1), "utf8");
   console.log(`[验收] 通过 ${checks.length} 项，失败 ${errors.length} 项 → dist/test-results/e2e-results.json`);
 
   chrome.kill();

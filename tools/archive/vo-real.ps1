@@ -1,9 +1,9 @@
 $ErrorActionPreference = "Continue"
-$root = "C:\Users\chris\Desktop\重生2-原型"
-$src  = "D:\重生2视频提取"
-$outDir = "$root\audio\vo_real"
+$repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # tools/archive/ → 仓库根（自定位，不写死本机路径）
+$src  = if ($env:TIANSHU_SRC_MEDIA) { $env:TIANSHU_SRC_MEDIA } else { "H:\GAMEDEV\Tianshu-第三方素材" }  # 仓库外的第三方素材库，可用环境变量覆盖
+$outDir = Join-Path $repo "audio\vo_actor"      # 目录已更名 vo_real → vo_actor（见 SOURCES.md 音频一节）
 New-Item -ItemType Directory -Force $outDir | Out-Null
-$lines = Get-Content "$root\tools/voice/lines.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+$lines = Get-Content (Join-Path $repo "tools/voice/lines.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 
 # 角色 → 源素材分类（素材库按人物分类，因此该分类里的人声＝画面上那个人的真声）
 $MAP = @{

@@ -2,10 +2,12 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9228;
-const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const OUT = path.join(__dirname, "..", "..");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function req(method, path){ return new Promise((res,rej)=>{ const r=http.request({host:"127.0.0.1",port:PORT,path,method},resp=>{let d="";resp.on("data",c=>d+=c);resp.on("end",()=>{try{res(JSON.parse(d))}catch(e){res(d)}});}); r.on("error",rej); r.end(); }); }
 let id=0, ws, pend={};
@@ -96,7 +98,7 @@ async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png
   await shot("lud_lottery_open");
 
   const res={ success:errors.length===0, testedAt:new Date().toISOString(), checks, errors };
-  fs.writeFileSync(OUT+"\\dist\\test-results\\leisure-results.json", JSON.stringify(res,null,1),"utf8");
+  fs.writeFileSync(resultsFile("leisure-results.json"), JSON.stringify(res,null,1),"utf8");
   console.log(`[结果] 通过 ${checks.length}，失败 ${errors.length}` + (errors.length?(" | "+errors.join(" | ")):""));
   chrome.kill(); process.exit(errors.length?1:0);
 })().catch(e=>{ console.error("FATAL",e); process.exit(1); });

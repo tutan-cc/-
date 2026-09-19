@@ -81,7 +81,18 @@
 | `art/lovart_1a973d87de0e.png` | 麻将/中式茶室包间背景（深绿绒布方桌留空 + 四把木椅 + 暖光吊灯） | 已裁切 → `art/bg/mahjong.png` |
 | `art/lovart_cef6ccfa89a5.png` | 麻将道具九宫格（白板 / 發 / 两骰子 ｜ 蓝·红·金筹码 ｜ 深蓝斜纹牌背 / 木牌尺 / 烟灰缸） | 已切片 → `art/icons/mj/*.png` |
 
-切片参数见 `art/_assets2_report.json`（脚本 `_bf_assets2_gen.cjs` 自动求出，未写死）。
-接入过程与取舍见 早餐店-素材二批接入报告.md。
+切片参数见 `art/_assets2_report.json`（脚本 `tools/bf/assets/gen2.js` 自动求出，未写死）。
+接入过程与取舍见 `docs/早餐店-素材二批接入报告.md`。
+
+### 五之三、Lovart 第三批（满意表情，已入库）
+
+| 材料 | 内容 | 用途 |
+|---|---|---|
+| `art/lovart_cca01cd7ba70.png` | 顾客头像横排三格：学生 / 女白领 / 胖大爷 ×「满意」 | 已切片 → `art/icons/faces/{stud,office,uncle}_happy.png` |
+
+补齐后 `art/icons/faces/` 为 **5 位角色 × 3 情绪 = 15 张**（此前 happy 态只有女房东 / 女护士两张，
+其余三位在「订单全部拿到」时走「回退平静脸」）。切片参数见 `art/_faces_happy3_report.json`
+（脚本 `tools/bf/assets/faces-happy-gen.js` 调用 `tools/bf/assets/gen2.js` 的 `sliceGrid()` 自动求出，未写死）。
+接入过程见 `docs/满意表情与麻将桌装饰接入报告.md`。
 
 

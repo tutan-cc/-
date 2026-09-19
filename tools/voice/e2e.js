@@ -2,9 +2,10 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9225;
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function req(method, path){ return new Promise((res,rej)=>{ const r=http.request({host:"127.0.0.1",port:PORT,path,method},resp=>{let d="";resp.on("data",c=>d+=c);resp.on("end",()=>{try{res(JSON.parse(d))}catch(e){res(d)}});}); r.on("error",rej); r.end(); }); }
 let id=0, ws, pend={};
@@ -14,7 +15,7 @@ async function ev(e){ const r=await send("Runtime.evaluate",{expression:e,return
   return r.result&&r.result.result?r.result.result.value:undefined; }
 (async()=>{
   const chrome=spawn(CHROME,["--headless=new",`--remote-debugging-port=${PORT}`,"--window-size=1440,860",
-    "--user-data-dir=C:\\Users\\chris\\Desktop\\重生2-原型\\_prof2","about:blank"],{stdio:"ignore"});
+    "--user-data-dir=" + path.join(OUT, "_prof2"), "about:blank"],{stdio:"ignore"});
   for(let i=0;i<60;i++){ try{ await req("GET","/json/version"); break; }catch(e){ await sleep(400); } }
   const tab=await req("PUT","/json/new?"+encodeURIComponent(BASE+"/index.html"));
   ws=new WebSocket(tab.webSocketDebuggerUrl);

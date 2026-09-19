@@ -2,10 +2,12 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9224;
-const DIR = "C:\\Users\\chris\\Desktop\\_solo_test";
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("_solo_test");
+const OUT = path.join(__dirname, "..", "..");
+const DIR = path.join(OUT, "dist", "_solo_test");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function req(method, path){ return new Promise((res,rej)=>{ const r=http.request({host:"127.0.0.1",port:PORT,path,method},resp=>{let d="";resp.on("data",c=>d+=c);resp.on("end",()=>{try{res(JSON.parse(d))}catch(e){res(d)}});}); r.on("error",rej); r.end(); }); }
 let id=0, ws, pend={};
@@ -13,7 +15,7 @@ function send(m,p){ return new Promise((res,rej)=>{ const i=++id; pend[i]=res; w
 async function ev(e){ const r=await send("Runtime.evaluate",{expression:e,returnByValue:true}); return r.result&&r.result.result?r.result.result.value:undefined; }
 (async()=>{
   fs.mkdirSync(DIR,{recursive:true});
-  fs.copyFileSync("C:/Users/chris/Desktop/重生2-原型/index.html", DIR+"/index.html");
+  fs.copyFileSync(path.join(OUT, "index.html"), path.join(DIR, "index.html"));
   const chrome=spawn(CHROME,["--headless=new",`--remote-debugging-port=${PORT}`,"--window-size=1440,860",
     `--user-data-dir=${DIR}\\_prof`,"about:blank"],{stdio:"ignore"});
   for(let i=0;i<60;i++){ try{ await req("GET","/json/version"); break; }catch(e){ await sleep(400); } }

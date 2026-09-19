@@ -11,6 +11,7 @@
    运行：node tools/bf/headless.js
    ═══════════════════════════════════════════════════════════════════════════ */
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
 const path = require("path");
 const vm = require("vm");
 
@@ -1378,7 +1379,7 @@ const res = {
   checks, errors,
   limits: { pixelEvidence: false, screenshotAvailable: shots.length > 0, reason: "像素级截图与 CDP 真实鼠标需要可启动的浏览器；本沙箱不具备（已尝试 Chrome / Edge / mshta）" }
 };
-fs.writeFileSync(path.join(OUT, "dist", "test-results", "breakfast-headless-results.json"), JSON.stringify(res, null, 1), "utf8");
+fs.writeFileSync(resultsFile("breakfast-headless-results.json"), JSON.stringify(res, null, 1), "utf8");
 console.log("[无头渲染验收] 模式=" + res.mode);
 checks.forEach(c => console.log("  ✔ " + c));
 errors.forEach(e => console.log("  ✖ " + e));

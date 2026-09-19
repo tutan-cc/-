@@ -2,10 +2,12 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9226;
-const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const OUT = path.join(__dirname, "..", "..");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function req(method, path){ return new Promise((res,rej)=>{ const r=http.request({host:"127.0.0.1",port:PORT,path,method},resp=>{let d="";resp.on("data",c=>d+=c);resp.on("end",()=>{try{res(JSON.parse(d))}catch(e){res(d)}});}); r.on("error",rej); r.end(); }); }
 let id=0, ws, pend={};
@@ -87,7 +89,7 @@ async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png
   await shot("panel_shop");
 
   const results={ success:errors.length===0, testedAt:new Date().toISOString(), checks, errors, map3d:st, panel };
-  fs.writeFileSync(OUT+"\\dist\\test-results\\map3d-results.json", JSON.stringify(results,null,1),"utf8");
+  fs.writeFileSync(resultsFile("map3d-results.json"), JSON.stringify(results,null,1),"utf8");
   console.log(`[3D验收] 通过 ${checks.length} 项，失败 ${errors.length} 项`);
   if(errors.length) console.log("失败项:", errors.join(" | "));
   chrome.kill(); process.exit(errors.length?1:0);

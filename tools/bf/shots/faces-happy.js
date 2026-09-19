@@ -1,22 +1,22 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   _bf_faces_happy3_shots.cjs — 出品 测试截图/bf_faces_happy3.png
+   tools/bf/shots/faces-happy.js — 出品 测试截图/bf_faces_happy3.png
 
    内容：三位顾客（学生 / 女白领 / 胖大爷）的「满意 happy」头像平铺
          + 与各自「平静 calm」并排对照（证明真的换了表情，不是同一张改名）
          + 中文说明（切片来源 / 参数 / 接入点 / 回退链）
 
-   出图链与 _bf_assets_shots.cjs 完全一致（本沙箱起不了 Chrome/Edge）：
-     PNG 贴图由 _bf_raster.cjs 真解码 + 真 drawImage 合成 → 文字经 __textHook 记录下来，
-     最后交给 powershell + System.Drawing 用 Microsoft YaHei 合成回 PNG。
+   出图链与 tools/bf/assets/shots.js 完全一致（本沙箱起不了 Chrome/Edge）：
+     PNG 贴图由 tools/lib/raster.js 真解码 + 真 drawImage 合成 → 文字经 __textHook 记录下来，
+     最后交给 tools/lib/text-compose.ps1 + System.Drawing 用 Microsoft YaHei 合成回 PNG。
 
-   运行：node _bf_faces_happy3_shots.cjs
+   运行（仓库根）：node tools/bf/shots/faces-happy.js
    ═══════════════════════════════════════════════════════════════════════════ */
 "use strict";
 const fs = require("fs"), path = require("path");
-const { createCanvas } = require("./_bf_raster.cjs");
+const { createCanvas } = require("../../lib/raster.js");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..", "..", "..");
 const SHOT = path.join(OUT, "测试截图");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
 const PNG = path.join(SHOT, "bf_faces_happy3.png");
@@ -40,7 +40,7 @@ function ImageCtor() {
   };
 }
 
-/* 切片报告（_bf_faces_happy3_gen.cjs 产出）→ 拿 drawSize / offset / coverage 用于排版与标注 */
+/* 切片报告（tools/bf/assets/faces-happy-gen.js 产出）→ 拿 drawSize / offset / coverage 用于排版与标注 */
 const REP = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_faces_happy3_report.json"), "utf8"));
 const REP_ITEM = {};
 REP.group.items.forEach(it => { REP_ITEM[it.id] = it; });
@@ -129,11 +129,13 @@ fs.writeFileSync(PNG, cv.toPNG());
 console.log("[bf_faces_happy3.png] " + W + "×" + H + "  " + (fs.statSync(PNG).size / 1024).toFixed(1) + "KB  中文说明 " + texts.length + " 段");
 
 /* 中文交给 powershell + System.Drawing（沙箱里子进程只能用 stdio inherit / ignore） */
-const MANIFEST = path.join(OUT, "tests", "bf_faces_happy3_text.json");
+const TR = path.join(OUT, "dist", "test-results");
+if (!fs.existsSync(TR)) fs.mkdirSync(TR, { recursive: true });
+const MANIFEST = path.join(TR, "bf_faces_happy3_text.json");
 fs.writeFileSync(MANIFEST, JSON.stringify({ at: new Date().toISOString(), shots: [{ png: PNG, texts: texts }] }), "utf8");
 try {
   execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-    path.join(OUT, "_bf_text.ps1"), "-Manifest", MANIFEST], { stdio: "inherit", cwd: OUT });
+    path.join(OUT, "tools", "lib", "text-compose.ps1"), "-Manifest", MANIFEST], { stdio: "inherit", cwd: OUT });
 } catch (e) {
   console.error("（文字合成失败，PNG 已出但中文可能缺失）：" + (e && e.message));
 }

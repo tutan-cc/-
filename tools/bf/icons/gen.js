@@ -398,7 +398,7 @@ for (const j of jobs) {
   const file = path.join(ICON_DIR, j.id + ".png");
   fs.writeFileSync(file, encodePNG(TARGET, TARGET, sc.rgba));
   const kb = (fs.statSync(file).size / 1024).toFixed(1);
-  report.push({ id: j.id, file, kb: +kb, coverage: +(100 * nz / (TARGET * TARGET)).toFixed(1), colors: colors.size, meanA: +(sumA / (TARGET * TARGET)).toFixed(1), drawSize: [sc.dw, sc.dh], nBg, nFull, nSemi, nInnerLight });
+  report.push({ id: j.id, file: path.relative(OUT, file).replace(/\\/g, "/"), abs: file, kb: +kb, coverage: +(100 * nz / (TARGET * TARGET)).toFixed(1), colors: colors.size, meanA: +(sumA / (TARGET * TARGET)).toFixed(1), drawSize: [sc.dw, sc.dh], nBg, nFull, nSemi, nInnerLight });
   console.log("  ✔ " + j.id.padEnd(9) + " " + path.basename(file).padEnd(14) + kb.padStart(6) + " KB" +
     "  不透明占比=" + (100 * nz / (TARGET * TARGET)).toFixed(1) + "%" +
     "  颜色数=" + colors.size + "  平均α=" + (sumA / (TARGET * TARGET)).toFixed(1) +
@@ -418,7 +418,9 @@ function buildPreview(bgFn, bgName, file) {
   }
   GRID.forEach((row, ry) => row.forEach((id, rx) => {
     const rec = report.find(r => r.id === id); if (!rec) return;
-    const src = decodePNG(fs.readFileSync(rec.file));
+    /* rec.file 是「相对仓库根」的可移植路径（报告要入库）；本进程内读盘用 abs。
+       旧报告没有 abs 字段 → 回落到 path.resolve(OUT, rec.file)，两种都吃得下。 */
+    const src = decodePNG(fs.readFileSync(rec.abs || path.resolve(OUT, rec.file)));
     const ox = 12 + rx * (TARGET + 12), oy = 12 + ry * (TARGET + 12);
     for (let y = 0; y < TARGET; y++) for (let x = 0; x < TARGET; x++) {
       const s = (y * TARGET + x) * 4, a = src.data[s + 3] / 255;
@@ -444,7 +446,7 @@ const white = buildPreview(() => [255, 255, 255], "白", path.join(ICON_DIR, "_s
 /* 逐张放大 2× 的细节图：木台底 + 纯黑底（黑底最能暴露白边/白晕） */
 function buildZoom(rec, bg, bgName, file) {
   const S = TARGET * 2, M = 16, W2 = S + 2 * M;
-  const src = decodePNG(fs.readFileSync(rec.file));
+  const src = decodePNG(fs.readFileSync(rec.abs || path.resolve(OUT, rec.file)));
   const px = Buffer.alloc(W2 * W2 * 4);
   for (let y = 0; y < W2; y++) for (let x = 0; x < W2; x++) {
     const k = (y * W2 + x) * 4, c = bg(x, y); px[k] = c[0]; px[k + 1] = c[1]; px[k + 2] = c[2]; px[k + 3] = 255;

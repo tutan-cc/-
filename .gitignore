@@ -52,6 +52,8 @@ _bf_jobs_*.json
 _mj_*.txt
 _probe_out/
 _lovart_probe/
+# mshta 探针的临时 .hta（正常情况下脚本跑完自己删；探针崩掉时会残留，兜底忽略）
+_*.hta
 
 # 编辑器/系统
 .vscode/

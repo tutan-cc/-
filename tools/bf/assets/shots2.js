@@ -10,6 +10,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 "use strict";
 const fs = require("fs"), path = require("path");
+const { resultsFile } = require("../../lib/dist.js");
 const { createCanvas } = require("../../lib/raster.js");
 const { execFileSync } = require("child_process");
 
@@ -144,10 +145,10 @@ console.log("[mj_icons9.png]  " + m.W + "×" + m.H + "  " + kb("mj_icons9.png") 
 const manifest = { at: new Date().toISOString(), shots: [
   { png: path.join(SHOT, "bf_plates6.png"), texts: p.texts },
   { png: path.join(SHOT, "mj_icons9.png"), texts: m.texts }] };
-fs.writeFileSync(path.join(OUT, "dist", "test-results", "bf_assets2_text.json"), JSON.stringify(manifest), "utf8");
+fs.writeFileSync(resultsFile("bf_assets2_text.json"), JSON.stringify(manifest), "utf8");
 try {
   execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-    path.join(OUT, "tools/lib/text-compose.ps1"), "-Manifest", path.join(OUT, "dist", "test-results", "bf_assets2_text.json")],
+    path.join(OUT, "tools/lib/text-compose.ps1"), "-Manifest", resultsFile("bf_assets2_text.json")],
     { cwd: OUT, stdio: ["ignore", "inherit", "inherit"] });
 } catch (e) {
   console.log("⚠ 中文合成没跑成（" + (e.message || e) + "）→ 请手动执行：powershell -File tools/lib/text-compose.ps1 -Manifest tests\\bf_assets2_text.json");

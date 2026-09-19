@@ -1066,7 +1066,7 @@
      主体离边 ≥5% 安全边距）；加载失败 → art/bg/kitchen.png（上一轮 v1）；
      再失败 → drawBg 里的程序化木台 / 樱瓣 / 暖光底。功能一点不少。
 
-     v2 的裁切策略与代价（参数全部由 _bf_assets2_gen.cjs 从源图自动求出，
+     v2 的裁切策略与代价（参数全部由 tools/bf/assets/gen2.js 从源图自动求出，
      写进 art/_assets2_report.json，这里只是把测量结果抄成常量给无头断言校验）：
        源图 2048×1152，测出「干净木台面上沿」源 y=704；
        画布 1180×790，若把台面精确对到 LAY.colHeaderY=318，需要放大到 scale≈1.05，
@@ -1242,7 +1242,7 @@
   function faceNameOf(cid, patienceRatio, satisfied) { return faceNameIn(null, cid, patienceRatio, satisfied); }
   /** 5 位角色 × 3 种情绪 = 15 张，**本轮已全部切齐**：
       上一轮 3 位老角色各有 calm/urgent 两张；素材二批补了女房东/女护士 ×3（6 张）；
-      本轮（_bf_faces_happy3_gen.cjs，源 art/lovart_cca01cd7ba70.png 3 列 × 1 行）补了
+      本轮（tools/bf/assets/faces-happy-gen.js，源 art/lovart_cca01cd7ba70.png 3 列 × 1 行）补了
       学生/女白领/胖大爷的 happy 三张 → 15 张在册，happy 态不再回退平静脸。
       回退链仍然保留两级：happy 缺图 → calm → 矢量头像（见 drawCustomerFace）。*/
   function faceTexIds() {

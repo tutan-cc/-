@@ -12,6 +12,7 @@
         pwsh -File tools/lib/text-compose.ps1     （只重跑文字合成）
    ═══════════════════════════════════════════════════════════════════════════ */
 const fs = require("fs");
+const { resultsFile } = require("../../lib/dist.js");
 const path = require("path");
 const vm = require("vm");
 const { createCanvas } = require("../../lib/raster.js");
@@ -547,9 +548,9 @@ function save(cv, name, texts, note) {
               " · 按钮文案「" + goText + "」");
 }
 
-fs.writeFileSync(path.join(OUT, "dist", "test-results", "bf_shots_text.json"),
+fs.writeFileSync(resultsFile("bf_shots_text.json"),
   JSON.stringify({ at: new Date().toISOString(), shots: manifest }, null, 1), "utf8");
-fs.writeFileSync(path.join(OUT, "dist", "test-results", "breakfast-shots.json"),
+fs.writeFileSync(resultsFile("breakfast-shots.json"),
   JSON.stringify({
     at: new Date().toISOString(),
     mode: BITMAP_TEXT ? "software-raster-replay+bitmap-text" : "software-raster-replay+system-font-text",

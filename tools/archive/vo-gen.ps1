@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Continue"
-$root = "C:\Users\chris\Desktop\重生2-原型"
-$voDir = "$root\audio\vo"
+$repo = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # tools/archive/ → 仓库根（自定位，不写死本机路径）
+$voDir = Join-Path $repo "audio\vo"
 New-Item -ItemType Directory -Force $voDir | Out-Null
-$lines = Get-Content "$root\tools/voice/lines.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+$lines = Get-Content (Join-Path $repo "tools/voice/lines.json") -Raw -Encoding UTF8 | ConvertFrom-Json
 
 # 角色 → @{ rate = SAPI语速(-10..10); pitch = 变调系数 }
 $VOICE = @{

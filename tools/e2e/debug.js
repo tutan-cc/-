@@ -2,10 +2,11 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const path = require("path");
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9227;
-const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
-const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const OUT = path.join(__dirname, "..", "..");
+const BASE = "file:///" + OUT.replace(/\\/g, "/").split("/").map(encodeURIComponent).join("/");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function req(method, path){ return new Promise((res,rej)=>{ const r=http.request({host:"127.0.0.1",port:PORT,path,method},resp=>{let d="";resp.on("data",c=>d+=c);resp.on("end",()=>{try{res(JSON.parse(d))}catch(e){res(d)}});}); r.on("error",rej); r.end(); }); }
 let id=0, ws, pend={};

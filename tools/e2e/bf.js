@@ -14,6 +14,7 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
 const path = require("path");
 
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
@@ -453,7 +454,7 @@ async function runTrident() {
     screenshots: fs.readdirSync(SHOT_DIR).filter(f => /^bf_(game|pass|fail|pick)\.png$/.test(f)),
     limitation: extraNote
   };
-  fs.writeFileSync(path.join(OUT, "dist", "test-results", "breakfast-results.json"), JSON.stringify(res, null, 1), "utf8");
+  fs.writeFileSync(resultsFile("breakfast-results.json"), JSON.stringify(res, null, 1), "utf8");
   console.log("\n[结果] 模式=" + mode + " · 通过 " + checks.length + "，失败 " + errors.length);
   checks.forEach(c => console.log("  ✔ " + c));
   errors.forEach(e => console.log("  ✖ " + e));

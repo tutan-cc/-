@@ -12,6 +12,7 @@
      图上的每个数字与文案都来自真实 DOM（innerText/调试接口），不是另写一份。 */
 "use strict";
 const fs = require("fs");
+const { resultsFile } = require("../lib/dist.js");
 const path = require("path");
 const { spawn } = require("child_process");
 const L = require("../mjsys/probe-lib.js");
@@ -193,7 +194,7 @@ function spawnSync(cmd, args, opts) {
     if (!r.ok && r.log) console.log("  renderer: " + r.log.trim().split("\n").slice(0, 3).join(" / "));
   }
   try { if (!process.env.MJ_KEEP) { fs.rmSync(path.join(OUT, "_mj_cap_stats.txt"), { force: true }); fs.rmSync(PANELS_JSON, { force: true }); } } catch (e) {}
-  fs.writeFileSync(path.join(OUT, "dist", "test-results", "mj-shots-results.json"),
+  fs.writeFileSync(resultsFile("mj-shots-results.json"),
     JSON.stringify({ mode: "trident-data + system.drawing-render", testedAt: new Date().toISOString(), ms: Date.now() - t0, panels: results }, null, 1), "utf8");
   const bad = results.filter((r) => !r.ok || (r.colors != null && r.colors < 8));
   console.log("\n════════════════════════════════");

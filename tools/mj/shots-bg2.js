@@ -1,26 +1,26 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   _mj_bg2_shots.cjs — 出品 测试截图/mj_bg2.png：「含骰子 / 筹码装饰的麻将桌」
+   tools/mj/shots-bg2.js — 出品 测试截图/mj_bg2.png：「含骰子 / 筹码装饰的麻将桌」
 
-   证据链（与 _bf_shots2.cjs / _bf_assets_shots.cjs 同一条，本沙箱起不了 Chrome/Edge）：
+   证据链（与 tools/bf/shots/panel2.js / tools/bf/assets/shots.js 同一条，本沙箱起不了 Chrome/Edge）：
      真跑生产代码 mahjong.js（无头 vm + 真 DOM 替身）
-       → 它发出的 Canvas2D 指令交给 _bf_raster.cjs 真光栅化
+       → 它发出的 Canvas2D 指令交给 tools/lib/raster.js 真光栅化
          （drawImage 是**真实现**：现解 PNG、按当前变换 + globalAlpha 合成）
-       → 文字经 __textHook 记下，最后交给 _bf_text.ps1 + System.Drawing 合成真汉字。
+       → 文字经 __textHook 记下，最后交给 tools/lib/text-compose.ps1 + System.Drawing 合成真汉字。
 
-   与 _bf_shots2.cjs 的 mjShot() 的差别（为什么另起一个脚本）：
+   与 tools/bf/shots/panel2.js 的 mjShot() 的差别（为什么另起一个脚本）：
      · mj_bg.png 是「开局第一帧」（setTimeout 被 stub 成 0 → AI 一步都不走，牌河是空的）
      · 本图要展示**装饰与牌河 / 手牌 / 副露同框**，所以这里实现了**虚拟定时器 + 虚拟 rAF**：
        让 AI 真的把牌打出来、人类回合超时自动出牌，牌桌上出现真实牌河后再出一帧。
-       （_bf_shots2.cjs 是已验证的产线脚本，不动它，避免影响 bf_game_bg2.png 的复现。）
+       （panel2.js 是已验证的产线脚本，不动它，避免影响 bf_game_bg2.png 的复现。）
 
-   运行：node _mj_bg2_shots.cjs
+   运行（仓库根）：node tools/mj/shots-bg2.js
    ═══════════════════════════════════════════════════════════════════════════ */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
-const { createCanvas } = require("./_bf_raster.cjs");
+const { createCanvas } = require("../lib/raster.js");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..", "..");
 const SHOT = path.join(OUT, "测试截图");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
 const PNG = path.join(SHOT, "mj_bg2.png");
@@ -211,11 +211,13 @@ console.log("  装饰：dice=" + dc.dice + " chips=" + dc.chips + " ruler=" + dc
 console.log("  drawImage 里出现过的 mj 贴图：" + [...new Set(r.record.drawImage.map(x => x.src.split("/").pop()))].filter(n => /^(dice|chip_|ruler|ashtray|tile_back)/.test(n)).join(" / "));
 
 /* 中文交给 powershell + System.Drawing（沙箱里子进程只能用 stdio inherit / ignore）*/
-const MANIFEST = path.join(OUT, "tests", "_mj_bg2_text.json");
+const TR = path.join(OUT, "dist", "test-results");
+if (!fs.existsSync(TR)) fs.mkdirSync(TR, { recursive: true });
+const MANIFEST = path.join(TR, "_mj_bg2_text.json");
 fs.writeFileSync(MANIFEST, JSON.stringify({ at: new Date().toISOString(), shots: [{ png: OUTPNG, texts: r.texts }] }), "utf8");
 try {
   execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-    path.join(OUT, "_bf_text.ps1"), "-Manifest", MANIFEST], { stdio: "inherit", cwd: OUT });
+    path.join(OUT, "tools", "lib", "text-compose.ps1"), "-Manifest", MANIFEST], { stdio: "inherit", cwd: OUT });
 } catch (e) { console.error("（文字合成失败，PNG 已出但中文可能缺失）：" + (e && e.message)); }
 try { fs.rmSync(MANIFEST, { force: true }); } catch (e) {}
 console.log("[done] 测试截图/" + path.basename(OUTPNG) + "   （用时 " + ((Date.now() - t0) / 1000).toFixed(1) + "s）");

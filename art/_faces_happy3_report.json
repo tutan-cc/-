@@ -1,7 +1,7 @@
 {
-  "at": "2026-09-18T11:22:24.279Z",
-  "note": "三位顾客「满意」头像的切片参数（由 _bf_faces_happy3_gen.cjs 调用 _bf_assets2_gen.cjs 的 sliceGrid 自动求出，未写死）",
-  "reuse": "sliceGrid() / whiteToAlphaCfg() / fitCanvas() 全部来自 _bf_assets2_gen.cjs，未重写",
+  "at": "2026-09-19T03:47:47.946Z",
+  "note": "三位顾客「满意」头像的切片参数（由 tools/bf/assets/faces-happy-gen.js 调用 tools/bf/assets/gen2.js 的 sliceGrid 自动求出，未写死）",
+  "reuse": "sliceGrid() / whiteToAlphaCfg() / fitCanvas() 全部来自 tools/bf/assets/gen2.js，未重写",
   "source": "art/lovart_cca01cd7ba70.png",
   "param": {
     "rows": 1,
