@@ -36,7 +36,7 @@ if (-not (Test-MediaLib $MediaDir)) {
   if ($MediaDir) { throw "不是有效的媒体素材库（需含 video\*.mp4）：$MediaDir" }
   $parent = Split-Path $repo -Parent
   $cands = @()
-  $preferred = Join-Path $parent "Tianshu-媒体素材"
+  $preferred = Join-Path $parent "Tianshu-Prototype-媒体素材"
   if (Test-MediaLib $preferred) { $cands = @($preferred) }
   else {
     $cands = Get-ChildItem $parent -Directory -ErrorAction SilentlyContinue |
@@ -76,7 +76,7 @@ foreach ($f in $files) {
 }
 
 $manifest = [ordered]@{
-  package  = "天枢-原型-媒体素材"
+  package  = "天枢原型-媒体素材"
   version  = $Version
   # 注意：这里**故意不写生成时间**。清单是入库的契约文件，若带时间戳，
   # 每次跑本脚本都会改动它、污染 git status。去掉后清单只随素材内容变化 ——
@@ -143,7 +143,7 @@ Write-Host "下一步（本地分发，不上 GitHub）：" -ForegroundColor Cya
 Write-Host "  1. 把 媒体清单.json 提交进 git（只有 65KB，是协作者校验素材用的契约文件）"
 Write-Host "  2. 把 dist\素材分发\media-$Version.zip 复制给协作者"
 Write-Host "     —— 网盘 / 移动硬盘 / 局域网共享都行，注意别放到公开可下载的位置"
-Write-Host "  3. 对方解压到仓库同级目录（名字用「Tianshu-媒体素材」会被优先识别）"
+Write-Host "  3. 对方解压到仓库同级目录（名字用「Tianshu-Prototype-媒体素材」会被优先识别）"
 Write-Host "  4. 对方跑一次 .\link-media.ps1 即可接通，脚本会按清单逐文件校验 SHA256"
 Write-Host ""
 Write-Host "细节见 dist\素材分发\README.md 与 协作者上手指南.md" -ForegroundColor DarkGray

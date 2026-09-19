@@ -36,7 +36,7 @@ if (-not (Test-MediaLib $MediaDir)) {
   # 先按约定名找同级目录，再退化为扫描所有同级目录
   $parent = Split-Path $repo -Parent
   $cands  = @()
-  $preferred = Join-Path $parent "Tianshu-媒体素材"
+  $preferred = Join-Path $parent "Tianshu-Prototype-媒体素材"
   if (Test-MediaLib $preferred) {
     $cands = @($preferred)
   } else {
@@ -49,9 +49,9 @@ if (-not (Test-MediaLib $MediaDir)) {
     throw @"
 找不到媒体素材目录。
 
-请把媒体素材包解压到本仓库同级目录，命名为「Tianshu-媒体素材」，使其结构为：
-  $parent\Tianshu-媒体素材\video\  (35 个 mp4 + poster\ 35 张 jpg)
-  $parent\Tianshu-媒体素材\audio\  (vo\ + vo_real\ + mj\)
+请把媒体素材包解压到本仓库同级目录，命名为「Tianshu-Prototype-媒体素材」，使其结构为：
+  $parent\Tianshu-Prototype-媒体素材\video\  (35 个 mp4 + poster\ 35 张 jpg)
+  $parent\Tianshu-Prototype-媒体素材\audio\  (vo\ + vo_real\ + mj\)
 
 或显式指定路径：
   powershell -ExecutionPolicy Bypass -File .\link-media.ps1 -MediaDir "D:\某处\媒体素材"

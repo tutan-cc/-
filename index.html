@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>天枢 · 重启人生 — 互动影游原型 v0.2</title>
+<title>天枢原型 · 重启人生 — 互动影游 v0.2</title>
 <style>
 :root{
   --bg:#07070c; --bg2:#0c0c14; --panel:#101018; --line:#232335;
@@ -357,7 +357,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 <!-- 标题屏 -->
 <div id="title">
   <div id="rain"></div>
-  <div class="tlogo">天枢</div>
+  <div class="tlogo">天枢原型</div>
   <div class="tsub">重 启 人 生 · REBORN TWICE</div>
   <div class="tdesc">2025 年深夜，32 岁的陈默猝倒在办公室。<br>再睁眼，是 2015 年 9 月——22 岁，一无所有，却带着<b>未来十年的全部记忆</b>。<br>一本【重生手册】，几个会改变他命运的人。<br>这一次，换他把人生拿回来。</div>
   <button class="tbtn" id="startBtn">开 始 重 生</button>
@@ -368,7 +368,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     <button id="dbgBf" style="padding:9px 22px;border:1px solid #ff9ec7;color:#ffd76e;font-size:12px;letter-spacing:2px;background:rgba(255,158,199,.08)">⚑ 跳到早餐店</button>
     <button id="dbgTalk" style="padding:9px 22px;border:1px solid var(--line);color:var(--dim);font-size:12px;letter-spacing:2px;background:rgba(255,255,255,.04)">⚑ 全部解锁</button>
   </div>
-  <div class="tmeta">互动影游原型 v0.5 · 序章 + 第一章 + 第二章 · 14 节点 · 5 种小游戏 · 全台词配音<br>架构参考 tutan123/tianshu · 实拍素材来自本地素材库（授权未核实）</div>
+  <div class="tmeta">互动影游原型 v0.5 · 序章 + 第一章 + 第二章 · 14 节点 · 5 种小游戏 · 全台词配音<br>实拍素材来自本地素材库（授权未核实）</div>
 </div>
 
 <!-- 主界面 -->
@@ -1821,14 +1821,14 @@ $("equipClose").addEventListener("click",()=>{ AudioSys.click(); $("equip").clas
 $("exportBtn").addEventListener("click",()=>{ AudioSys.click();
   try{ const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-    a.download=`天枢-Day${S.day}.json`; a.click();
+    a.download=`天枢原型-Day${S.day}.json`; a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),2000); toast("⇪ 存档已导出"); }catch(e){ toast("导出失败"); } });
 $("importBtn").addEventListener("click",()=>{ AudioSys.click();
   const inp=document.createElement("input"); inp.type="file"; inp.accept=".json,application/json";
   inp.onchange=async()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
     if(f.size>1000000){ toast("存档文件过大"); return; }
     const s=restore(await f.text());
-    if(!s){ toast("这不是有效的天枢存档，当前进度已保留"); return; }
+    if(!s){ toast("这不是有效的天枢原型存档，当前进度已保留"); return; }
     S=s; render(); toast("⇩ 存档已导入"); };
   inp.click(); });
 
