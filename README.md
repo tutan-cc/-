@@ -201,6 +201,7 @@ node tools/dev/check-inline.js      # index.html 内联脚本语法闸
 | `协作者上手指南.md` | 拿到代码后如何三步跑通 |
 | `docs/` | 剧本、架构文档、历次改造报告 |
 | `tools/` | 开发与验收工具（见 `tools/README.md`） |
+| `dist/` | **不入库**。装两样东西：`素材分发/`（要复制给协作者的分发包）+ `test-results/`（测试产物 JSON） |
 | `video/` | 35 段素材（33 段实拍 720p + 2 段程序化动画）+ `poster/` 35 张剧照（约 215 MB，**不入库**） |
 | `测试截图/` | E2E 验证截图 |
 

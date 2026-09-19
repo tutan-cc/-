@@ -1,4 +1,4 @@
-# tools/mjsys/render.ps1 — 麻将系统出图（本沙箱里 mshta 的屏幕拷贝不可靠：同一进程 >3 次会挂、
+﻿# tools/mjsys/render.ps1 — 麻将系统出图（本沙箱里 mshta 的屏幕拷贝不可靠：同一进程 >3 次会挂、
 # 牌桌 raf 循环下还会卡在 CopyFromScreen，所以改成「读面板数据 → System.Drawing 画主题图」）。
 # 数据源：_mj_panels.json（由浏览器探针从**真实运行中的 DOM** 抓下来），
 # 所以图上的每个数字/文案都来自真实渲染结果，不是另写一份文案。

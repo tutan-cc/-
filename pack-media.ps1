@@ -2,15 +2,18 @@
   pack-media.ps1 —— 从媒体素材库生成「媒体清单.json」并打出可分发 zip
 
   用途：素材不入 git。这个脚本把素材库做成一个带版本号、可校验的压缩包，
-        传到 GitHub Release，协作者下载解压后跑「link-media.ps1」即可完整游玩。
+        放进 dist\素材分发\，由维护者**私下复制**给协作者（不上 GitHub Release：
+        包内含授权未核实的第三方素材，公开附件等同于公开分发）。
+        对方解压后跑「link-media.ps1」即可完整游玩。
 
   用法：
     powershell -ExecutionPolicy Bypass -File .\pack-media.ps1
     powershell -ExecutionPolicy Bypass -File .\pack-media.ps1 -Version v1.15 -MediaDir "D:\媒体素材"
 
   产出：
-    <仓库>\媒体清单.json          入库的契约文件（体积小，只记路径/字节/SHA256/来源）
-    <仓库>\dist\media-<版本>.zip  分发包（传到 GitHub Release）
+    <仓库>\媒体清单.json              入库的契约文件（体积小，只记路径/字节/SHA256/来源）
+    <仓库>\dist\素材分发\media-<版本>.zip      分发包（复制给协作者，不入库）
+    <仓库>\dist\素材分发\media-<版本>.zip.sha256  校验文件
 #>
 param(
   [string]$Version = "v1.15",
@@ -75,8 +78,10 @@ foreach ($f in $files) {
 $manifest = [ordered]@{
   package  = "重生2-原型-媒体素材"
   version  = $Version
-  generated = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-  note     = "素材不入 git 仓库；本清单入库作为契约。协作者下载 media-$Version.zip 解压到仓库同级目录后，运行 link-media.ps1 即可接通。"
+  # 注意：这里**故意不写生成时间**。清单是入库的契约文件，若带时间戳，
+  # 每次跑本脚本都会改动它、污染 git status。去掉后清单只随素材内容变化 ——
+  # 素材没变则字节完全一致（可反复跑、可复现）。要查生成时间看 git log 即可。
+  note     = "素材不入 git 仓库；本清单入库作为契约。协作者拿到 media-$Version.zip 解压到仓库同级目录后，运行 link-media.ps1 即可接通。"
   root     = @("video","audio")
   counts   = [ordered]@{
     mp4    = @($entries | Where-Object { $_.path -like "video/*.mp4" }).Count
@@ -118,9 +123,27 @@ Remove-Item $stage -Recurse -Force
 
 $zmb = [math]::Round((Get-Item $zip).Length/1MB,1)
 Write-Host "已打包：$zip  ($zmb MB)" -ForegroundColor Green
+
+# ── 4. 归入本地分发目录并生成校验文件 ────────────────────────────────
+# 素材分发走本地文件夹，不上 GitHub Release：包内含授权未核实的第三方素材，
+# 公开 Release 附件等同于公开分发。详见 dist\素材分发\README.md
+$share = Join-Path $repo "dist\素材分发"
+New-Item -ItemType Directory -Path $share -Force | Out-Null
+$shareZip = Join-Path $share "media-$Version.zip"
+Move-Item $zip $shareZip -Force
+
+$hash = (Get-FileHash $shareZip -Algorithm SHA256).Hash.ToLower()
+$shaFile = "$shareZip.sha256"
+[System.IO.File]::WriteAllText($shaFile, "$hash *media-$Version.zip`n", (New-Object System.Text.UTF8Encoding($false)))
+
+Write-Host "已归入分发目录：$shareZip" -ForegroundColor Green
+Write-Host "   SHA256：$hash" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "下一步（传 GitHub Release）：" -ForegroundColor Cyan
-Write-Host "  1. 把 媒体清单.json 提交进 git（体积小，是契约文件）"
-Write-Host "  2. 在 GitHub 仓库页 Releases -> Draft a new release，tag 填 $Version"
-Write-Host "  3. 把 dist\media-$Version.zip 作为附件上传（Release 附件不受 100MB 单文件限制）"
-Write-Host "  4. 把下载链接贴进 README 的「协作者上手」一节"
+Write-Host "下一步（本地分发，不上 GitHub）：" -ForegroundColor Cyan
+Write-Host "  1. 把 媒体清单.json 提交进 git（只有 65KB，是协作者校验素材用的契约文件）"
+Write-Host "  2. 把 dist\素材分发\media-$Version.zip 复制给协作者"
+Write-Host "     —— 网盘 / 移动硬盘 / 局域网共享都行，注意别放到公开可下载的位置"
+Write-Host "  3. 对方解压到仓库同级目录（名字用「重生2-媒体素材」会被优先识别）"
+Write-Host "  4. 对方跑一次 .\link-media.ps1 即可接通，脚本会按清单逐文件校验 SHA256"
+Write-Host ""
+Write-Host "细节见 dist\素材分发\README.md 与 协作者上手指南.md" -ForegroundColor DarkGray
