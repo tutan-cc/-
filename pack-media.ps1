@@ -50,13 +50,30 @@ $MediaDir = (Resolve-Path $MediaDir).Path
 Write-Host "媒体素材库：$MediaDir" -ForegroundColor Cyan
 
 # ── 2. 计算清单（逐文件 SHA256）─────────────────────────────────────
-# 来源分类：原创程序化动画属于代码仓库；其余实拍素材授权未核实，标 thirdparty。
-$ORIGINAL = @("video/fx_market.mp4","video/fx_flood.mp4",
-              "video/poster/fx_market.jpg","video/poster/fx_flood.jpg")
-
+# 来源分类按目录判定，而不是文件名白名单 —— 这样以后往素材库里加原创素材，
+# 只要放到 video/original/ 下就会被正确标为 original，不必回来改脚本。
+#   video/       实拍视频，授权未核实（thirdparty）
+#   video/poster/ 同上，由实拍视频抽帧
+#   video/original/  原创程序化生成（可自由分发）
+#   audio/       配音等音频：可能是自产 TTS、也可能是从素材截取，故按目录名再细分
 $files = Get-ChildItem $MediaDir -Recurse -File |
          Where-Object { $_.FullName -notlike "*\README.md" } |
          Sort-Object FullName
+
+function Get-SourceOf([string]$rel) {
+  if ($rel -like "video/original/*")                 { return "original" }
+  if ($rel -like "video/fx_*")                       { return "original" }   # 历史位置，兼容
+  if ($rel -like "audio/vo_actor/*")                 { return "thirdparty" } # 从实拍视频截取的演员原声
+  if ($rel -like "audio/*")                          { return "self" }       # 自产语音（TTS 合成等）
+  return "thirdparty"
+}
+function Get-LicenseOf([string]$src) {
+  switch ($src) {
+    "original"   { return "原创-程序化生成" }
+    "self"       { return "自产-可自由使用" }
+    default      { return "未核实-仅供本地试验" }
+  }
+}
 
 Write-Host "计算 SHA256（$($files.Count) 个文件，约 $([math]::Round((($files|Measure-Object Length -Sum).Sum/1MB),1)) MB）..." -ForegroundColor Cyan
 $entries = @()
@@ -64,12 +81,13 @@ $n = 0
 foreach ($f in $files) {
   $rel = $f.FullName.Substring($MediaDir.Length).TrimStart('\') -replace '\\','/'
   $h = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+  $src = Get-SourceOf $rel
   $entries += [ordered]@{
-    path   = $rel
-    bytes  = $f.Length
-    sha256 = $h
-    source = if ($ORIGINAL -contains $rel) { "original" } else { "thirdparty" }
-    license = if ($ORIGINAL -contains $rel) { "原创-程序化生成" } else { "未核实-仅供本地试验" }
+    path    = $rel
+    bytes   = $f.Length
+    sha256  = $h
+    source  = $src
+    license = Get-LicenseOf $src
   }
   $n++
   if ($n % 40 -eq 0) { Write-Host "  $n / $($files.Count)" -ForegroundColor DarkGray }
@@ -82,13 +100,11 @@ $manifest = [ordered]@{
   # 每次跑本脚本都会改动它、污染 git status。去掉后清单只随素材内容变化 ——
   # 素材没变则字节完全一致（可反复跑、可复现）。要查生成时间看 git log 即可。
   note     = "素材不入 git 仓库；本清单入库作为契约。协作者拿到 media-$Version.zip 解压到仓库同级目录后，运行 link-media.ps1 即可接通。"
-  root     = @("video","audio")
+  sourceNote = "source 字段：original=原创可自由分发 · self=项目自产 · thirdparty=授权未核实，仅供本地试验、不得公开分发。当前已移除从实拍视频截取的演员原声（vo_actor），改置于仓库外的第三方素材区。"
   counts   = [ordered]@{
     mp4    = @($entries | Where-Object { $_.path -like "video/*.mp4" }).Count
     poster = @($entries | Where-Object { $_.path -like "video/poster/*" }).Count
-    vo     = @($entries | Where-Object { $_.path -like "audio/vo/*" }).Count
-    voReal = @($entries | Where-Object { $_.path -like "audio/vo_real/*" }).Count
-    mj     = @($entries | Where-Object { $_.path -like "audio/mj/*" }).Count
+    audio  = @($entries | Where-Object { $_.path -like "audio/*" }).Count
     total  = $entries.Count
   }
   files    = $entries
@@ -98,8 +114,14 @@ $manifestPath = Join-Path $repo "媒体清单.json"
 $json = $manifest | ConvertTo-Json -Depth 6
 [System.IO.File]::WriteAllText($manifestPath, $json, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "已写出清单：$manifestPath" -ForegroundColor Green
-Write-Host ("  mp4={0} poster={1} vo={2} vo_real={3} mj={4}  共 {5} 个文件" -f `
-  $manifest.counts.mp4,$manifest.counts.poster,$manifest.counts.vo,$manifest.counts.voReal,$manifest.counts.mj,$manifest.counts.total)
+Write-Host ("  mp4={0} poster={1} audio={2}  共 {3} 个文件" -f `
+  $manifest.counts.mp4,$manifest.counts.poster,$manifest.counts.audio,$manifest.counts.total)
+# 按来源分组汇总（便于一眼看出还有多少第三方素材待替换）
+$nOrig = @($entries | Where-Object { $_.source -eq "original" }).Count
+$nSelf = @($entries | Where-Object { $_.source -eq "self" }).Count
+$nTp   = @($entries | Where-Object { $_.source -eq "thirdparty" }).Count
+Write-Host ("    来源 original=" + $nOrig + " · self=" + $nSelf + " · thirdparty=" + $nTp) -ForegroundColor DarkGray
+if ($nTp -gt 0) { Write-Host ("    ⚠ 其中 " + $nTp + " 个授权未核实，仅供本地试验，不得公开分发") -ForegroundColor Yellow }
 
 # ── 3. 打包 ─────────────────────────────────────────────────────────
 $dist = Join-Path $repo "dist"

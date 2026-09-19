@@ -1738,11 +1738,44 @@ function duckBGM(on){ if(!AudioSys.master || !AudioSys.ctx) return;
   AudioSys.master.gain.setTargetAtTime(on?0.14:0.5, AudioSys.ctx.currentTime, on?0.06:0.28); }
 function stopVO(){ try{ VO.pause(); VO.currentTime=0; }catch(e){} duckBGM(false); }
 function voModeLabel(){ return S.voMode==="real"?"真人原声":(S.voMode==="tts"?"合成语音":"关"); }
+/* ═══ 配音源探测 ═══
+   配音素材（配音 / 牌名播报）是可选的：素材库里可能没有 audio\，或用户判其质量差而删除。
+   启动时探测一次，没有任何语音文件就把 🎙 按钮置灰并跳过播放 —— 避免留下一个点了没反应的坏按钮。 */
+let voAvail = { real:false, tts:false };
+function probeVoice(){
+  const probe = (dir)=>new Promise(res=>{
+    const a=new Audio();
+    const done=(v)=>{ a.onerror=null; a.oncanplaythrough=null; clearTimeout(t); res(v); };
+    const t=setTimeout(()=>done(false), 1500);
+    a.onerror=()=>done(false);
+    a.oncanplaythrough=()=>done(true);
+    a.preload="auto";
+    a.src=dir+"intro_s0.mp3";          // 序章第 0 镜是每套配音都有的锚点
+  });
+  return Promise.all([probe("audio/vo_actor/"), probe("audio/vo/")]).then(([r,t])=>{
+    voAvail={ real:r, tts:t };
+    const btn=$("vobtn");
+    if(btn){
+      const none=!r && !t;
+      btn.classList.toggle("off", none || S && S.voMode==="off");
+      btn.title = none ? "素材库中没有配音文件（audio/ 缺失），配音不可用" : "";
+    }
+    // 当前模式缺文件时自动切到可用的那套
+    if(S){
+      if(S.voMode==="real" && !r) S.voMode = t ? "tts" : "off";
+      else if(S.voMode==="tts" && !t) S.voMode = r ? "real" : "off";
+      btn && (btn.textContent="🎙 "+voModeLabel());
+    }
+    return voAvail;
+  });
+}
 function playVO(){
   stopVO();
   if(!S || S.voMode==="off" || !curNode) return 4500;
+  // 两套配音都没有 → 不播，直接按默认时长推进
+  if(!voAvail.real && !voAvail.tts) return 4500;
   voTriedFallback=false;
-  VO.src = (S.voMode==="real" ? "audio/vo_real/" : "audio/vo/") + voKey() + ".mp3";
+  VO.src = (S.voMode==="real" ? "audio/vo_actor/" : "audio/vo/") + voKey() + ".mp3";
   VO.onloadedmetadata = ()=>{ const dur=(VO.duration||0)*1000;
     clearTimeout(voWatch); clearTimeout(contWatch);
     voWatch=setTimeout(()=>$("cont").classList.add("on"), Math.max(4500, dur+500)); };
@@ -1750,7 +1783,7 @@ function playVO(){
   VO.onended = ()=>duckBGM(false);
   VO.onerror = ()=>{ duckBGM(false);
     // 真人原声缺失 → 自动回落 TTS 一次
-    if(S.voMode==="real" && !voTriedFallback){ voTriedFallback=true;
+    if(S.voMode==="real" && !voTriedFallback && voAvail.tts){ voTriedFallback=true;
       VO.src="audio/vo/"+voKey()+".mp3"; VO.play().catch(()=>{}); } };
   VO.play().catch(()=>duckBGM(false));
   return 4500;
@@ -2597,6 +2630,7 @@ function enterGame(){
   $("vobtn").classList.toggle("off", S.voMode==="off");
   init3D();
   if(window.Breakfast && Breakfast.debug) window.__cs2.bf = Breakfast.debug;
+  probeVoice();          // 探测配音素材是否存在；没有就置灰 🎙
   // 启动自检：能否取到 video/ 资源
   probeMedia().then(r=>{
     mediaOK = r.video;

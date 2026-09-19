@@ -51,7 +51,7 @@ if (-not (Test-MediaLib $MediaDir)) {
 
 请把媒体素材包解压到本仓库同级目录，命名为「Tianshu-Prototype-媒体素材」，使其结构为：
   $parent\Tianshu-Prototype-媒体素材\video\  (35 个 mp4 + poster\ 35 张 jpg)
-  $parent\Tianshu-Prototype-媒体素材\audio\  (vo\ + vo_real\ + mj\)
+  $parent\Tianshu-Prototype-媒体素材\audio\  (可选：vo\ 自产配音 / vo_actor\ 真人原声)
 
 或显式指定路径：
   powershell -ExecutionPolicy Bypass -File .\link-media.ps1 -MediaDir "D:\某处\媒体素材"
@@ -74,24 +74,37 @@ if (Test-Path $manifestPath) {
     $manifest = $null
   }
 }
-if ($manifest) {
-  Write-Host ("  清单 {0} · 视频 {1} · 剧照 {2} · TTS配音 {3} · 真人原声 {4} · 麻将音效 {5}（共 {6}）" -f `
-    $manifest.version,$manifest.counts.mp4,$manifest.counts.poster,$manifest.counts.vo,`
-    $manifest.counts.voReal,$manifest.counts.mj,$manifest.counts.total) -ForegroundColor Cyan
+# 计数助手：缺目录时返回 0，不报错
+function Count-In([string]$dir, [string]$filter) {
+  if (-not (Test-Path $dir)) { return 0 }
+  return @(Get-ChildItem $dir -Filter $filter -File -ErrorAction SilentlyContinue).Count
+}
+if ($manifest -and $manifest.counts) {
+  $c = $manifest.counts
+  $extra = if ($c.audio -gt 0) { " · 音频 $($c.audio)" } else { " · 无音频（配音素材库未提供）" }
+  Write-Host ("  清单 {0} · 视频 {1} · 剧照 {2}{3}（共 {4}）" -f `
+    $manifest.version,$c.mp4,$c.poster,$extra,$c.total) -ForegroundColor Cyan
 } else {
-  $nMp4  = @(Get-ChildItem $mLibVideo -Filter *.mp4 -File -ErrorAction SilentlyContinue).Count
-  $nPost = @(Get-ChildItem (Join-Path $mLibVideo "poster") -Filter *.jpg -File -ErrorAction SilentlyContinue).Count
-  $nVo   = @(Get-ChildItem (Join-Path $mLibAudio "vo") -Filter *.mp3 -File -ErrorAction SilentlyContinue).Count
-  $nReal = @(Get-ChildItem (Join-Path $mLibAudio "vo_real") -Filter *.mp3 -File -ErrorAction SilentlyContinue).Count
-  $nMj   = @(Get-ChildItem (Join-Path $mLibAudio "mj") -Filter *.mp3 -File -ErrorAction SilentlyContinue).Count
-  Write-Host ("  无清单 · 视频 {0} · 剧照 {1} · TTS配音 {2} · 真人原声 {3} · 麻将音效 {4}" -f $nMp4,$nPost,$nVo,$nReal,$nMj) -ForegroundColor Yellow
+  Write-Host ("  无清单 · 视频 {0} · 剧照 {1}" -f (Count-In $mLibVideo "*.mp4"), (Count-In (Join-Path $mLibVideo "poster") "*.jpg")) -ForegroundColor Yellow
 }
 
-# ── 3. 挂载 video\ 与 audio\ ─────────────────────────────────────────
+# ── 3. 挂载 video\ 与 audio\（各自独立，允许只挂其中一个）─────────────
 foreach ($name in @("video","audio")) {
   $link = Join-Path $repo $name
   $target = Join-Path $MediaDir $name
-  if (-not (Test-Path $target)) { Write-Host "跳过 $name（素材库中不存在）" -ForegroundColor Yellow; continue }
+
+  if (-not (Test-Path $target)) {
+    # 素材库里没有这一类 → 若仓库里还留着指向旧位置的悬空联接，清掉，避免残留死链
+    if (Test-Path $link) {
+      $li = Get-Item $link -Force
+      if ($li.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        Write-Host "  $name\ 的联接目标已不存在，清除悬空联接" -ForegroundColor Yellow
+        cmd /c "rmdir `"$link`"" | Out-Null
+      }
+    }
+    Write-Host "跳过 $name（素材库中不存在，属正常：素材可只含视频）" -ForegroundColor DarkGray
+    continue
+  }
 
   if (Test-Path $link) {
     $item = Get-Item $link -Force
@@ -114,15 +127,12 @@ foreach ($name in @("video","audio")) {
   else { throw "创建联接失败：$link" }
 }
 
-# ── 4. 自检 ──────────────────────────────────────────────────────────
+# ── 4. 自检（只查必有项；配音等可选素材按清单校验，不在此硬性要求）────
 Write-Host "`n自检：" -ForegroundColor Cyan
 $checks = @(
   @{p="video\fx_market.mp4";            d="原创动画"},
   @{p="video\ktv_boss.mp4";             d="实拍视频"},
-  @{p="video\poster\ktv_boss.jpg";      d="剧照"},
-  @{p="audio\vo\intro_s0.mp3";          d="TTS 配音"},
-  @{p="audio\vo_real\ktv_s0.mp3";       d="真人原声"},
-  @{p="audio\mj\1万.mp3";               d="麻将音效"}
+  @{p="video\poster\ktv_boss.jpg";      d="剧照"}
 )
 $fail = 0
 foreach ($c in $checks) {
