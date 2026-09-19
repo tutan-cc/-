@@ -20,7 +20,7 @@ const fs = require("fs"), path = require("path"), vm = require("vm");
 const { createCanvas } = require("./_bf_raster.cjs");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SHOT = path.join(OUT, "测试截图");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
 const VW = 1180, VH = 790;

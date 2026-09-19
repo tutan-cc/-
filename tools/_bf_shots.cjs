@@ -16,7 +16,7 @@ const path = require("path");
 const vm = require("vm");
 const { createCanvas } = require("./_bf_raster.cjs");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SHOT = path.join(OUT, "测试截图");
 const SRC = fs.readFileSync(path.join(OUT, "breakfast.js"), "utf8");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });

@@ -15,7 +15,7 @@
 const fs = require("fs"), path = require("path"), zlib = require("zlib"), vm = require("vm");
 const { createCanvas, encodePNG } = require("./_bf_raster.cjs");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SHOT = path.join(OUT, "测试截图");
 const ICONDIR = path.join(OUT, "art", "icons");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });

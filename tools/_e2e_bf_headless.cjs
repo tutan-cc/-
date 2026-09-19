@@ -14,7 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SHOT_DIR = path.join(OUT, "测试截图");
 const SRC = fs.readFileSync(path.join(OUT, "breakfast.js"), "utf8");
 /* 画面逻辑尺寸（放大后的规格：要求 B ≥1100×680）*/

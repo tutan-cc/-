@@ -10,7 +10,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 
 /** 中文 → JS \uXXXX 转义（HTA 文件保持纯 ASCII，避免编码问题） */
 function U(s) {

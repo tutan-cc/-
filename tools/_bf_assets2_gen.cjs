@@ -14,7 +14,7 @@
 "use strict";
 const fs = require("fs"), zlib = require("zlib"), path = require("path");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const ART = path.join(OUT, "art");
 const REPORT = path.join(ART, "_assets2_report.json");
 

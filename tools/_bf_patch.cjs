@@ -26,7 +26,7 @@
 const fs = require("fs"), path = require("path"), os = require("os"), vm = require("vm");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const BAK = ".bf8bak";
 
 function countOcc(hay, needle) {

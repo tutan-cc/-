@@ -15,7 +15,7 @@
 const fs = require("fs"), zlib = require("zlib"), path = require("path"), os = require("os");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SRC = path.join(OUT, "art", "lovart_63f2f17a1187.png");
 const ICON_DIR = path.join(OUT, "art", "icons");
 

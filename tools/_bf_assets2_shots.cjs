@@ -13,7 +13,7 @@ const fs = require("fs"), path = require("path");
 const { createCanvas } = require("./_bf_raster.cjs");
 const { execFileSync } = require("child_process");
 
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const SHOT = path.join(OUT, "测试截图");
 if (!fs.existsSync(SHOT)) fs.mkdirSync(SHOT, { recursive: true });
 const REP = JSON.parse(fs.readFileSync(path.join(OUT, "art", "_assets2_report.json"), "utf8"));

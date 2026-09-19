@@ -8,7 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const ROOT = __dirname;
+const ROOT = path.join(__dirname, "..");
 const SRC = fs.readFileSync(path.join(ROOT, "mahjong.js"), "utf8");
 
 let pass = 0, fail = 0;

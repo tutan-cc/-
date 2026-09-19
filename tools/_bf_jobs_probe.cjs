@@ -1,7 +1,7 @@
 /* 逐个 job 在内存里试跑 + 语法检查 → 精确定位是哪一条 job 把语法带崩了（不落盘） */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm");
-const OUT = __dirname;
+const OUT = path.join(__dirname, "..");
 const jobs = JSON.parse(fs.readFileSync(path.join(OUT, process.argv[2]), "utf8")).jobs;
 const file = path.join(OUT, process.argv[3] || "breakfast.js");
 let cur = fs.readFileSync(file, "utf8");
