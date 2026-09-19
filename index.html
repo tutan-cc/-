@@ -909,26 +909,160 @@ const ACHV = {
   bfWin:{n:"早餐店老板", d:"在早餐店拼手速过关"},
 };
 
-/* ═══════════════ 音频层（WebAudio 程序化，零音频文件） ═══════════════ */
+/* ═══════════════ 音频层 ═══════════════
+   三层：
+     ① 音效 sfxFile()  —— 优先播 audio/sfx/<名>.mp3，缺失就回落到程序化 beep
+     ② 环境音 amb()    —— audio/amb/<loc>.mp3 循环，按地点交叉淡入淡出
+     ③ BGM bgm()       —— 优先播 audio/bgm/<mood>.mp3，缺失回落到程序化和弦
+   「优先文件、缺失回落」是刻意设计：素材没到位时游戏照常发声不会哑掉，
+   素材装进素材库后自动升级成真音效，不需要改代码。 */
 const AudioSys = {
   ctx:null, master:null, bgmTimer:null, curMood:null, on:true,
+  pool:{},          // sfx 名 → Audio（复用，避免每次 new）
+  ambCur:null, ambName:null, ambEl:null, ambStack:null,
+  bgmEl:null, bgmName:null,
+  SFX_VOL:0.85, AMB_VOL:0.34, BGM_VOL:0.42,
+
   init(){ if(this.ctx) return; try{
     this.ctx = new (window.AudioContext||window.webkitAudioContext)();
     this.master = this.ctx.createGain(); this.master.gain.value = 0.5;
     this.master.connect(this.ctx.destination);
   }catch(e){} },
+
+  /* ── ① 文件音效 ── */
+  /** 播一个音效文件。返回是否成功（false = 调用方应回落合成音） */
+  sfxFile(name, vol){
+    if(!this.on) return false;
+    try{
+      let a = this.pool[name];
+      if(!a){ a = new Audio("audio/sfx/"+name+".mp3"); a.preload="auto"; this.pool[name]=a; }
+      // 同一音效快速连击时克隆播放，避免打断上一次（如连打、刮擦）
+      const el = (a.paused || a.ended) ? a : a.cloneNode(true);
+      el.volume = Math.max(0, Math.min(1, (vol===undefined?1:vol) * this.SFX_VOL));
+      el.currentTime = 0;
+      const p = el.play(); if(p && p.catch) p.catch(()=>{});
+      return true;
+    }catch(e){ return false; }
+  },
+
   blip(f, d, type, g){ if(!this.ctx || !this.on) return;
     const o=this.ctx.createOscillator(), gn=this.ctx.createGain();
     o.type=type||"square"; o.frequency.value=f||660;
     gn.gain.setValueAtTime(g||0.1, this.ctx.currentTime);
     gn.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime+(d||0.07));
     o.connect(gn); gn.connect(this.master); o.start(); o.stop(this.ctx.currentTime+(d||0.07)+0.02); },
-  click(){ this.blip(880, 0.05, "square", 0.07); },
-  ding(){ this.blip(660, 0.08, "sine", 0.1); setTimeout(()=>this.blip(990, 0.14, "sine", 0.1), 90); },
-  good(){ [523,659,784].forEach((f,i)=>setTimeout(()=>this.blip(f,0.14,"triangle",0.12), i*95)); },
-  bad(){ [330,247].forEach((f,i)=>setTimeout(()=>this.blip(f,0.16,"sawtooth",0.08), i*120)); },
-  bgm(mood){ if(!this.ctx || !this.on || this.curMood===mood) return; this.curMood=mood;
-    clearInterval(this.bgmTimer);
+
+  /* 语义音效：有文件用文件，没有回落 beep —— 调用点无需改动 */
+  click(){ if(!this.sfxFile("ui-click")) this.blip(880, 0.05, "square", 0.07); },
+  ding(){  if(!this.sfxFile("ui-toast")) { this.blip(660, 0.08, "sine", 0.1);
+           setTimeout(()=>this.blip(990, 0.14, "sine", 0.1), 90); } },
+  good(){  if(!this.sfxFile("ui-gain")) [523,659,784].forEach((f,i)=>
+             setTimeout(()=>this.blip(f,0.14,"triangle",0.12), i*95)); },
+  bad(){   if(!this.sfxFile("ui-loss")) [330,247].forEach((f,i)=>
+             setTimeout(()=>this.blip(f,0.16,"sawtooth",0.08), i*120)); },
+  /** 供各玩法直接点名播发：AudioSys.play("sfx-mj-discard") */
+  play(name, vol){ return this.sfxFile(name, vol); },
+
+  /* ── ② 环境音（按地点循环，交叉淡入淡出）── */
+  amb(loc){
+    if(!this.on) return;
+    if(this.ambName === loc) return;
+    this.ambName = loc;
+    const old = this.ambStack;
+    if(old){ this.fadeStack(old, 0, 900); this.ambStack = null; }
+    if(!loc){ this.ambEl = null; return; }
+    this.ambStack = this.loopCrossfade("audio/amb/"+loc+".mp3", this.AMB_VOL,
+                                       (el)=>{ this.ambEl = el; });
+  },
+
+  /* ── 交叉淡化无缝循环 ──
+     为什么需要：生成出来的环境音**首尾电平差很大**（实测 amb-bar 首 -91dB / 尾 -36dB，
+     差 55dB），直接用 `audio.loop=true` 会在每个循环点"啪"一下。
+     而且这批素材偏短（3.6~16.8 秒），几秒就循环一次，跳变会很明显。
+     做法：同时持两个 Audio 元素，在结尾前 XF 秒把下一个淡入、当前淡出，
+     循环点被交叉淡化盖住，听不出接缝。 */
+  loopCrossfade(src, vol, onActive){
+    const XF = 1.6;                       // 交叉淡化时长（秒）
+    let a = new Audio(src), b = new Audio(src);
+    [a,b].forEach(el=>{ el.loop = false; el.preload = "auto"; el.volume = 0; });
+    const st = { a:a, b:b, cur:a, nxt:b, timer:0, dead:false, vol:vol };
+    const startPair = ()=>{
+      [a,b].forEach(el=>{ try{ el.currentTime = 0; }catch(e){} });
+      try{ const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+      a.volume = vol; st.cur = a; st.nxt = b;
+      if(onActive) onActive(a);
+    };
+    const tick = ()=>{
+      if(st.dead) return;
+      const el = st.cur;
+      const d = el.duration;
+      if(!d || !isFinite(d)) return;
+      const left = d - el.currentTime;
+      if(left <= XF){
+        // 让备用的那个从头播，交叉 1.6 秒
+        const n = st.nxt;
+        try{ n.currentTime = 0; n.volume = 0; const p=n.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+        this.rampVolume(el, vol, 0, XF*1000);
+        this.rampVolume(n, 0, vol, XF*1000);
+        st.cur = n; st.nxt = el;
+        if(onActive) onActive(n);
+      }
+    };
+    st.timer = setInterval(tick, 400);
+    // 等元数据就绪再起播（否则 duration 未知，tick 白跑）
+    let started = false;
+    const go = ()=>{ if(started) return; started = true; startPair(); };
+    a.onloadedmetadata = go;
+    a.oncanplaythrough = go;
+    setTimeout(go, 1500);                 // 兜底
+    st.stop = ()=>{ st.dead = true; clearInterval(st.timer); };
+    return st;
+  },
+  /** 音量线性渐变（毫秒） */
+  rampVolume(el, from, to, ms){
+    if(!el) return;
+    const t0 = Date.now();
+    const step = ()=>{ const k = Math.min(1,(Date.now()-t0)/ms);
+      try{ el.volume = Math.max(0, Math.min(1, from+(to-from)*k)); }catch(e){}
+      if(k<1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  },
+  fadeStack(st, to, ms){
+    if(!st) return;
+    st.stop && st.stop();
+    [st.a, st.b].forEach(el=>{ if(el){ this.rampVolume(el, el.volume, to, ms);
+      if(to===0) setTimeout(()=>{ try{ el.pause(); }catch(e){} }, ms+100); } });
+  },
+
+  /* ── ③ BGM：优先文件，缺失回落程序化和弦 ── */
+  bgm(mood){
+    if(!this.ctx || !this.on || this.curMood===mood) return;
+    this.curMood = mood; this.bgmName = mood;
+    clearInterval(this.bgmTimer); this.bgmTimer = null;
+    const fade=(el,to,ms)=>{ if(!el) return; const from=el.volume, t0=Date.now();
+      const step=()=>{ const k=Math.min(1,(Date.now()-t0)/ms);
+        try{ el.volume = from+(to-from)*k; }catch(e){}
+        if(k<1) requestAnimationFrame(step); else if(to===0){ try{ el.pause(); }catch(e){} } };
+      requestAnimationFrame(step); };
+    // 交叉淡出旧 BGM
+    if(this.bgmEl){ fade(this.bgmEl, 0, 900); const o=this.bgmEl; this.bgmEl=null;
+      setTimeout(()=>{ try{o.pause();}catch(e){} }, 1000); }
+    // 试文件
+    try{
+      const a = new Audio("audio/bgm/"+mood+".mp3");
+      a.loop = true; a.preload = "auto"; a.volume = 0;
+      let settled = false;
+      a.oncanplaythrough = ()=>{ if(settled) return; settled = true;
+        this.bgmEl = a; const p=a.play(); if(p&&p.catch) p.catch(()=>{});
+        fade(a, this.BGM_VOL, 1000); };
+      a.onerror = ()=>{ if(settled) return; settled = true; this.bgmSynth(mood); };
+      setTimeout(()=>{ if(!settled){ settled = true; this.bgmSynth(mood); } }, 1200);
+      a.load();
+    }catch(e){ this.bgmSynth(mood); }
+  },
+  /** 程序化和弦兜底（原实现，素材缺失时用） */
+  bgmSynth(mood){
+    if(!this.ctx || !this.on) return;
     const MOODS={
       calm: {chords:[[261,329,392],[220,261,329],[174,220,261],[196,246,294]], wave:"triangle", g:0.045, iv:900},
       city: {chords:[[220,277,330],[246,311,369],[207,261,311],[233,293,349]], wave:"sine", g:0.04, iv:820},
@@ -945,7 +1079,15 @@ const AudioSys = {
         gn.gain.setValueAtTime(0,t); gn.gain.linearRampToValueAtTime(m.g,t+0.2);
         gn.gain.exponentialRampToValueAtTime(0.0001,t+m.iv/1000*0.92);
         o.connect(gn); gn.connect(lp); o.start(t); o.stop(t+m.iv/1000); });
-    }, m.iv); },
+    }, m.iv);
+  },
+  /** 全局静音（♪ 按钮用）：文件层与合成层一起停 */
+  setOn(on){ this.on = !!on;
+    if(!this.on){ clearInterval(this.bgmTimer); this.bgmTimer=null;
+      if(this.bgmEl){ try{ this.bgmEl.pause(); }catch(e){} }
+      this.fadeStack(this.ambStack, 0, 300);           // 环境音是双元素循环，要整体停
+    } else { if(this.bgmName){ const n=this.bgmName; this.curMood=null; this.bgm(n); }
+             if(this.ambName){ const l=this.ambName; this.ambName=null; this.amb(l); } } },
 };
 
 /* ═══════════════ 成长 / 装备层（借鉴：装备只产加成，不改四维） ═══════════════ */
@@ -1296,6 +1438,8 @@ function playNode(id){
   if(first) S[`card${curNode.ch}`]=1;
   S.day=Math.max(S.day, curNode.day); S.per=curNode.per; render();
   AudioSys.bgm(curNode.mood||"calm");
+  /* 环境音按地点层叠在 BGM 之下，随节点切换自动交叉淡入淡出 */
+  AudioSys.amb(curNode.loc||null);
   if(map3dReady){ try{ Map3D.setMood(curNode.mood||"calm"); }catch(e){} }
   $("cine").classList.add("on");
   map3dPause(true);
@@ -1739,20 +1883,30 @@ function duckBGM(on){ if(!AudioSys.master || !AudioSys.ctx) return;
 function stopVO(){ try{ VO.pause(); VO.currentTime=0; }catch(e){} duckBGM(false); }
 function voModeLabel(){ return S.voMode==="real"?"真人原声":(S.voMode==="tts"?"合成语音":"关"); }
 /* ═══ 配音源探测 ═══
-   配音素材（配音 / 牌名播报）是可选的：素材库里可能没有 audio\，或用户判其质量差而删除。
-   启动时探测一次，没有任何语音文件就把 🎙 按钮置灰并跳过播放 —— 避免留下一个点了没反应的坏按钮。 */
+   配音素材是可选的：素材库里可能没有 audio\，或用户判其质量差而删除。
+   启动时探测一次，都没有就把 🎙 按钮置灰并跳过播放 —— 避免留下点了没反应的坏按钮。
+
+   ⚠ 探测用 loadedmetadata 而不是 canplaythrough：
+     canplaythrough 要等浏览器缓冲到"能连续播完"，长台词（如序章旁白 8.3 秒 / 134KB）
+     在 HTTP 下几百毫秒都未必触发。早期版本只监听 canplaythrough 且超时 1.5s，
+     结果把**明明有配音的素材误判成没有**，配音按钮被错误置灰。
+     改为 loadedmetadata（解析出元数据即算成功，快得多）+ 4s 兜底超时。 */
 let voAvail = { real:false, tts:false };
 function probeVoice(){
   const probe = (dir)=>new Promise(res=>{
     const a=new Audio();
-    const done=(v)=>{ a.onerror=null; a.oncanplaythrough=null; clearTimeout(t); res(v); };
-    const t=setTimeout(()=>done(false), 1500);
-    a.onerror=()=>done(false);
-    a.oncanplaythrough=()=>done(true);
-    a.preload="auto";
+    let done=false;
+    const finish=(v)=>{ if(done) return; done=true;
+      a.onerror=null; a.onloadedmetadata=null; a.oncanplaythrough=null;
+      clearTimeout(t); res(v); };
+    const t=setTimeout(()=>finish(false), 4000);   // 兜底超时
+    a.onerror=()=>finish(false);                    // 404 / 解码失败
+    a.onloadedmetadata=()=>finish(true);            // 元数据就绪 = 文件存在
+    a.oncanplaythrough=()=>finish(true);            // 兜底（有些浏览器元数据触发慢）
+    a.preload="metadata";
     a.src=dir+"intro_s0.mp3";          // 序章第 0 镜是每套配音都有的锚点
   });
-  return Promise.all([probe("audio/vo_actor/"), probe("audio/vo/")]).then(([r,t])=>{
+  return Promise.all([probe("audio/vo_real/"), probe("audio/vo/")]).then(([r,t])=>{
     voAvail={ real:r, tts:t };
     const btn=$("vobtn");
     if(btn){
@@ -1775,7 +1929,7 @@ function playVO(){
   // 两套配音都没有 → 不播，直接按默认时长推进
   if(!voAvail.real && !voAvail.tts) return 4500;
   voTriedFallback=false;
-  VO.src = (S.voMode==="real" ? "audio/vo_actor/" : "audio/vo/") + voKey() + ".mp3";
+  VO.src = (S.voMode==="real" ? "audio/vo_real/" : "audio/vo/") + voKey() + ".mp3";
   VO.onloadedmetadata = ()=>{ const dur=(VO.duration||0)*1000;
     clearTimeout(voWatch); clearTimeout(contWatch);
     voWatch=setTimeout(()=>$("cont").classList.add("on"), Math.max(4500, dur+500)); };
@@ -2657,10 +2811,12 @@ document.addEventListener("visibilitychange", ()=>{ if(document.hidden && S) try
 setInterval(()=>{ if(S && $("cine").classList.contains("on")) save(); }, 4000);
 $("saveBtn").addEventListener("click",()=>{ AudioSys.click(); save(); toast("▣ 进度已保存"); });
 $("resetBtn").addEventListener("click",()=>{ if(confirm("确定重新开始？当前进度将被清除。")){ localStorage.removeItem("cs2_save"); location.reload(); } });
-$("mutebtn").addEventListener("click",()=>{ AudioSys.on=!AudioSys.on;
+$("mutebtn").addEventListener("click",()=>{
+  /* 走 setOn()：它会把 BGM（文件层）与环境音一起停/恢复，
+     并重启当前 mood —— 原来只关合成层的 bgmTimer，文件 BGM 不会被暂停。 */
+  AudioSys.setOn(!AudioSys.on);
   $("mutebtn").textContent="♪ BGM: "+(AudioSys.on?"开":"关");
-  if(!AudioSys.on){ clearInterval(AudioSys.bgmTimer); AudioSys.curMood=null; }
-  else if(curNode) { AudioSys.curMood=null; AudioSys.bgm(curNode.mood||"calm"); } });
+  if(AudioSys.on && curNode) AudioSys.bgm(curNode.mood||"calm"); });
 // 空格推进镜头（覆盖层打开时不触发）
 window.addEventListener("keydown",e=>{
   if(e.code!=="Space") return;

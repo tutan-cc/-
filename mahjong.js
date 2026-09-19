@@ -3381,12 +3381,20 @@
     var m = {}, i;
     for (i = 1; i <= 9; i++) { m[i + "万"] = 1; m[i + "条"] = 1; m[i + "筒"] = 1; }
     for (i = 0; i < VOICE_HONOR_CODES.length; i++) m[String.fromCharCode(VOICE_HONOR_CODES[i])] = 1;
-    var acts = "碰 杠 暗杠 补杠 胡 自摸 抢杠 杠开 听 过 流局".split(" ");
+    /* ⚠ 这里**不要**加「暗杠」「补杠」：它们不喊牌、出牌碰实音（见 gangClack）。
+       曾把它们登记进来，导致每个座位都去请求不存在的 seatN/暗杠.mp3，
+       四次 404 且完全无声（AudioSys 不会因为一次失败请求报错，测试也测不出来）。 */
+    var acts = "碰 杠 胡 自摸 抢杠 杠开 听 过 流局".split(" ");
     for (i = 0; i < acts.length; i++) m[acts[i]] = 1;
     return m;
   })();
   var VOICE_BASE = null;                             // "audio/mj/" 或绝对 file:// 前缀
-  var VOICE_CACHE = Object.create(null);             // 文件名 → Audio（预加载 / 复用）
+  /* 座位专属播报：座位 N 的牌名/喊话优先取 audio/mj/seatN/<词>.mp3，缺失则回落共用目录。
+     座位 0（你/主角）直接用共用目录，不建子目录 —— 少 45 个文件。
+     本表由 tools/gen_mj_by_seat.py 生成后同步维护；列在这里是为了**同步判断**能否用座位目录，
+     不必等 404 再回落（省一次失败请求，预加载路径也可预测）。 */
+  var VOICE_SEATS = { 1: "seat1", 2: "seat2", 3: "seat3" };
+  var VOICE_CACHE = Object.create(null);             // 缓存键 → Audio（预加载 / 复用）
   var VOICE_STAT = { plays: 0, misses: 0, last: "", lastUrl: "", lastSeat: -1, lastAt: 0, errors: 0, list: [], uniq: Object.create(null) };
   var VOICE_CUR = null, VOICE_TIMER = 0;
 
@@ -3418,19 +3426,49 @@
   }
   function voiceBase() { if (VOICE_BASE === null) VOICE_BASE = voiceRelBase(); return VOICE_BASE; }
   /** 相对路径 + 基址 → URL（含 file:// 绝对基址时不要再加 "./"） */
+  /** 座位 → 相对路径（座位 0 或无专属目录时用共用目录） */
+  function voiceRelFor(rel, seat) {
+    var sub = VOICE_SEATS[seat];
+    return sub ? (sub + "/" + rel) : rel;
+  }
+  /** 相对路径 + 基址 → URL（含 file:// 绝对基址时不要再加 "./"） */
   function voiceUrlOf(rel) {
     var b = voiceBase();
     return /^[a-zA-Z]+:/.test(b) ? (b + rel) : ("./" + b + rel);
   }
-  function voiceUrl(name) { var f = voiceFile(name); return f ? voiceUrlOf(f) : ""; }
-  function voiceAudio(rel) {
-    var a = VOICE_CACHE[rel];
-    if (a || !rel) return a || null;
+  /** 牌名 → URL。带 seat 时返回座位专属目录的 URL。
+   *  ⚠ 这里**只解析路径，不判断文件是否存在**（浏览器无法同步查询）。
+   *     座位目录缺某个词时（如「暗杠」「补杠」只有音效没有喊牌），
+   *     由 voiceAudio() 的 error 兜底换回共用目录。别在这里假设文件一定在。 */
+  function voiceUrl(name, seat) {
+    var f = voiceFile(name);
+    return f ? voiceUrlOf(voiceRelFor(f, seat)) : "";
+  }
+  function voiceAudio(rel, seat) {
+    var key = voiceRelFor(rel, seat);
+    var a = VOICE_CACHE[key];
+    if (a || !key) return a || null;
     try {
-      a = new root.Audio(voiceUrlOf(rel));
+      a = new root.Audio(voiceUrlOf(key));
       try { a.preload = "auto"; } catch (e) {}
       a.volume = VOICE_VOL;
-      VOICE_CACHE[rel] = a;
+      /* 座位专属文件缺失 → 回落共用目录。
+         为什么不能只靠「构造时猜路径」：浏览器无法同步判断文件是否存在，
+         而座位目录里确实有不存在的词 —— 「暗杠」「补杠」按设计只有牌碰音效、
+         没有喊牌语音（gen_mj_by_seat_tts.py 的 SILENT 常量），
+         于是 seat1/2/3 的这两个 URL 必然 404。
+         实测不装这个兜底时，Audio 直接 error、播不出来，而 say() 只看 Audio 对象
+         非空就认为成功，于是**静默丢弃**，牌桌上这两个动作没有任何声音。
+         修法：error 事件里把 src 换成共用目录版本并重新播（只回落一次，避免死循环）。 */
+      if (VOICE_SEATS[seat]) {
+        a.addEventListener("error", function () {
+          var shared = voiceUrlOf(rel);
+          if (!shared || a.src === shared) return;
+          VOICE_STAT.fallbacks = (VOICE_STAT.fallbacks || 0) + 1;
+          try { a.src = shared; a.load(); } catch (e) {}
+        });
+      }
+      VOICE_CACHE[key] = a;
     } catch (e) { a = null; VOICE_STAT.errors++; }
     return a;
   }
@@ -3448,16 +3486,17 @@
     if (!G.voiceOn) return "";
     var f = voiceFile(name);
     if (!f) return "";
-    var url = voiceUrlOf(f);
+    var seat = o.seat === undefined ? -1 : o.seat;
+    var url = voiceUrlOf(voiceRelFor(f, seat));
     /* 先记账：只要「开关开 + 名字可映射」就算一次播报请求（素材缺失另记 misses） */
     VOICE_STAT.plays++; VOICE_STAT.last = f; VOICE_STAT.lastUrl = url;
-    VOICE_STAT.lastSeat = o.seat === undefined ? -1 : o.seat; VOICE_STAT.lastAt = Date.now();
+    VOICE_STAT.lastSeat = seat; VOICE_STAT.lastAt = Date.now();
     VOICE_STAT.list.push(f); if (VOICE_STAT.list.length > 24) VOICE_STAT.list.shift();
     VOICE_STAT.uniq[f] = 1;
     try {
       if (VOICE_TIMER) { root.clearTimeout(VOICE_TIMER); VOICE_TIMER = 0; }
       if (VOICE_CUR) { try { VOICE_CUR.pause(); VOICE_CUR.currentTime = 0; } catch (e) {} }
-      var a = voiceAudio(f);
+      var a = voiceAudio(f, seat);
       if (!a) { VOICE_STAT.misses++; return url; }   // 素材/Audio 缺失：静默跳过，不报错
       a.volume = o.vol === undefined ? VOICE_VOL : o.vol;
       var go = function () {
@@ -3500,6 +3539,13 @@
   }
   /** 自己打出的牌：清掉上一局播报状态，播「该牌牌名」 */
   function voiceSelfDiscard(tile) { say(tile, { seat: 0 }); }
+  /** 暗杠 / 补杠的实音（不喊牌）：audio/sfx/mj-clack.mp3，缺失时静默不报错 */
+  function gangClack() {
+    try {
+      var A = root.AudioSys;
+      if (A && A.sfxFile) A.sfxFile("mj-clack", 0.9);
+    } catch (e) { /* 无音频层不影响玩法 */ }
+  }
   /** 牌局记录 → 语音（每个事件只触发一次，用 G.voiceN 游标记录进度） */
   function voiceTingOf(p, honors) {
     if (!p || p.hand.length % 3 !== 1) return false;
@@ -3521,8 +3567,12 @@
       } else if (kind === "peng") {
         say("碰", { seat: seat });
       } else if (kind === "gang") {
-        if (txt.indexOf("暗杠") >= 0) say("暗杠", { seat: seat });
-        else if (txt.indexOf("补杠") >= 0) say("补杠", { seat: seat });
+        /* 「暗杠」「补杠」不喊牌，出**牌碰实音** —— 与素材侧一致：
+           gen_mj_by_seat_tts.py 的 SILENT 常量把它们排除在语音之外，理由是
+           「手上动作，用牌碰声表现」。之前这里却调 say("暗杠")，
+           而四个座位目录都没有这个文件 => 必然 404 => 静默无声。
+           现在改成明确播放 sfx-mj-clack，不再走语音层。 */
+        if (txt.indexOf("暗杠") >= 0 || txt.indexOf("补杠") >= 0) gangClack();
         else say("杠", { seat: seat });
       } else if (kind === "rob") {
         if (txt.indexOf("有人可以") < 0) say("抢杠", { seat: seat });    // 真抢杠胡（排除「有人可以抢杠」提示）

@@ -15,7 +15,9 @@ function send(m,p){ return new Promise((res,rej)=>{ const i=++id; pend[i]=res; w
 async function ev(e){ const r=await send("Runtime.evaluate",{expression:e,returnByValue:true});
   if(r.result && r.result.exceptionDetails) return "EXC:"+((r.result.exceptionDetails.exception||{}).description||r.result.exceptionDetails.text);
   return r.result&&r.result.result?r.result.result.value:undefined; }
-async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png"}); fs.writeFileSync(OUT+"\\"+n+".png", Buffer.from(r.result.data,"base64")); }
+async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png"});
+  fs.mkdirSync(path.join(OUT,"测试截图"),{recursive:true});   // 干净 clone 上目录不存在，不自建会 ENOENT 崩掉
+  fs.writeFileSync(path.join(OUT,"测试截图",n+".png"), Buffer.from(r.result.data,"base64")); }
 (async()=>{
   const chrome=spawn(CHROME,["--headless=new",`--remote-debugging-port=${PORT}`,"--window-size=1440,900", "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader", "--disable-gpu-sandbox",
     `--user-data-dir=${OUT}\\_prof3`,"about:blank"],{stdio:"ignore"});

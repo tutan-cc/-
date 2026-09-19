@@ -44,9 +44,15 @@ async function ev(expr) {
   if (r.result && r.result.exceptionDetails) return "EXC:" + ((r.result.exceptionDetails.exception || {}).description || "");
   return r.result && r.result.result ? r.result.result.value : undefined;
 }
+/** 出图目录：干净 clone 上 测试截图/ 不存在，必须自建，否则第一个 shot() 就 ENOENT 崩掉 */
+function shotDir() {
+  const d = path.join(OUT, "测试截图");
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+}
 async function shot(name) {
   const r = await send("Page.captureScreenshot", { format: "png" });
-  fs.writeFileSync(OUT + "\\测试截图\\" + name + ".png", Buffer.from(r.result.data, "base64"));
+  fs.writeFileSync(path.join(shotDir(), name + ".png"), Buffer.from(r.result.data, "base64"));
 }
 /** 按裁剪框 + 缩放出图（1240×860 由 clip 的 scale 决定） */
 async function shotClip(name, rect, scale) {
@@ -55,7 +61,7 @@ async function shotClip(name, rect, scale) {
     clip: { x: rect.x, y: rect.y, width: rect.w, height: rect.h, scale: scale }
   });
   const buf = Buffer.from(r.result.data, "base64");
-  fs.writeFileSync(OUT + "\\测试截图\\" + name + ".png", buf);
+  fs.writeFileSync(path.join(shotDir(), name + ".png"), buf);
   return buf;
 }
 /** 页面内 canvas → PNG base64（zoom=手牌区原生分辨率裁切；sheet=缩回 1240×860） */
@@ -653,8 +659,8 @@ const HTA = [
   '    A("voice_toggle_dom", !!vtg, !!vtg);',
   '    A("voice_ting_dom", !!document.getElementById("mjmTing"), !!document.getElementById("mjmTing"));',
   '    st0 = Mahjong.debug.voiceStats();',
-  '    A("voice_45", st0.total === 45, st0.total);',
-  '    A("voice_preload", st0.cached >= 45, st0.cached);',
+  '    A("voice_43", st0.total === 43, st0.total);',
+  '    A("voice_preload", st0.cached >= 43, st0.cached);',
   '    A("voice_base", /audio\\/mj\\/$/.test(st0.base), st0.base);',
   '    A("voice_on_default", st0.on === true, st0.on);',
   '    u1 = Mahjong.debug.voiceUrl("1\\u7b52");',
@@ -907,8 +913,8 @@ result_btn: "结算面板「继续」按钮存在",
   /* 语音播报 */
   voice_toggle_dom: "牌桌上有 🔊 语音开关（#mjmVoiceToggle）",
   voice_ting_dom: "听牌徽标（#mjmTing）存在",
-  voice_45: "语音素材 45 条（牌名 34 + 动作 11）",
-  voice_preload: "45 条 Audio 对象已预加载缓存",
+  voice_43: "语音素材 43 条（牌名 34 + 动作 9；暗杠/补杠不喊牌，出牌碰音效）",
+  voice_preload: "43 条 Audio 对象已预加载缓存",
   voice_base: "语音目录基址 = .../audio/mj/",
   voice_on_default: "语音默认开启",
   voice_url: "voiceUrl(1筒) 指向 audio/mj/1筒.mp3",
@@ -962,7 +968,7 @@ async function runTrident() {
     if (!fs.existsSync(OUT + "\\" + srcFile)) return null;
     const b64 = fs.readFileSync(OUT + "\\" + srcFile, "utf8").trim();
     if (b64.length <= 1000) return null;    const buf = Buffer.from(b64, "base64");
-    if (destFile) fs.writeFileSync(OUT + "\\测试截图\\" + destFile, buf);
+    if (destFile) fs.writeFileSync(path.join(shotDir(), destFile), buf);
     return buf;
   };
   const png = grab("_mj_render_b64.txt", "mahjong_table.png");
@@ -1149,7 +1155,7 @@ async function runChrome() {
   const zoomB64 = await ev(SHOT_EXPR("zoom"));
   if (zoomB64) {
     const zb = Buffer.from(zoomB64, "base64");
-    fs.writeFileSync(OUT + "\\测试截图\\mahjong_hand_zoom.png", zb);
+    fs.writeFileSync(path.join(shotDir(), "mahjong_hand_zoom.png"), zb);
     const zsz = pngSize(zb);
     info.zoom = { file: "测试截图/mahjong_hand_zoom.png", bytes: zb.length, w: zsz && zsz.w, h: zsz && zsz.h };
     A(!!zsz && zsz.w > 1500, "手牌区放大图已出（" + (zsz ? zsz.w + "×" + zsz.h : "-") + "）");
@@ -1161,7 +1167,7 @@ async function runChrome() {
   const faceB64 = await ev(SHOT_EXPR("sheet"));
   if (faceB64) {
     const fb = Buffer.from(faceB64, "base64");
-    fs.writeFileSync(OUT + "\\测试截图\\mahjong_faces.png", fb);
+    fs.writeFileSync(path.join(shotDir(), "mahjong_faces.png"), fb);
     const fsz = pngSize(fb);
     info.faces = { file: "测试截图/mahjong_faces.png", bytes: fb.length, w: fsz && fsz.w, h: fsz && fsz.h };
     A(!!fsz && fsz.w === 1240 && fsz.h === 860, "牌面全览截图 1240×860", fsz ? fsz.w + "×" + fsz.h : "无");
@@ -1176,7 +1182,7 @@ async function runChrome() {
   const meldB64 = await ev(SHOT_EXPR("sheet"));
   if (meldB64) {
     const mb = Buffer.from(meldB64, "base64");
-    fs.writeFileSync(OUT + "\\测试截图\\mahjong_melds.png", mb);
+    fs.writeFileSync(path.join(shotDir(), "mahjong_melds.png"), mb);
     const msz = pngSize(mb);
     info.melds = { file: "测试截图/mahjong_melds.png", bytes: mb.length, w: msz && msz.w, h: msz && msz.h };
     A(!!msz && msz.w === 1240 && msz.h === 860, "副露示范图 1240×860", msz ? msz.w + "×" + msz.h : "无");

@@ -43,6 +43,7 @@ tools/verify/
 *.w35bak
 *.bfbak
 *.hintbak
+*.layoutbak
 *.log
 _mj_render_out.txt
 

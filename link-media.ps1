@@ -51,7 +51,7 @@ if (-not (Test-MediaLib $MediaDir)) {
 
 请把媒体素材包解压到本仓库同级目录，命名为「Tianshu-Prototype-媒体素材」，使其结构为：
   $parent\Tianshu-Prototype-媒体素材\video\  (35 个 mp4 + poster\ 35 张 jpg)
-  $parent\Tianshu-Prototype-媒体素材\audio\  (可选：vo\ 自产配音 / vo_actor\ 真人原声)
+  $parent\Tianshu-Prototype-媒体素材\audio\  (可选：vo_real\ 主配音 / vo\ 备用 / mj\ 牌名播报)
 
 或显式指定路径：
   powershell -ExecutionPolicy Bypass -File .\link-media.ps1 -MediaDir "D:\某处\媒体素材"

@@ -35,7 +35,8 @@ async function evaljs(expr) { // 不 awaitPromise，立即返回
 }
 async function shot(name) {
   const r = await send("Page.captureScreenshot", { format: "png" });
-  fs.writeFileSync(`${OUT}\\${name}.png`, Buffer.from(r.result.data, "base64"));
+  fs.mkdirSync(path.join(OUT, "测试截图"), { recursive: true });   // 干净 clone 上目录不存在，不自建会 ENOENT 崩掉
+  fs.writeFileSync(path.join(OUT, "测试截图", `${name}.png`), Buffer.from(r.result.data, "base64"));
   console.log("[shot]", name);
 }
 

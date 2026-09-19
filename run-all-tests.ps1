@@ -43,7 +43,7 @@ $SUITES = @(
   [pscustomobject]@{ Layer = "logic";    Name = "麻将逻辑（最大的一套）";       Script = "tools/test/mahjong-logic.js";     Expect = 847 }
   [pscustomobject]@{ Layer = "logic";    Name = "index.html 内联脚本语法闸";     Script = "tools/dev/check-inline.js";       Expect = 0 }
   [pscustomobject]@{ Layer = "headless"; Name = "早餐店无头证据链";             Script = "tools/bf/headless.js";            Expect = 351 }
-  [pscustomobject]@{ Layer = "browser";  Name = "麻将浏览器实测（CDP→mshta）";  Script = "tools/e2e/mj-browser.js";         Expect = 142 }
+  [pscustomobject]@{ Layer = "browser";  Name = "麻将浏览器实测（CDP→mshta）";  Script = "tools/e2e/mj-browser.js";         Expect = 162 }
   [pscustomobject]@{ Layer = "browser";  Name = "麻将系统 E2E（mshta）";         Script = "tools/e2e/mj-system.js";          Expect = 115 }
   [pscustomobject]@{ Layer = "browser";  Name = "闲暇玩法 E2E（打斗/麻将/彩票）"; Script = "tools/e2e/leisure.js";           Expect = 8 }
 )
@@ -165,9 +165,10 @@ $results | Format-Table @{n='层';e={$_.Layer}}, @{n='测试';e={$_.Name}}, @{n=
 
 if ($totalBad -gt 0) {
   Write-Host " 有失败项。产物 JSON 在 dist/test-results/，截图在 测试截图/。" -ForegroundColor Red
-  Write-Host " 注意：tools/e2e/leisure.js 在当前代码基线上有 2 项**既有**失败（与本轮改动无关，origin/main 同样失败）：" -ForegroundColor Yellow
-  Write-Host "   · 麻将面板打开且手牌 13 张 —— dbgMj 走的麻将系统与断言取的旧字段已不同步" -ForegroundColor Yellow
-  Write-Host "   · 麻将已结算" -ForegroundColor Yellow
+  # 说明：leisure.js 曾长期有 2 项「既有失败」（麻将手牌 13 张 / 已结算），
+  # 根因是测试用固定 sleep 断言、而麻将节点要先播 2 段剧情视频 —— 是测试写法问题，不是游戏 bug。
+  # 已改为「轮询等条件 + forceWin + 点 #mjmGo 走完整结算」，现在全绿，故移除旧的免责提示。
+  Write-Host " 逐项失败原因见上方各测试的输出；产物 JSON 里有 checks/errors 明细。" -ForegroundColor Yellow
   exit 1
 }
 Write-Host " 全部通过 ✔" -ForegroundColor Green
