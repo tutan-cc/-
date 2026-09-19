@@ -87,12 +87,15 @@ python tools\audio\process_sfx.py --src RAW --out FINAL --preset word --only 西
 | `check_bgm.py` | BGM 专项：时长/响度/**循环接缝差**/周期性 |
 | `verify_audio_content.py` | 长台词内容核对（ASR 全文比对） |
 | `verify_mj_asr.py` | 牌名内容核对（拼音同音匹配 + **跨座位共识**） |
+| `verify_pairwise.py` | 同词跨座位交叉验证：`--len` 有声段时长 / `--content` ASR+提示泄漏 / `--acoustic` MFCC-DTW |
+| `omni_judge.py` | 用全模态模型（Qwen-Omni）做**感知层**验收：音效/音乐/环境音 —— ASR 完全看不到的那部分 |
 | `asr_local.py` | 本地 SenseVoice 转录（离线，免 API 费用） |
 
 ## 依赖
 
 ```powershell
 pip install numpy sherpa-onnx pypinyin
+pip install openai        # 仅 omni_judge.py 需要（全模态感知层验收）
 # ffmpeg / ffprobe 需在 PATH 上（解码、响度归一、出图都靠它）
 ```
 
@@ -100,6 +103,13 @@ pip install numpy sherpa-onnx pypinyin
 
 ```
 <仓库根>上级/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/
+```
+
+全模态验收另外需要百炼的凭据（**只从环境变量取**）：
+
+```powershell
+$env:DASHSCOPE_API_KEY  = "sk-..."                  # 百炼控制台 → API-KEY 管理
+$env:DASHSCOPE_BASE_URL = "https://{业务空间}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 ```
 
 ## 验收：改完素材必须跑这三步
@@ -111,7 +121,11 @@ python tools\audio\check_bgm.py                      # BGM 专测
 
 # 2. 内容核对
 python tools\audio\verify_audio_content.py <目录>     # 台词
-python tools\audio\verify_mj_asr.py                   # 牌名
+python tools\audio\verify_mj_asr.py                   # 牌名（跨座位共识）
+python tools\audio\verify_pairwise.py --len           # 牌名有声段时长（抓截断）
+python tools\audio\verify_pairwise.py --content       # 牌名内容 + 提示泄漏
+python tools\audio\omni_judge.py --selftest           # 感知层：先验模型可信度
+python tools\audio\omni_judge.py --batch --per-cat 3  # 感知层：真实素材判类
 
 # 3. 接线 + 入库（最关键，能抓到「断言全绿但没声音」）
 powershell -File .\pack-media.ps1      # 更新 媒体清单.json 与分发包
@@ -122,7 +136,48 @@ powershell -File .\run-all-tests.ps1
 
 ---
 
-## ⚠️ 五个必须知道的坑（都实测过）
+## ⚠️ 必须知道的坑（都实测过，不是理论）
+
+### 0. `cixingnansheng` 会把舞台提示**念出来** —— 提示词泄漏与音色有关
+
+**这是本项目最隐蔽的一个坑，藏了很久才暴露。**
+
+牌名生成原本一律用「（利落报牌，语速偏快）9筒」这种长舞台提示。
+换到座位0（主角音色 `cixingnansheng`）后，实测 ASR 转录出的是：
+
+```
+输入：（利落报牌，语速偏快）9筒
+ASR ：利落爆牌酒桶。          ← 提示词被当成正文念了，牌名被淹掉
+```
+
+而座位 1/2/3 用**完全相同的模板**一直正常。对照实验说明这**取决于音色**：
+
+| 音色 | 输入 | 结果 |
+|---|---|---|
+| `cixingnansheng` | 「（利落报牌，语速偏快）9筒」 | **泄漏**（「利落爆牌酒桶」） |
+| `lengyanyujie` | 同上（同模板） | 正常（「球桶。」） |
+| `cixingnansheng` | 「（平静地）9筒」 | 正常 |
+| `cixingnansheng` | 「9筒」 | 正常 |
+
+**规则：括号里的舞台提示只写两三个字的情绪词**（`gen_mj_by_seat_tts.py` 的
+`MOODS` / `TILE_MOOD`）。长描述还有另一个雷：会触发内容审核 HTTP 451。
+
+> 换新音色时，**必须重新验证提示词**，不能假设「别的音色能用它就能用」。
+
+### 0b. 「加工前后总时长」是个测不出问题的指标
+
+曾经用它当验收依据，结果漏掉一个存在很久的严重缺陷：
+共用目录（座位0）43 条里 **15 条的有声内容被削到不足座位目录的 55%** ——
+`杠开` 0.02s、`1筒` 0.04s、`杠` 0.02s，短到「五万」和「一万」都分不出来
+（实测 5万 被听成「喂」）。而当时的时长报表一切「正常」。
+
+**它只能说明「削掉了静音」，不能说明「留下了完整人声」。**
+要测的是**有声段时长**与**内容**：
+
+```powershell
+python tools\audio\verify_pairwise.py --len       # 有声段时长 vs 其它座位
+python tools\audio\verify_pairwise.py --content   # ASR + 提示泄漏检测
+```
 
 ### 1. 「素材缺失」与「素材接错」在断言层面无法区分
 
@@ -134,10 +189,47 @@ powershell -File .\run-all-tests.ps1
 ### 2. ASR 对短促喊牌识别率低 —— 单条判错不可信
 
 「杠」被听成「告/干/大」、「碰」被听成「哼」是常态。
-唯一可信的判据是**跨座位共识**：同一个词 4 个座位全判错才可能是真坏件。
-`verify_mj_asr.py` 因此把「疑似错」当诊断信息输出，**只有空白/废件才让它退出 1**。
+**跨座位共识**比单条可信：同一个词多数座位都判错才值得查
+（注意是「多数」不是「全部」—— 曾因为要求「全判错」，被一个侥幸正确的座位
+掩盖了两条真坏件）。`verify_pairwise.py --acoustic` 用来区分「ASR 判错」与「真坏件」。
+
+⚠ 但 `--acoustic` 的适用边界很窄：牌名多是 0.4~0.7s 的**两字短词**，
+MFCC-DTW 在这个尺度上分辨力很差（同类词与异类词的距离高度重叠）。
+所以它加了「分差 < 2.0 不下结论」的门槛，对单音节短促音直接弃权。
+**它的定位是缩小人工听辨范围，不是替代人耳。**
 
 顺带：ASR 会把口语「七」写成 `7`，比对前必须做汉字数字归一，否则正确件会被误报。
+
+### 2b. 用全模态模型（Qwen-Omni）做感知层验收 —— 以及它的三个限制
+
+音效/音乐/环境音在纯 ASR 眼里**等于不存在**（`暗杠.mp3` 转录结果是空字符串），
+这层盲区可以用全模态模型补上。实测 `qwen3.8-omni-flash`：
+
+| 能力 | 实测结果 |
+|---|---|
+| 判类（语音/音效/音乐/环境音） | **93%**（15 个真实素材，14 对；5 类是人工分的） |
+| 描述音效 | 很强：「木槌敲击声、低沉鼓声、最后一下金属镲片」「持续的低频轰鸣」 |
+| 情绪/氛围标注 | ASR 完全做不到：「忧郁、沉思、孤寂」「阴郁、压迫、悬疑」 |
+| 顺带验证语音内容 | 可用（但 ASR 更专） |
+
+**三个必须知道的限制**（`omni_judge.py --selftest` 就是为此设计的）：
+
+1. **它会对纯静音编造内容。** 喂一段 ffmpeg 生成的、逐样本全零的 3 秒静音，
+   它 5 次里有 4 次编出「游戏界面确认蜂鸣声」「低频持续电子单音（类似测试音）」。
+   **静音检测必须用声学层（`check_audio.py`），不能交给模型。**
+2. **幻觉率由提示词决定。** 第一版提示词（「这是一段游戏音频素材…」）会让它
+   为了配合提问而编造；改成明确列出「静音」选项并要求「不要猜测或补充并不存在的内容」
+   后，同一文件 4 次全对。**别让提示词预设「里面一定有内容」。**
+3. **不能做细粒度音质判断。** 它说「突然截断」时对多数素材都是误报 ——
+   「听起来像不像话」它能答，「接缝是否超过 6dB」它答不了（那是 `check_bgm.py` 的事）。
+
+结论：**它管「这是什么、什么感觉」，声学层管「是否合格」，ASR 管「念得对不对」。**
+三者互补，不可互相替代。
+
+### 2c. 座位号从 0 开始 —— `if args.seat` 会把 `--seat 0` 当成没传
+
+`0` 是 falsy，`--seat 0` 会被判成「没指定」而跑遍所有座位（实测浪费 3 倍 API 调用）。
+一律写 `if args.seat is not None`。这类坑在座位号/索引上很常见。
 
 ### 3. 音乐的生成不确定性远大于音效/人声 —— 「重跑」不是免费的
 
