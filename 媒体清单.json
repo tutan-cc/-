@@ -6,8 +6,8 @@
     "counts":  {
                    "mp4":  35,
                    "poster":  35,
-                   "audio":  300,
-                   "total":  370
+                   "audio":  305,
+                   "total":  375
                },
     "files":  [
                   {
@@ -70,6 +70,41 @@
                       "path":  "audio/amb/amb-rent.mp3",
                       "bytes":  97197,
                       "sha256":  "12ba165837b4e0dd07488af6fc1668bff2da46455162ac7f34d13cd490d02a37",
+                      "source":  "self",
+                      "license":  "自产-可自由使用"
+                  },
+                  {
+                      "path":  "audio/bgm/calm.mp3",
+                      "bytes":  1706157,
+                      "sha256":  "3718167ab6a17cbd7360a78bc1017f6cd7e8ccc7843467d4d73a002e06b41f21",
+                      "source":  "self",
+                      "license":  "自产-可自由使用"
+                  },
+                  {
+                      "path":  "audio/bgm/city.mp3",
+                      "bytes":  510381,
+                      "sha256":  "6aa14368ba56e8cd44547180f7078ec971f72284d78c242f9b5a68d4b0e2f677",
+                      "source":  "self",
+                      "license":  "自产-可自由使用"
+                  },
+                  {
+                      "path":  "audio/bgm/dark.mp3",
+                      "bytes":  1379373,
+                      "sha256":  "90d7f50a155062235bf6474d2c92ce99695ec6fa1961e3ef96f32f419e37cc8d",
+                      "source":  "self",
+                      "license":  "自产-可自由使用"
+                  },
+                  {
+                      "path":  "audio/bgm/night.mp3",
+                      "bytes":  282285,
+                      "sha256":  "57811a8da44e0af0239e2680612b9f443620fe6234ec5797fba6ee2b041605b5",
+                      "source":  "self",
+                      "license":  "自产-可自由使用"
+                  },
+                  {
+                      "path":  "audio/bgm/tense.mp3",
+                      "bytes":  462381,
+                      "sha256":  "ab47f7ba8f156e5d4dfbf4a2a4e81e3c1733cdae93aee75f95d9f6bafadf8177",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
@@ -1881,15 +1916,15 @@
                   },
                   {
                       "path":  "audio/vo_real/investor_a0.mp3",
-                      "bytes":  60333,
-                      "sha256":  "7ac8fd2dc0dce566b552517f4cddcbcc411393f60429b2e1a290074973641d7a",
+                      "bytes":  59949,
+                      "sha256":  "653828015d12a6c03e742ea0c90baf7b32e994fed0403d6646115bbae1885424",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
                   {
                       "path":  "audio/vo_real/investor_s0.mp3",
-                      "bytes":  82605,
-                      "sha256":  "e866e4c6f6d0f619aa2f5aefba8f71f5833f9c0a362c3337c19dfad639d78276",
+                      "bytes":  91053,
+                      "sha256":  "106a46a20ea2d077d2c3021b685ebea91f2aca01ba1067c8275ce15df04e932d",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
@@ -1909,8 +1944,8 @@
                   },
                   {
                       "path":  "audio/vo_real/library_a0.mp3",
-                      "bytes":  24237,
-                      "sha256":  "085f3357f284d5ab27eb4faaf4f7129962d5225553d63ebf7550535615bef45e",
+                      "bytes":  34605,
+                      "sha256":  "afd2575aa08083f5334c2b34e718c99d39ac0dd7a48e15526fd58af850c9ad7a",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },
@@ -2049,8 +2084,8 @@
                   },
                   {
                       "path":  "audio/vo_real/rent_s1.mp3",
-                      "bytes":  28461,
-                      "sha256":  "710a678f3ed7d18306c16e8442b81611314bfae3458e2c3d03721cb4d0af8206",
+                      "bytes":  65325,
+                      "sha256":  "c9781840c3a046f5d446b88762eea996cba038c15c4b25677dbbe59771c773ce",
                       "source":  "self",
                       "license":  "自产-可自由使用"
                   },

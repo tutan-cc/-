@@ -46,6 +46,11 @@ $SUITES = @(
   [pscustomobject]@{ Layer = "browser";  Name = "麻将浏览器实测（CDP→mshta）";  Script = "tools/e2e/mj-browser.js";         Expect = 162 }
   [pscustomobject]@{ Layer = "browser";  Name = "麻将系统 E2E（mshta）";         Script = "tools/e2e/mj-system.js";          Expect = 115 }
   [pscustomobject]@{ Layer = "browser";  Name = "闲暇玩法 E2E（打斗/麻将/彩票）"; Script = "tools/e2e/leisure.js";           Expect = 8 }
+  # 素材接线核对：确认代码点名的音频文件**真的能取到**。
+  # 必要性来自实测教训：「缺失即静默回落」的设计让「没接上」与「没素材」在断言层面无法区分，
+  # 曾出现 1542 项全绿、但牌桌上「暗杠/补杠」完全无声（四个座位全 404）。
+  # 它需要本地 HTTP 服务（python -m http.server 8000）；服务不在时脚本自行 exit 0 跳过，不会误报。
+  [pscustomobject]@{ Layer = "browser";  Name = "素材接线核对（音效/环境音/BGM/牌名）"; Script = "tools/e2e/audio-wiring.js"; Expect = 10 }
 )
 
 if ($Only) { $SUITES = $SUITES | Where-Object { $_.Layer -eq $Only } }
