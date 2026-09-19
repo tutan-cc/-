@@ -43,7 +43,7 @@ $SUITES = @(
   [pscustomobject]@{ Layer = "logic";    Name = "麻将逻辑（最大的一套）";       Script = "tools/test/mahjong-logic.js";     Expect = 847 }
   [pscustomobject]@{ Layer = "logic";    Name = "index.html 内联脚本语法闸";     Script = "tools/dev/check-inline.js";       Expect = 0 }
   [pscustomobject]@{ Layer = "headless"; Name = "早餐店无头证据链";             Script = "tools/bf/headless.js";            Expect = 351 }
-  [pscustomobject]@{ Layer = "browser";  Name = "麻将浏览器实测（CDP→mshta）";  Script = "tools/e2e/mj-browser.js";         Expect = 142 }
+  [pscustomobject]@{ Layer = "browser";  Name = "麻将浏览器实测（CDP→mshta）";  Script = "tools/e2e/mj-browser.js";         Expect = 162 }
   [pscustomobject]@{ Layer = "browser";  Name = "麻将系统 E2E（mshta）";         Script = "tools/e2e/mj-system.js";          Expect = 115 }
   [pscustomobject]@{ Layer = "browser";  Name = "闲暇玩法 E2E（打斗/麻将/彩票）"; Script = "tools/e2e/leisure.js";           Expect = 8 }
 )
