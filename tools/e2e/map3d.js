@@ -1,4 +1,4 @@
-﻿// 3D 地图验收：Map3D 是否就绪、截图、与游戏联动
+// 3D 地图验收：Map3D 是否就绪、截图、与游戏联动
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
@@ -87,7 +87,7 @@ async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png
   await shot("panel_shop");
 
   const results={ success:errors.length===0, testedAt:new Date().toISOString(), checks, errors, map3d:st, panel };
-  fs.writeFileSync(OUT+"\\tests\\map3d-results.json", JSON.stringify(results,null,1),"utf8");
+  fs.writeFileSync(OUT+"\\dist\\test-results\\map3d-results.json", JSON.stringify(results,null,1),"utf8");
   console.log(`[3D验收] 通过 ${checks.length} 项，失败 ${errors.length} 项`);
   if(errors.length) console.log("失败项:", errors.join(" | "));
   chrome.kill(); process.exit(errors.length?1:0);

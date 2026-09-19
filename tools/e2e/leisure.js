@@ -96,7 +96,7 @@ async function shot(n){ const r=await send("Page.captureScreenshot",{format:"png
   await shot("lud_lottery_open");
 
   const res={ success:errors.length===0, testedAt:new Date().toISOString(), checks, errors };
-  fs.writeFileSync(OUT+"\\tests\\leisure-results.json", JSON.stringify(res,null,1),"utf8");
+  fs.writeFileSync(OUT+"\\dist\\test-results\\leisure-results.json", JSON.stringify(res,null,1),"utf8");
   console.log(`[结果] 通过 ${checks.length}，失败 ${errors.length}` + (errors.length?(" | "+errors.join(" | ")):""));
   chrome.kill(); process.exit(errors.length?1:0);
 })().catch(e=>{ console.error("FATAL",e); process.exit(1); });

@@ -547,9 +547,9 @@ function save(cv, name, texts, note) {
               " · 按钮文案「" + goText + "」");
 }
 
-fs.writeFileSync(path.join(OUT, "tests", "bf_shots_text.json"),
+fs.writeFileSync(path.join(OUT, "dist", "test-results", "bf_shots_text.json"),
   JSON.stringify({ at: new Date().toISOString(), shots: manifest }, null, 1), "utf8");
-fs.writeFileSync(path.join(OUT, "tests", "breakfast-shots.json"),
+fs.writeFileSync(path.join(OUT, "dist", "test-results", "breakfast-shots.json"),
   JSON.stringify({
     at: new Date().toISOString(),
     mode: BITMAP_TEXT ? "software-raster-replay+bitmap-text" : "software-raster-replay+system-font-text",

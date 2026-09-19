@@ -91,10 +91,18 @@ tools/mj/shots.js            ────→ tools/mjsys/probe-lib.js ──→ 
 
 **你新写脚本时必须照此推算**，否则会去 `tools/` 里找 `index.html` 而失败。
 
-### 2. 生成物落仓库根，不落 `tools/`
+### 2. 生成物落 `dist/`，`tools/` 与 `tests/` 只放源码
 
-仓库根是 HTTP 服务根，所以 `测试截图/`、`tests/*-results.json` 这些生成物都写在根下。
-`tools/` 应该是**纯代码 + 补丁数据**，跑完不该多出文件。
+| 目录 | 放什么 |
+|---|---|
+| `tools/` | 纯代码 + 补丁数据，跑完不该多出文件 |
+| `tests/` | **只放测试源码**（`*.test.cjs`），不放结果 |
+| `dist/media-*.zip` | 素材分发包（走 GitHub Release，不入库） |
+| `dist/test-results/` | **测试与出图产物的 JSON**（带时间戳，每次跑都会改写，故不入库） |
+| `测试截图/` | 出图流水线的 PNG 产物 |
+
+测试结果此前写在 `tests/` 下且被 git 跟踪，导致**每跑一次测试就污染 `git status`**；
+现已全部改到 `dist/test-results/`。你新写脚本时请沿用这个约定。
 
 例外：`tools/mjsys/probe-lib.js` 的探针临时文件（`_mj_panels.json` / `.hta` / `_out.txt`）
 也落在仓库根，用完不清理 —— 这是历史行为。

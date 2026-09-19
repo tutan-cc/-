@@ -227,5 +227,5 @@ console.log("   tiles: " + (m.art ? m.art.ready + "/9" : "-") + " tileBackTex=" 
 const manifest = { at: new Date().toISOString(), shots: [
   { png: path.join(SHOT, "bf_game_bg2.png"), texts: g.texts },
   { png: path.join(SHOT, "mj_bg.png"), texts: m.texts }] };
-fs.writeFileSync(path.join(OUT, "tests", "bf_shots2_text.json"), JSON.stringify(manifest), "utf8");
+fs.writeFileSync(path.join(OUT, "dist", "test-results", "bf_shots2_text.json"), JSON.stringify(manifest), "utf8");
 console.log("[done] 测试截图/bf_game_bg2.png · mj_bg.png   (" + ((Date.now() - t0) / 1000).toFixed(1) + "s)");

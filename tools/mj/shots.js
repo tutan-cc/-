@@ -193,7 +193,7 @@ function spawnSync(cmd, args, opts) {
     if (!r.ok && r.log) console.log("  renderer: " + r.log.trim().split("\n").slice(0, 3).join(" / "));
   }
   try { if (!process.env.MJ_KEEP) { fs.rmSync(path.join(OUT, "_mj_cap_stats.txt"), { force: true }); fs.rmSync(PANELS_JSON, { force: true }); } } catch (e) {}
-  fs.writeFileSync(path.join(OUT, "tests", "mj-shots-results.json"),
+  fs.writeFileSync(path.join(OUT, "dist", "test-results", "mj-shots-results.json"),
     JSON.stringify({ mode: "trident-data + system.drawing-render", testedAt: new Date().toISOString(), ms: Date.now() - t0, panels: results }, null, 1), "utf8");
   const bad = results.filter((r) => !r.ok || (r.colors != null && r.colors < 8));
   console.log("\n════════════════════════════════");

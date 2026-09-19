@@ -1,10 +1,10 @@
-# tools/lib/text-compose.ps1 — 用 System.Drawing + 系统字体（Microsoft YaHei）把真汉字合成回光栅化出来的 PNG
+﻿# tools/lib/text-compose.ps1 — 用 System.Drawing + 系统字体（Microsoft YaHei）把真汉字合成回光栅化出来的 PNG
 # 背景：本沙箱起不了 Chrome/Edge（mojo platform_channel 被拒），所以出图流程是
 #       「breakfast.js 真发出的 Canvas2D 指令 → 软件光栅化形状 → 系统字体合成文字」。
 #       这样 PNG 里的中文是清楚的系统字体，而不是 5×7 点阵 / 实心方块。
 # 用法：powershell -File tools/lib/text-compose.ps1   （读 tests\bf_shots_text.json，原地覆盖 测试截图\*.png）
 param(
-  [string]$Manifest = (Join-Path $PSScriptRoot "..\..\tests\bf_shots_text.json")
+  [string]$Manifest = (Join-Path $PSScriptRoot "..\..\dist\test-results\bf_shots_text.json")
 )
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = "Stop"

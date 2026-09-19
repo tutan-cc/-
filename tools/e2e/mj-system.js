@@ -12,7 +12,7 @@
      · 出图不在本脚本里做：沙箱里 mshta 的屏幕拷贝同一个进程超过 ~3 次就挂，
        四张验收图由 `node tools/mj/shots.js` 用独立进程 + System.Drawing 单独产出。
 
-   产物：tests/mj-system-results.json
+   产物：dist/test-results/mj-system-results.json
    ═══════════════════════════════════════════════════════════════════════════ */
 const fs = require("fs");
 const path = require("path");
@@ -501,7 +501,7 @@ async function runTrident() {
   if (!tri.ok) {
     errors.push(note, tri.why);
     if (tri.raw) console.error("[探针原始输出] " + tri.raw.slice(0, 500));
-    fs.writeFileSync(OUT + "\\tests\\mj-system-results.json", JSON.stringify({ success: false, testedAt: new Date().toISOString(), mode: "trident-hta", checks, errors, info }, null, 1), "utf8");
+    fs.writeFileSync(OUT + "\\dist\\test-results\\mj-system-results.json", JSON.stringify({ success: false, testedAt: new Date().toISOString(), mode: "trident-hta", checks, errors, info }, null, 1), "utf8");
     console.error("FATAL: " + tri.why);
     process.exit(3);
   }
@@ -521,7 +521,7 @@ async function runTrident() {
   }));
   /* 出图由 `node tools/mj/shots.js` 负责（每个 mshta 进程只允许约 3 次屏幕拷贝，故与断言分开跑） */
   const res = { success: errors.length === 0, mode: "trident-hta", testedAt: new Date().toISOString(), ms: Date.now() - t0, note, checks, errors, info };
-  fs.writeFileSync(OUT + "\\tests\\mj-system-results.json", JSON.stringify(res, null, 1), "utf8");
+  fs.writeFileSync(OUT + "\\dist\\test-results\\mj-system-results.json", JSON.stringify(res, null, 1), "utf8");
   console.log("\n════════════════════════════════");
   console.log("模式 trident-hta · 通过 " + checks.length + "，失败 " + errors.length + (errors.length ? " | " + errors.join(" | ") : "，全部通过 ✔"));
   setTimeout(() => process.exit(errors.length ? 1 : 0), 300);

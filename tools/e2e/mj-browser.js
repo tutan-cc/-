@@ -7,7 +7,7 @@
                   canvas.toDataURL 存 PNG（牌面由真浏览器引擎绘制）
    检查：面板打开 · 牌桌渲染 · 牌面非空白（读像素）· 手牌张数 · AI 会行动 ·
          真实鼠标点牌出牌 · 结算分支（win → S.mjWin / onFinish）
-   产物：测试截图/mahjong_table.png · tests/mahjong2-results.json
+   产物：测试截图/mahjong_table.png · dist/test-results/mahjong2-results.json
    ═══════════════════════════════════════════════════════════════════════════ */
 const { spawn } = require("child_process");
 const http = require("http");
@@ -1091,7 +1091,7 @@ async function runChrome() {
     const tri = await runTrident();
     if (!tri.ok) {
       console.error("FATAL: 浏览器实测无法执行 → " + tri.why);
-      fs.writeFileSync(OUT + "\\tests\\mahjong2-results.json", JSON.stringify({
+      fs.writeFileSync(OUT + "\\dist\\test-results\\mahjong2-results.json", JSON.stringify({
         success: false, testedAt: new Date().toISOString(), mode, checks, errors: [extraNote, tri.why], info
       }, null, 1), "utf8");
       process.exit(3);
@@ -1156,7 +1156,7 @@ async function runChrome() {
     success: errors.length === 0, mode, testedAt: new Date().toISOString(),
     note: extraNote, checks, errors, info
   };
-  fs.writeFileSync(OUT + "\\tests\\mahjong2-results.json", JSON.stringify(res, null, 1), "utf8");
+  fs.writeFileSync(OUT + "\\dist\\test-results\\mahjong2-results.json", JSON.stringify(res, null, 1), "utf8");
   console.log("\n════════════════════════════════");
   console.log("模式 " + mode + " · 通过 " + checks.length + "，失败 " + errors.length + (errors.length ? " | " + errors.join(" | ") : "，全部通过 ✔"));
   setTimeout(() => process.exit(errors.length ? 1 : 0), 300);

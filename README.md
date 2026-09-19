@@ -188,7 +188,7 @@ node tools/dev/check-inline.js      # index.html 内联脚本语法闸
   - 注：`node --test` 会 spawn 子进程，在被沙盒限制的终端里会报 EPERM；直接 `node tests/core.test.cjs` 等价且可运行
 - **E2E 全流程**：`node tools/e2e/main.js` → 16/16 节点全通（含线路取证、信号复原、躲避、股市、两种 QTE、两套答题、双章末卡），验收 **7/7 通过**
 - **小游戏专项**：麻将逻辑 `node tools/test/mahjong-logic.js` **847/847**；早餐店 `node tools/bf/headless.js` **350/350**
-- 结果落盘 `tests/*-results.json`；截图存于 `测试截图\`
+- 结果落盘 `dist/test-results/*.json`（不入库，避免每次跑测试污染 `git status`）；截图存于 `测试截图\`
 
 ## 文件
 

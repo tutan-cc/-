@@ -453,7 +453,7 @@ async function runTrident() {
     screenshots: fs.readdirSync(SHOT_DIR).filter(f => /^bf_(game|pass|fail|pick)\.png$/.test(f)),
     limitation: extraNote
   };
-  fs.writeFileSync(path.join(OUT, "tests", "breakfast-results.json"), JSON.stringify(res, null, 1), "utf8");
+  fs.writeFileSync(path.join(OUT, "dist", "test-results", "breakfast-results.json"), JSON.stringify(res, null, 1), "utf8");
   console.log("\n[结果] 模式=" + mode + " · 通过 " + checks.length + "，失败 " + errors.length);
   checks.forEach(c => console.log("  ✔ " + c));
   errors.forEach(e => console.log("  ✖ " + e));

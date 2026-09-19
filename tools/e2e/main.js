@@ -169,7 +169,7 @@ window.__driveLog = "running";
   console.log("[最终状态]", JSON.stringify(fin));
   try { await shot("e2e_final"); } catch (e) {}
 
-  /* ── 验收契约：断言即记录 → tests/e2e-results.json ── */
+  /* ── 验收契约：断言即记录 → dist/test-results/e2e-results.json ── */
   const checks = [], errors = [];
   const assert = (ok, name) => { if (ok) checks.push(name); else errors.push(name); };
   const nodeTotal = await evaljs("Object.keys(NODES).length");
@@ -183,8 +183,8 @@ window.__driveLog = "running";
   const results = { success: errors.length === 0, testedAt: new Date().toISOString(),
     checks, errors, error: null, path: result, state: fin };
   fs.mkdirSync(OUT + "\\tests", { recursive: true });
-  fs.writeFileSync(OUT + "\\tests\\e2e-results.json", JSON.stringify(results, null, 1), "utf8");
-  console.log(`[验收] 通过 ${checks.length} 项，失败 ${errors.length} 项 → tests/e2e-results.json`);
+  fs.writeFileSync(OUT + "\\dist\\test-results\\e2e-results.json", JSON.stringify(results, null, 1), "utf8");
+  console.log(`[验收] 通过 ${checks.length} 项，失败 ${errors.length} 项 → dist/test-results/e2e-results.json`);
 
   chrome.kill();
   process.exit(errors.length ? 1 : 0);

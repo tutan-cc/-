@@ -11,8 +11,13 @@ audio/*
 _prof*/
 _temp/
 _check.js
-# 素材分发包：体积大，走 GitHub Release 附件，不进 git
+# 构建与测试产物（不入库）
+#   dist/ 装两样东西：素材分发包（体积大，走 GitHub Release 附件）+ 测试结果 JSON
+#   （测试结果带时间戳，每次跑测试都会改写 —— 落在这里就不会污染 git status）
 dist/
+# 兜底：万一有脚本仍把结果写进 tests/，也不要进库（tests/ 只应放测试源码）
+tests/*-results.json
+tests/*_text.json
 # 本地验证脚本（CDP 驱动，非游戏本体；归位后在 tools/verify/）
 tools/verify/
 *.bak

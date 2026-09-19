@@ -290,13 +290,13 @@ const manifest = {
     { png: path.join(SHOT, "bf_faces_ui.png"), texts: faces.texts }
   ]
 };
-fs.writeFileSync(path.join(OUT, "tests", "bf_assets_text.json"), JSON.stringify(manifest), "utf8");
+fs.writeFileSync(path.join(OUT, "dist", "test-results", "bf_assets_text.json"), JSON.stringify(manifest), "utf8");
 
 /* 合成中文（System.Drawing + Microsoft YaHei）—— 沙箱里起 powershell 只能用 inherit
    （子进程管道在本沙箱会 EPERM）；失败就提示手动跑。 */
 try {
   execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-    path.join(OUT, "tools/lib/text-compose.ps1"), "-Manifest", path.join(OUT, "tests", "bf_assets_text.json")],
+    path.join(OUT, "tools/lib/text-compose.ps1"), "-Manifest", path.join(OUT, "dist", "test-results", "bf_assets_text.json")],
     { cwd: OUT, stdio: ["ignore", "inherit", "inherit"] });
 } catch (e) {
   console.log("⚠ 中文合成没跑成（" + (e.message || e) + "）→ 请手动执行：powershell -File tools/lib/text-compose.ps1 -Manifest tests\\bf_assets_text.json");
