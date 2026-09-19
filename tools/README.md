@@ -35,6 +35,18 @@ tools/
 ├─ voice/        配音
 │  ├─ e2e.js               配音验收
 │  └─ lines.json           台词表
+├─ audio/        音频素材工具链（生成 → 加工 → 校验）
+│  ├─ README.md            整套流水线 + 五个必须知道的坑 ← 动音频素材前先读
+│  ├─ paths.py             路径解析（环境变量可覆盖，跨机器可跑）
+│  ├─ step_gen_audio.py    核心：调 StepAudio（Gen 音效 / TTS 配音两种任务）
+│  ├─ gen_sfx.py           65 个音效 + 9 个环境音
+│  ├─ gen_mj_by_seat_tts.py 麻将牌名（按座位分音色，含 speed 校正）
+│  ├─ gen_bgm.py           5 种情绪 BGM（生成后自动验收循环质量）
+│  ├─ process_sfx.py       切静音/响度归一/防硬切/循环交叉淡化（用 --preset）
+│  ├─ check_audio.py       声学体检
+│  ├─ check_bgm.py         BGM 专项（循环接缝）
+│  ├─ verify_audio_content.py / verify_mj_asr.py  内容核对（ASR）
+│  └─ asr_local.py         本地 SenseVoice 转录
 ├─ dev/          改动工具
 │  ├─ patch-literal.js     逐字字面替换器（唯一性/幂等/备份/语法闸/失败回滚）← 改大文件必须用它
 │  └─ check-inline.js      校验 index.html 内联 <script> 语法

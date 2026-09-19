@@ -61,3 +61,7 @@ _*.hta
 .idea/
 Thumbs.db
 desktop.ini
+
+# Python 编译产物（tools/audio/ 是 .py 工具链，跑一次就会生成）
+__pycache__/
+*.pyc
