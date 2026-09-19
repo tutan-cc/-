@@ -1,139 +1,179 @@
 # tools/ —— 开发与验收工具
 
-> **这些 `.cjs` 不是缓存文件，是源码。** 它们是本项目的无头验收、出图与素材流水线，
-> 加起来约 500 KB 的 Node 脚本，跑的是真断言（麻将 847 项、早餐店 350 项）。
-> 之前散在仓库根目录，2026-09-19 统一归位到 `tools/`。
+> **这些不是缓存文件，是源码。** 约 30 个 Node 脚本 + 2 个 PowerShell 渲染器，
+> 跑的是真断言（麻将 847 项、早餐店 350 项）。
+> 2026-09-19 从仓库根目录整体归位到这里，并按角色分目录。
 
-## 为什么是 `.cjs`
+## 目录结构
 
-仓库**没有 `package.json`**，所以 Node 对 `.js` 默认就是 CommonJS，`.cjs` 并非必需。
-保留 `.cjs` 是保守选择：即使以后加了 `package.json: {"type":"module"}` 也不会破坏这些脚本。
+```
+tools/
+├─ lib/          共用库（被其它脚本 require，不要单独跑）
+│  ├─ raster.js            自写软件光栅化器：解 PNG（zlib+反过滤）、按变换做 source-over 合成
+│  └─ text-compose.ps1     System.Drawing 合成真汉字到 PNG（光栅化器画不了中文）
+├─ test/         单元测试（纯逻辑，不需要浏览器）
+│  └─ mahjong-logic.js     麻将逻辑 847 项
+├─ e2e/          端到端 / 无头验收
+│  ├─ main.js              全流程回归（16 节点）
+│  ├─ bf.js                早餐店剧情链路
+│  ├─ mj-browser.js        麻将浏览器实测（mshta 探针）
+│  ├─ mj-system.js         麻将系统断言
+│  ├─ leisure.js           闲暇玩法
+│  ├─ map3d.js             3D 沙盘
+│  ├─ solo-fallback.js     「缺少 video 目录」降级诊断
+│  └─ debug.js             调试辅助
+├─ bf/           早餐店
+│  ├─ headless.js          无头验收 350 项 ← 最常用
+│  ├─ shots/               出图（panel.js / panel2.js）
+│  ├─ assets/              素材切片与出图（gen.js / gen2.js / shots.js / shots2.js）
+│  └─ icons/               图标生成与出图（gen.js / shots.js）
+├─ mj/           麻将
+│  └─ shots.js             出图流水线（4 张验收图）
+├─ mjsys/        麻将渲染子系统
+│  ├─ probe-lib.js         mshta / System.Drawing 探针底座
+│  └─ render.ps1           主题渲染器（注意：与 probe-lib.js 必须同级，见下）
+├─ voice/        配音
+│  ├─ e2e.js               配音验收
+│  └─ lines.json           台词表
+├─ dev/          改动工具
+│  ├─ patch-literal.js     逐字字面替换器（唯一性/幂等/备份/语法闸/失败回滚）← 改大文件必须用它
+│  └─ check-inline.js      校验 index.html 内联 <script> 语法
+├─ patch/        替换器的数据（不是代码）
+│  ├─ jobs/                13 个 job 定义
+│  └─ text/                13 个替换文本
+├─ verify/       一次性验证
+│  └─ bf-btn.js            headless Chrome + CDP 验证标题屏入口（不入库，见 .gitignore）
+└─ archive/      已退役脚本（保留供追溯，勿用）
+   ├─ bf-integrate.js       一次性集成脚本（已完成使命）
+   ├─ bf-jobs-probe.js      定位哪条 job 把语法带崩（诊断用）
+   ├─ dom-probe.js / dom-probe2.js
+   └─ vo-*.ps1 / mj-voice-gen.ps1 / vo-extract.js
+```
 
-## 命名前缀
+## 最常用的三条
 
-| 前缀 | 含义 |
-|---|---|
-| `_bf_` | **b**reakfast（早餐店小游戏） |
-| `_mj_` | **m**a**j**iang（麻将小游戏） |
-| `_e2e_` | 端到端 / 无头验收 |
-| `_test_` | 单元测试 |
-| `_verify_` | 一次性验证脚本（已 gitignore，不入库） |
+```bash
+node tools/test/mahjong-logic.js    # 麻将纯逻辑单测（847 项）
+node tools/bf/headless.js           # 早餐店无头验收（350 项）
+node tools/dev/check-inline.js      # index.html 内联脚本语法闸（改内联胶水层后必跑）
+```
+
+## 依赖关系
+
+```
+tools/bf/shots/panel.js      ┐
+tools/bf/shots/panel2.js     ┤
+tools/bf/assets/shots.js     ├──→ tools/lib/raster.js
+tools/bf/assets/shots2.js    ┤
+tools/bf/icons/shots.js      ┘
+tools/mj/shots.js            ────→ tools/mjsys/probe-lib.js ──→ tools/mjsys/render.ps1
+                                                             └─→ tools/lib/text-compose.ps1
+```
 
 ---
 
-## 脚本清单
-
-### 共用底座（被其它脚本 require，不要单独跑）
-
-| 文件 | 作用 |
-|---|---|
-| `_bf_raster.cjs` | **自写的软件光栅化器**：解 PNG（zlib + 反过滤）、按变换 + `globalAlpha` 做 source-over 合成，模拟 canvas。被 5 个出图脚本依赖 |
-| `_mj_probe_lib.cjs` | 麻将浏览器实测的公共底座（mshta / System.Drawing 探针），供 `_mj_shots.cjs` 复用 |
-
-```
-依赖关系：
-  _bf_assets_shots.cjs  ┐
-  _bf_assets2_shots.cjs ┤
-  _bf_icons_shots.cjs   ├──→ _bf_raster.cjs
-  _bf_shots.cjs         ┤
-  _bf_shots2.cjs        ┘
-  _mj_shots.cjs         ────→ _mj_probe_lib.cjs
-```
-
-### 验收与测试（常用，值得定期跑）
-
-| 文件 | 作用 | 运行 |
-|---|---|---|
-| `_test_mahjong_logic.cjs` | 麻将**纯逻辑单测，847 项**（造牌、牌型、赔付、杠开、抢杠、向听、DP 交叉验证、语音映射、结算结构） | `node tools/_test_mahjong_logic.cjs` |
-| `_e2e_bf_headless.cjs` | 早餐店**无头验收，350 项**（在 vm 里跑真 index.html 胶水层 × 真 breakfast.js） | `node tools/_e2e_bf_headless.cjs` |
-| `_bf_check_inline.cjs` | 校验 `index.html` 内联 `<script>` 语法（`node --check` 同套解析）。改内联胶水层后必跑 | `node tools/_bf_check_inline.cjs` |
-| `_verify_bf_btn.cjs` | headless Chrome + CDP 验证标题屏「⚑ 跳到早餐店」入口（含 JS 异常捕获）。**本地用，不入库** | 见文件头注释 |
-
-### 出图流水线（生成 `测试截图/` 里的验收图）
-
-| 文件 | 作用 |
-|---|---|
-| `_bf_shots.cjs` / `_bf_shots2.cjs` | 早餐店面板 / 结算 / 出口按钮出图 |
-| `_mj_shots.cjs` | 麻将系统出图（四张验收图） |
-| `_bf_assets_shots.cjs` / `_bf_assets2_shots.cjs` / `_bf_icons_shots.cjs` | 素材与图标批次出图 |
-| `_mj_render.ps1`（在仓库根） | 麻将出图用的 System.Drawing 主题渲染器 |
-
-> ⚠ 出图依赖 `powershell` + `System.Drawing` + `Microsoft YaHei` 字体。
-> 缺字体时中文会退化成方框，脚本会因颜色数偏低而报失败 —— 不是代码 bug。
-
-### 素材生成 / 切片
-
-| 文件 | 作用 |
-|---|---|
-| `_bf_assets_gen.cjs` / `_bf_assets2_gen.cjs` | 早餐店素材切片（零依赖，纯 Node + 内置 zlib） |
-| `_bf_icons_gen.cjs` | 游戏玩法图标生成 |
-
-### 改动工具
-
-| 文件 | 作用 |
-|---|---|
-| `_bf_patch.cjs` | **逐字字面替换工具**：唯一性校验 + 幂等校验 + 备份 + 内联脚本语法闸 + 失败整文件回滚。改大文件时用它，别手改。<br>用法：`node tools/_bf_patch.cjs _bf_jobs_xxx.json --fresh-bak` |
-
-### 一次性探针 / 集成脚本（历史上只用过一次，保留供追溯）
-
-| 文件 | 说明 |
-|---|---|
-| `_bf_integrate.cjs` | 把早餐店小游戏接进 `index.html` 的一次性集成脚本（已完成使命） |
-| `_bf_jobs_probe.cjs` | 逐个 job 在内存里试跑，定位哪条 job 把语法带崩（不落盘） |
-| `_dom_probe.cjs` / `_dom_probe2.cjs` | 量智脑面板里 🔊 语音开关 / 🎯 提示开关的位置尺寸 |
-
----
-
-## ⚠️ 三个必须知道的约定
+## ⚠️ 四个必须知道的约定
 
 ### 0. 别用 `python -m http.server` 把 `tools/` 暴露到公网
 
-本项目用 `python -m http.server 8000 --directory <仓库根>` 起本地服务，
-而它会把**整个目录**暴露出去 —— 包括 `tools/` 下的全部脚本
-（实测 `http://127.0.0.1:8000/tools/_e2e_bf_headless.cjs` 返回 200）。
+本地服务用 `python -m http.server 8000`（在仓库根执行），而它会把**整个目录**暴露出去 ——
+包括 `tools/` 下全部脚本。本机自测无所谓；**对外演示时等于公开了全部开发脚本**。
 
-本机开发无所谓；但**若你把 8000 端口暴露到公网或局域网，等于公开了全部开发脚本**。
-真要对外演示，请改用只服务必要文件的静态服务器，或把仓库复制一份、
-删掉 `tools/` 后再起服务。
+### 1. 脚本用 `__dirname` 推算仓库根，层级改了就要跟着改
 
-### 1. 脚本用 `__dirname` 的**父目录**当项目根
+每个脚本内部都有这样一个根变量，**层级按自身所在深度推算**：
 
-归位到 `tools/` 时，所有脚本里的根路径都已改成：
+| 脚本位置 | 写法 |
+|---|---|
+| `tools/e2e/*.js`、`tools/bf/headless.js`、`tools/dev/*.js`、`tools/test/*.js` | `path.join(__dirname, "..", "..")` |
+| `tools/bf/shots/*.js`、`tools/bf/assets/*.js`、`tools/bf/icons/*.js` | `path.join(__dirname, "..", "..", "..")` |
+| `tools/mjsys/probe-lib.js` | `path.join(__dirname, "..", "..")` |
 
-```js
-const OUT = path.join(__dirname, "..");   // ← 仓库根，不是 tools/
+**你新写脚本时必须照此推算**，否则会去 `tools/` 里找 `index.html` 而失败。
+
+### 2. 生成物落仓库根，不落 `tools/`
+
+仓库根是 HTTP 服务根，所以 `测试截图/`、`tests/*-results.json` 这些生成物都写在根下。
+`tools/` 应该是**纯代码 + 补丁数据**，跑完不该多出文件。
+
+例外：`tools/mjsys/probe-lib.js` 的探针临时文件（`_mj_panels.json` / `.hta` / `_out.txt`）
+也落在仓库根，用完不清理 —— 这是历史行为。
+
+### 3. `patch-literal.js` 的 job 路径相对**仓库根**，且备份后缀是设计
+
+```bash
+# job 与 textFile 都相对仓库根解析
+node tools/dev/patch-literal.js tools/patch/jobs/render.json             # 演练
+node tools/dev/patch-literal.js tools/patch/jobs/render.json --fresh-bak # 落盘
 ```
 
-**你新写脚本时也要这样**，否则会去 `tools/` 里找 `index.html` 而失败。
+它用环境变量 `BF_BAK` 指定递增备份后缀（`.bf7bak` / `.bf8bak` …），
+仓库根那些 `breakfast.js.bf8bak` 之类是**每轮迭代留的回滚点，故意保留**，已被 `.gitignore` 排除。
 
-例外：`_bf_integrate.cjs` 用相对路径 `"index.html"`，**必须在仓库根目录下运行**。
+### 4. `mjsys/probe-lib.js` 与 `mjsys/render.ps1` 必须同级
 
-### 2. `_bf_patch.cjs` 的备份后缀是**设计**，不是垃圾
-
-它支持用环境变量 `BF_BAK` 指定备份后缀（`.bf7bak` / `.bf8bak` …），
-仓库根目录那些 `breakfast.js.bf7bak` 之类是**每轮迭代留的回滚点**，故意保留。
-已被 `.gitignore` 排除，不会进版本库。
+`probe-lib.js` 内部按同目录找 `render.ps1`。要动就一起动。
 
 ---
 
-## 历史文档的路径说明
+## 新旧路径对照表
 
-`早餐店-*.md`、`麻将-*.md`、`工程架构总览.md` 等 12 份报告写于脚本还在仓库根目录的时期，
-其中 `node _bf_xxx.cjs` 这类命令**原文保留未改**（避免大范围改动历史报告）。
+工具此前散在仓库根目录，且用 `_bf_` / `_mj_` 等前缀 + `.cjs` 扩展名。
+`docs/` 下 11 份历史报告写于那个时期，**其中的命令未改动**，按下表换算：
 
-**按新旧规则换算即可：**
+| 旧路径 | 新路径 |
+|---|---|
+| `_bf_raster.cjs` | `tools/lib/raster.js` |
+| `_bf_text.ps1` | `tools/lib/text-compose.ps1` |
+| `_test_mahjong_logic.cjs` | `tools/test/mahjong-logic.js` |
+| `_e2e.js` | `tools/e2e/main.js` |
+| `_e2e_solo.js` | `tools/e2e/solo-fallback.js` |
+| `_e2e_breakfast.js` | `tools/e2e/bf.js` |
+| `_e2e_mahjong2.js` | `tools/e2e/mj-browser.js` |
+| `_e2e_mj_system.js` | `tools/e2e/mj-system.js` |
+| `_e2e_leisure.js` | `tools/e2e/leisure.js` |
+| `_e2e_map.js` | `tools/e2e/map3d.js` |
+| `_e2e_debug.js` | `tools/e2e/debug.js` |
+| `_e2e_vo.js` | `tools/voice/e2e.js` |
+| `_e2e_bf_headless.cjs` | `tools/bf/headless.js` |
+| `_bf_shots.cjs` | `tools/bf/shots/panel.js` |
+| `_bf_shots2.cjs` | `tools/bf/shots/panel2.js` |
+| `_bf_assets_gen.cjs` | `tools/bf/assets/gen.js` |
+| `_bf_assets2_gen.cjs` | `tools/bf/assets/gen2.js` |
+| `_bf_assets_shots.cjs` | `tools/bf/assets/shots.js` |
+| `_bf_assets2_shots.cjs` | `tools/bf/assets/shots2.js` |
+| `_bf_icons_gen.cjs` | `tools/bf/icons/gen.js` |
+| `_bf_icons_shots.cjs` | `tools/bf/icons/shots.js` |
+| `_mj_shots.cjs` | `tools/mj/shots.js` |
+| `_mj_probe_lib.cjs` | `tools/mjsys/probe-lib.js` |
+| `_mj_render.ps1` | `tools/mjsys/render.ps1` |
+| `_bf_patch.cjs` | `tools/dev/patch-literal.js` |
+| `_bf_check_inline.cjs` | `tools/dev/check-inline.js` |
+| `_bf_jobs_*.json` | `tools/patch/jobs/*.json`（去掉 `_bf_jobs_` 前缀） |
+| `_bf_new_*.txt` | `tools/patch/text/*.txt`（去掉 `_bf_new_` 前缀） |
+| `_vo_lines.json` | `tools/voice/lines.json` |
+| `_bf_integrate.cjs` | `tools/archive/bf-integrate.js` |
+| `_bf_jobs_probe.cjs` | `tools/archive/bf-jobs-probe.js` |
+| `_dom_probe.cjs` / `_dom_probe2.cjs` | `tools/archive/dom-probe.js` / `dom-probe2.js` |
+| `_mj_voice_gen.ps1` / `_vo_gen*.ps1` / `_vo_real.ps1` / `_vo_extract.js` | `tools/archive/` 下同名 |
 
-```bash
-node _bf_patch.cjs  ...     →  node tools/_bf_patch.cjs  ...
-node _e2e_bf_headless.cjs   →  node tools/_e2e_bf_headless.cjs
-node _test_mahjong_logic.cjs → node tools/_test_mahjong_logic.cjs
-```
+---
+
+## 关于 `.cjs` → `.js`
+
+原脚本用 `.cjs` 扩展名。本仓库**没有 `package.json`**，Node 对 `.js` 默认就是 CommonJS，
+`.cjs` 并非必需 —— 已统一改为 `.js`。
+
+以后若要加 `package.json`：**不要设 `"type": "module"`**，否则这些脚本会被当 ESM 解析而全部报错。
+若确实需要 ESM，请把 `tools/` 排除或改用 `.cjs`。
 
 ## 归位后的验证基线（2026-09-19 实测）
 
 | 项目 | 结果 |
 |---|---|
-| `node --check` 全部 20 个脚本 | 20/20 通过 |
-| `node tools/_test_mahjong_logic.cjs` | **847 / 847 全部通过** |
-| `node tools/_e2e_bf_headless.cjs` | **通过 350，失败 0** |
-| `node tools/_bf_check_inline.cjs` | 内联脚本 1 段，语法失败 0 |
+| `node --check` 全部脚本 | 30/30 通过 |
+| `node tools/test/mahjong-logic.js` | **847 / 847 全部通过** |
+| `node tools/bf/headless.js` | **通过 350，失败 0** |
+| `node tools/dev/check-inline.js` | 内联脚本 1 段，语法失败 0 |
+| `tools/patch/jobs` 里全部 `textFile` 引用 | 13/13 有效 |
+| `patch-literal.js` 的 job/textFile 解析 | 已实测可读 |

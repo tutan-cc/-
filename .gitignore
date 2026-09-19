@@ -13,8 +13,8 @@ _temp/
 _check.js
 # 素材分发包：体积大，走 GitHub Release 附件，不进 git
 dist/
-# 本地验证脚本（CDP 驱动，非游戏本体；已归位 tools/）
-tools/_verify_*.cjs
+# 本地验证脚本（CDP 驱动，非游戏本体；归位后在 tools/verify/）
+tools/verify/
 *.bak
 *.bak2
 *.bak3
@@ -35,6 +35,7 @@ tools/_verify_*.cjs
 *.v16bak
 *.w35bak
 *.bfbak
+*.hintbak
 *.log
 _mj_render_out.txt
 

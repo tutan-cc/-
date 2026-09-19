@@ -1,4 +1,4 @@
-﻿# 重生2 · 重启人生 — 原型 Demo v1.0（19 节点 · 10 类玩法 · 3D 沙盘 · RPG）
+# 重生2 · 重启人生 — 原型 Demo v1.0（19 节点 · 10 类玩法 · 3D 沙盘 · RPG）
 
 ## v1.0 更新（打斗系统 + 趣味小游戏）
 
@@ -85,13 +85,16 @@
 
 **直接双击 `index.html`**（用 Chrome 打开）即可游玩，无需服务器、无需联网。
 
-如浏览器对本地视频有限制，可用本地服务器方式打开：
+如浏览器对本地视频有限制，可用本地服务器方式打开（在**仓库根目录**下执行）：
 
 ```
-cd C:\Users\chris\Desktop\重生2-原型
 python -m http.server 8000
-# 浏览器访问 http://localhost:8000
+# 浏览器访问 http://127.0.0.1:8000/index.html
 ```
+
+> 素材（`video/` `audio/`）不入 git 仓库。clone 后需下载素材包并跑一次 `link-media.ps1`，
+> 详见 **[协作者上手指南.md](协作者上手指南.md)**。
+> ⚠ `http.server` 会把整个目录暴露出去（含 `tools/`），仅限本机自用，勿对外开端口。
 
 ## 操作
 
@@ -103,6 +106,40 @@ python -m http.server 8000
 - 小游戏：老城区【数据洪流·躲】（←→ 或鼠标移动躲 12 秒）；投资大厦【股市波段】（六日买卖决策，Canvas K 线）
 - 右上角 ♪ 可开关程序化 BGM；🎙 可开关台词配音
 - 点击画面任意处 = 跳过当前语音；主沙盘点击发光地点进入下一节点；自动存档（localStorage）
+
+## 目录结构
+
+```
+根目录只放「游戏本体 + 用户文档 + 素材脚本」，开发工具全部收进 tools/：
+├─ index.html          游戏本体（单文件：数据驱动节点 + 内联胶水层）
+├─ breakfast.js        早餐店小游戏（拼手速）
+├─ mahjong.js          麻将小游戏（真胡牌判定）
+├─ map3d.js            3D 等距沙盘（Three.js）
+├─ three.min.js        依赖：Three.js r149
+├─ link-media.ps1      素材对接：把外部素材库挂进来并校验
+├─ pack-media.ps1      素材打包：生成清单 + 分发包
+├─ 媒体清单.json        素材契约（路径/字节/SHA256/来源）
+├─ art/                图标与背景素材（入库）
+├─ docs/               设计文档与历次改造报告
+├─ tests/              单元测试 + 验收结果
+├─ tools/              开发工具（详见 tools/README.md）
+├─ video/ audio/       实拍素材（不入 git，靠 link-media.ps1 挂接）
+└─ 测试截图/            出图流水线的产物
+```
+
+## 验证与工具
+
+工具已全部归位到 `tools/`，每个脚本的用途/依赖/运行命令见 **[tools/README.md](tools/README.md)**。
+常用三条：
+
+```bash
+node tools/test/mahjong-logic.js    # 麻将纯逻辑单测（847 项）
+node tools/bf/headless.js           # 早餐店无头验收（350 项）
+node tools/dev/check-inline.js      # index.html 内联脚本语法闸
+```
+
+> 历史报告（`docs/` 下）写于工具还在根目录的时期，其中的 `node _bf_xxx.cjs` 命令
+> 按 `tools/README.md` 的对照表换算即可。
 
 ## v0.5 更新（配音！）
 
@@ -147,22 +184,25 @@ python -m http.server 8000
 
 ## 验证结果（已通过）
 
-- **单元测试**：`node tests/core.test.cjs` → 7/7（素材存在性、剧情图连通、效果键白名单、时间线单调、装备只改玩法参数、坏档拒绝与旧档迁移、续播快照校验）
+- **单元测试**：`node tests/core.test.cjs` → 8/8（素材存在性、剧情图连通、效果键白名单、时间线单调、装备只改玩法参数、坏档拒绝与旧档迁移、续播快照校验、早餐店存档字段兼容）
   - 注：`node --test` 会 spawn 子进程，在被沙盒限制的终端里会报 EPERM；直接 `node tests/core.test.cjs` 等价且可运行
-- **E2E 全流程**：`node _e2e.js` → 16/16 节点全通（含线路取证、信号复原、躲避、股市、两种 QTE、两套答题、双章末卡），验收 **7/7 通过**
-- 结果落盘 `tests/e2e-results.json`；截图存于 `测试截图\`
+- **E2E 全流程**：`node tools/e2e/main.js` → 16/16 节点全通（含线路取证、信号复原、躲避、股市、两种 QTE、两套答题、双章末卡），验收 **7/7 通过**
+- **小游戏专项**：麻将逻辑 `node tools/test/mahjong-logic.js` **847/847**；早餐店 `node tools/bf/headless.js` **350/350**
+- 结果落盘 `tests/*-results.json`；截图存于 `测试截图\`
 
 ## 文件
 
 | 文件 | 说明 |
 |---|---|
 | `index.html` | 单文件原型（数据驱动节点，仿天枢 v1.6 架构） |
-| `剧本-垂直切片.md` | 剧本 + 台词画面修订对照表 |
-| `架构文档.md` | 技术架构文档 |
-| `video/` | 35 段素材（33 段实拍 720p + 2 段程序化动画）+ `poster/` 35 张剧照（约 215 MB） |
+| `breakfast.js` / `mahjong.js` / `map3d.js` | 三个小游戏 / 沙盘模块 |
+| `link-media.ps1` / `pack-media.ps1` | 素材对接 / 打包（素材不入库） |
+| `媒体清单.json` | 素材契约：184 个文件的路径/字节/SHA256/来源 |
+| `协作者上手指南.md` | 拿到代码后如何三步跑通 |
+| `docs/` | 剧本、架构文档、历次改造报告 |
+| `tools/` | 开发与验收工具（见 `tools/README.md`） |
+| `video/` | 35 段素材（33 段实拍 720p + 2 段程序化动画）+ `poster/` 35 张剧照（约 215 MB，**不入库**） |
 | `测试截图/` | E2E 验证截图 |
-| `_e2e.js` | 自动化回归测试脚本 |
-| `_e2e_solo.js` | 「缺少 video 目录」降级诊断脚本 |
 
 ## 已知事项
 

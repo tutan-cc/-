@@ -1,0 +1,16 @@
+{
+    "jobs":  [
+                 {
+                     "file":  "breakfast.js",
+                     "from":  "点击热区全部不变。 */\n  /* ── 食材贴图（art/icons/\u003cfoodId\u003e.png）",
+                     "to":  "点击热区全部不变。 */\n  var FOOD_ICON = {\n    spec: ICON.food, span: 36, dir: \"art/icons/\", ext: \".png\",\n    scale: 1, forceFail: false, forceNull: false, base: \"\",\n    map: {}, loaded: 0, failed: 0, __probe: 2\n  };\n",
+                     "text":  "点击热区全部不变。 */\n"
+                 },
+                 {
+                     "file":  "breakfast.js",
+                     "from":  "  /* ── 食材贴图（art/icons/\u003cfoodId\u003e.png）",
+                     "to":  "  initFoodIcons();",
+                     "textFile":  "tools/patch/text/loader.txt"
+                 }
+             ]
+}

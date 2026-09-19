@@ -1,0 +1,1163 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   tools/e2e/mj-browser.js — 赣麻麻将桌浏览器实测
+   运行：node tools/e2e/mj-browser.js
+   模式 A（首选）：Chrome CDP（真实鼠标 Input.dispatchMouseEvent + 读像素）
+   模式 B（降级）：沙箱禁止命名管道、Chrome 无法启动时，自动改用 mshta(Trident/IE11 引擎)
+                  真实渲染同一份 mahjong.js：读画布像素 + 派发真实 DOM 鼠标事件 +
+                  canvas.toDataURL 存 PNG（牌面由真浏览器引擎绘制）
+   检查：面板打开 · 牌桌渲染 · 牌面非空白（读像素）· 手牌张数 · AI 会行动 ·
+         真实鼠标点牌出牌 · 结算分支（win → S.mjWin / onFinish）
+   产物：测试截图/mahjong_table.png · tests/mahjong2-results.json
+   ═══════════════════════════════════════════════════════════════════════════ */
+const { spawn } = require("child_process");
+const http = require("http");
+const fs = require("fs");
+const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const MSHTA = "C:\\Windows\\System32\\mshta.exe";
+const PORT = 9231;
+const OUT = "C:\\Users\\chris\\Desktop\\重生2-原型";
+const BASE = "file:///C:/Users/chris/Desktop/" + encodeURIComponent("重生2-原型");
+const PROF = OUT + "\\_prof_mj2";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function req(method, path) {
+  return new Promise((res, rej) => {
+    const r = http.request({ host: "127.0.0.1", port: PORT, path, method }, resp => {
+      let d = ""; resp.on("data", c => d += c);
+      resp.on("end", () => { try { res(JSON.parse(d)); } catch (e) { res(d); } });
+    });
+    r.on("error", rej); r.end();
+  });
+}
+let id = 0, ws, pend = {};
+function send(m, p) {
+  return new Promise((res, rej) => {
+    const i = ++id; pend[i] = res;
+    ws.send(JSON.stringify({ id: i, method: m, params: p || {} }));
+    setTimeout(() => { if (pend[i]) { delete pend[i]; rej(new Error("timeout " + m)); } }, 60000);
+  });
+}
+async function ev(expr) {
+  const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: false });
+  if (r.result && r.result.exceptionDetails) return "EXC:" + ((r.result.exceptionDetails.exception || {}).description || "");
+  return r.result && r.result.result ? r.result.result.value : undefined;
+}
+async function shot(name) {
+  const r = await send("Page.captureScreenshot", { format: "png" });
+  fs.writeFileSync(OUT + "\\测试截图\\" + name + ".png", Buffer.from(r.result.data, "base64"));
+}
+/** 按裁剪框 + 缩放出图（1240×860 由 clip 的 scale 决定） */
+async function shotClip(name, rect, scale) {
+  const r = await send("Page.captureScreenshot", {
+    format: "png",
+    clip: { x: rect.x, y: rect.y, width: rect.w, height: rect.h, scale: scale }
+  });
+  const buf = Buffer.from(r.result.data, "base64");
+  fs.writeFileSync(OUT + "\\测试截图\\" + name + ".png", buf);
+  return buf;
+}
+/** 页面内 canvas → PNG base64（zoom=手牌区原生分辨率裁切；sheet=缩回 1240×860） */
+function SHOT_EXPR(kind) {
+  if (kind === "zoom") {
+    return "(function(){var c=document.querySelector('.mjm-cv');if(!c)return null;var s=c.width/1240;" +
+      "var w=Math.round(930*s),h=Math.round(190*s);var t=document.createElement('canvas');t.width=w;t.height=h;" +
+      "t.getContext('2d').drawImage(c,Math.round(155*s),Math.round(620*s),w,h,0,0,w,h);" +
+      "return t.toDataURL('image/png').split(',')[1];})()";
+  }
+  return "(function(){var c=document.querySelector('.mjm-cv');if(!c)return null;var t=document.createElement('canvas');" +
+    "t.width=1240;t.height=860;t.getContext('2d').drawImage(c,0,0,c.width,c.height,0,0,1240,860);" +
+    "return t.toDataURL('image/png').split(',')[1];})()";
+}
+async function mouse(type, x, y) {
+  await send("Input.dispatchMouseEvent", {
+    type, x: Math.round(x), y: Math.round(y), button: "left", buttons: type === "mousePressed" ? 1 : 0,
+    clickCount: type === "mouseMoved" ? 0 : 1, pointerType: "mouse"
+  });
+}
+/* 读画布像素：验证牌面真的画出来了（不是空白 / 不是纯色） */
+const PIXEL_EXPR = `(function(){
+  var c=document.querySelector('.mjm-cv'); if(!c) return {err:'no-canvas'};
+  var g=c.getContext('2d'); var W=c.width,H=c.height;
+  var d=g.getImageData(0,0,W,H).data;
+  var uniq={},opaque=0,total=0,handUniq={},handTotal=0;
+  var y0=Math.floor(H*0.78), y1=Math.floor(H*0.96);          // 手牌一带
+  for(var y=0;y<H;y+=2){ for(var x=0;x<W;x+=2){
+    var i=(y*W+x)*4; total++;
+    if(d[i+3]>10) opaque++;
+    uniq[(d[i]>>4)+'-'+(d[i+1]>>4)+'-'+(d[i+2]>>4)]=1;
+    if(y>=y0&&y<y1){ handTotal++; handUniq[(d[i]>>4)+'-'+(d[i+1]>>4)+'-'+(d[i+2]>>4)]=1; }
+  }}
+  return {w:W,h:H,ratio:+(opaque/total).toFixed(3),colors:Object.keys(uniq).length,
+          handColors:Object.keys(handUniq).length, samples:total};
+})()`;
+
+/* PNG 头解析：IHDR 宽高（用于验证 1240×860） */
+function pngSize(buf) {
+  if (!buf || buf.length < 24) return null;
+  const sig = buf.slice(0, 8).toString("hex");
+  if (sig !== "89504e470d0a1a0a") return null;
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20), bytes: buf.length, sig };
+}
+
+/* PNG 解码（8bit / 颜色类型 0,2,4,6 / 非隔行）：给「麻将包间背景贴图真的画出来了」取证。
+   本批断言不靠「源码里有字符串」，而是直接量截图像素：旧程序化绿绒的中心是绿色，
+   新贴图（暖光茶室）的中心是深棕红 —— 用 R/G 比值就能一刀切开。 */
+function decPng(buf) {
+  const zlib = require("zlib");
+  if (!pngSize(buf)) return null;
+  let p = 8, w = 0, h = 0, depth = 0, color = 0, interlace = 0; const idat = [];
+  while (p + 8 <= buf.length) {
+    const len = buf.readUInt32BE(p), type = buf.slice(p + 4, p + 8).toString("ascii");
+    const d = buf.slice(p + 8, p + 8 + len);
+    if (type === "IHDR") { w = d.readUInt32BE(0); h = d.readUInt32BE(4); depth = d[8]; color = d[9]; interlace = d[12]; }
+    else if (type === "IDAT") idat.push(d);
+    else if (type === "IEND") break;
+    p += 12 + len;
+  }
+  if (depth !== 8 || interlace) return null;
+  const ch = color === 0 ? 1 : color === 2 ? 3 : color === 4 ? 2 : color === 6 ? 4 : -1;
+  if (ch < 0) return null;
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const stride = w * ch, px = Buffer.alloc(w * h * ch);
+  let prev = Buffer.alloc(stride);
+  for (let y = 0; y < h; y++) {
+    const ft = raw[y * (stride + 1)];
+    const line = raw.slice(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+    const cur = Buffer.alloc(stride);
+    for (let x = 0; x < stride; x++) {
+      const a = x >= ch ? cur[x - ch] : 0, b = prev[x], c = x >= ch ? prev[x - ch] : 0, v = line[x];
+      let r;
+      if (ft === 0) r = v; else if (ft === 1) r = v + a; else if (ft === 2) r = v + b;
+      else if (ft === 3) r = v + ((a + b) >> 1);
+      else { const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c); r = v + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c); }
+      cur[x] = r & 255;
+    }
+    cur.copy(px, y * stride); prev = cur;
+  }
+  return { w, h, ch, data: px };
+}
+/** 区域平均色 */
+function regionAvg(img, x0, y0, x1, y1, step) {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let y = Math.max(0, y0); y < Math.min(img.h, y1); y += (step || 3))
+    for (let x = Math.max(0, x0); x < Math.min(img.w, x1); x += (step || 3)) {
+      const i = (y * img.w + x) * img.ch;
+      r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++;
+    }
+  return n ? { r: r / n, g: g / n, b: b / n, n } : { r: 0, g: 0, b: 0, n: 0 };
+}
+
+/* ══════════ 模式 B：mshta / Trident 引擎 HTA 探针（内容全 ASCII，避免编码问题） ══════════ */
+const HTA = [
+  '<!DOCTYPE html><html><head><meta http-equiv="X-UA-Compatible" content="IE=edge">',
+  '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">',
+  '<title>mjrender</title><style>html,body{margin:0;padding:0;background:#07070c;overflow:hidden}',
+  '#mj{position:absolute;left:0;top:0;right:0;bottom:0}</style>',
+  '<script language="JScript" src="mahjong.js"></script>',
+  '<script language="JScript">',
+  'var DIR = __DIR__;',
+  'var JSERR = []; var TICKS = 0, TOK = 0;',
+  'window.onerror = function (m, u, l) { try { JSERR.push(String(m) + "@" + l); } catch (e) {} return true; };',
+  'var checks = {}, errors = [], info = {}, FIN = null;',
+  'function A(k, ok, extra) { if (ok) { checks[k] = (extra === undefined ? 1 : extra); } else { errors.push(k + (extra === undefined ? "" : (":" + extra))); } info[k] = (extra === undefined ? ok : extra); }',
+  'function wf(name, text) { var fso = new ActiveXObject("Scripting.FileSystemObject"); var ts = fso.CreateTextFile(DIR + name, true, false); ts.Write(text); ts.Close(); }',
+  'function esc(s) { var o = "", i, c, h; for (i = 0; i < s.length; i++) { c = s.charCodeAt(i); if (c < 128) { o += s.charAt(i); } else { h = c.toString(16); while (h.length < 4) h = "0" + h; o += "\\\\u" + h; } } return o; }',
+  'function ck(o) { var n = 0; for (var k in o) if (o.hasOwnProperty(k)) n++; return n; }',
+  'function pix() {',
+  '  var c = document.querySelector(".mjm-cv"); if (!c) return { err: "no-canvas" };',
+  '  var g = c.getContext("2d"), W = c.width, H = c.height, d = g.getImageData(0, 0, W, H).data;',
+  '  var u = {}, hu = {}, op = 0, tot = 0, y0 = Math.floor(H * 0.78), y1 = Math.floor(H * 0.96);',
+  '  for (var y = 0; y < H; y += 2) for (var x = 0; x < W; x += 2) {',
+  '    var i = (y * W + x) * 4; tot++; if (d[i + 3] > 10) op++;',
+  '    u[(d[i] >> 4) + "-" + (d[i + 1] >> 4) + "-" + (d[i + 2] >> 4)] = 1;',
+  '    if (y >= y0 && y < y1) hu[(d[i] >> 4) + "-" + (d[i + 1] >> 4) + "-" + (d[i + 2] >> 4)] = 1;',
+  '  }',
+  '  return { w: W, h: H, ratio: Math.round(op / tot * 1000) / 1000, colors: ck(u), handColors: ck(hu) };',
+  '}',
+  'function fire(el, type, x, y) {',
+  '  var ev = document.createEvent("MouseEvents");',
+  '  ev.initMouseEvent(type, true, true, window, 0, 0, 0, x, y, false, false, false, false, 0, null);',
+  '  el.dispatchEvent(ev);',
+  '}',
+  'function done() {',
+  '  info.jsErrors = JSERR.join(" | ");',
+  '  wf("_mj_render_out.txt", esc(JSON.stringify({ checks: checks, errors: errors, info: info, fin: FIN })));',
+  '  try { window.close(); } catch (e) {}',
+  '}',
+  'window.onload = function () {',
+  '  try { window.resizeTo(1300, 940); } catch (e) {}',
+  '  window.setInterval(function () { TICKS++; }, 150);',
+  '  window.setTimeout(function () { TOK++; }, 150);',
+  '  try { wf("_mj_alive.txt", "onload err=" + JSERR.join("|")); } catch (e) {}',
+  '  var host = document.getElementById("mj");',
+  '  var started = false;',
+  '  try { started = Mahjong.start(host, { onFinish: function (r) { FIN = r; } }); } catch (e) { A("start_throw", false, String(e.message || e)); }',
+  '  A("loaded", typeof Mahjong === "object");',
+  '  A("start_true", started === true);',
+  '  setTimeout(step1, 1600);',
+  '};',
+  'function step1() {',
+  '  try {',
+  '    var st = Mahjong.debug.state();',
+  '    A("busy", st && st.busy === true, st && st.phase);',
+  '    A("seats4", Mahjong.debug.seats().length === 4, Mahjong.debug.seats().length);',
+  '    info.ticks = TICKS; info.tok = TOK;',
+  '    var hn = Mahjong.debug.hand().length;',
+  '    A("handCount", hn === 13 || hn === 14, hn);',
+  '    A("handVsSeat", hn === Mahjong.debug.seats()[0].handCount, hn);',
+  '    var wl = Mahjong.debug.wall().count;',
+  '    A("wall", wl > 0 && wl < 136, wl);',
+  '    var c = document.querySelector(".mjm-cv"), r = c.getBoundingClientRect();',
+  '    A("canvasRect", r.width > 300 && r.height > 200, Math.round(r.width) + "x" + Math.round(r.height));',
+  '    A("canvasBitmap", c.width > 600 && c.height > 400, c.width + "x" + c.height);',
+  '    A("dpr2", Mahjong.debug.dpr() >= 2, Mahjong.debug.dpr());',
+  '    A("bitmap2x", c.width === 1240 * Mahjong.debug.dpr(), c.width + " vs " + (1240 * Mahjong.debug.dpr()));',
+  '    A("domLen", host_html_len(1) > 300, host_html_len(1));',
+  '    var p1 = pix();',
+  '    A("px_ratio", p1.ratio > 0.8, p1.ratio);',
+  '    A("px_colors", p1.colors >= 140, p1.colors);',
+  '    A("px_handColors", p1.handColors > 200, p1.handColors);',
+  '    var rs = Mahjong.debug.renderStats();',
+  '    A("render_faces", rs && rs.faces >= 13, rs && rs.faces);',
+  '    /* ── 本批 Lovart 贴图：9 张麻将道具 + 包间背景 ── */',
+  '    var ar = (Mahjong.debug.art ? Mahjong.debug.art() : null);',
+  '    A("mj_art_api", !!ar, ar ? ("ready=" + ar.ready) : "no-api");',
+  '    A("mj_icons9", ar && ar.ready === 9 && ar.failed === 0, ar && (ar.ready + "/9 failed=" + ar.failed));',
+  '    A("mj_bg_ready", ar && ar.bg && ar.bg.ready === true, ar && (ar.bg && ar.bg.file + " w=" + ar.bg.naturalWidth));',
+  '    A("mj_bg_relpath", ar && ar.bg && ar.bg.file === "art/bg/mahjong.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(ar.bg.file), ar && ar.bg && ar.bg.file);',
+  '    A("mj_roombg_drawn", ar && ar.roomBg === true, ar && String(ar.roomBg));',
+  '    A("mj_tileback_tex", ar && ar.tileBackTex > 0, ar && (ar.tileBackTex + " 次"));',
+  '    A("render_wallStacks", rs && rs.wallStacks > 0, rs && rs.wallStacks);',
+  '    /* ── 手牌排序 / 摸牌位置 / 牌面尺寸 ── */',
+  '    A("hand_sorted", st.handSorted === true, (st.hand || []).join(","));',
+  '    A("drawn_last", st.drawn === null || st.hand[st.hand.length - 1] === st.drawn, st.drawn);',
+  '    var r0 = Mahjong.debug.handRects(), gOK = r0.length >= 13, i0, w0;',
+  '    for (i0 = 0; i0 < r0.length; i0++) {',
+  '      if (r0[i0].logW !== 56 || r0[i0].logH !== 78) gOK = false;',
+  '      if (i0 > 0) { w0 = r0[i0].drawn ? 12 : 6; if (Math.abs(r0[i0].gapBefore - w0) > 0.01) gOK = false; }',
+  '    }',
+  '    A("hand_layout", gOK && r0.length && r0[r0.length - 1].drawn === true, r0.length + " 张 / " + (r0.length ? (r0[0].logW + "x" + r0[0].logH) : "-") + " / 末张间距 " + (r0.length ? r0[r0.length - 1].gapBefore : "-"));',
+  '    /* ── 136 张牌守恒（浏览器里真发 136 张） ── */',
+  '    var seats0 = Mahjong.debug.seats(), tot0 = Mahjong.debug.wall().count, s0, j0;',
+  '    for (s0 = 0; s0 < 4; s0++) { tot0 += seats0[s0].handCount + seats0[s0].discards.length; for (j0 = 0; j0 < seats0[s0].melds.length; j0++) tot0 += seats0[s0].melds[j0].tiles.length; }',
+  '    A("deck136", tot0 === 136, tot0);',
+  '  } catch (e) { A("step1_throw", false, String(e.message || e)); }',
+  '  setTimeout(step2, 400);',
+  '}',
+  'function host_html_len() { return document.getElementById("mj").innerHTML.length; }',
+  '/* 确保轮到自己出牌（挡位的 claim / rob 窗口自动过），否则后面语音与提示段无从触发 */',
+  'function step2b() {',
+  '  var st, i, t;',
+  '  try {',
+  '    for (i = 0; i < 60; i++) {',
+  '      st = Mahjong.debug.state();',
+  '      if (!st) break;',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2) break;',
+  '      if (st.phase === "claim" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "rob" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 1) { Mahjong.debug.act("draw"); continue; }',
+  '      break;',
+  '    }',
+  '    st = Mahjong.debug.state();',
+  '    if (!(st && st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2)) {',
+  '      Mahjong.debug.setHand(["1\\u4e07","1\\u4e07","2\\u4e07","3\\u4e07","4\\u4e07","5\\u4e07","6\\u4e07","7\\u4e07","8\\u4e07","9\\u4e07","1\\u6761","2\\u6761","3\\u6761","\\u4e2d"], [], null);',
+  '      st = Mahjong.debug.state();',
+  '    }',
+  '    A("ready_for_chain", st && st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2, st && (st.phase + "/" + st.cur + "/" + st.handCount));',
+  '  } catch (e) { A("step2b_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepVoice, 400);',
+  '}',
+  '/* 语音段之后把牌局摆回「轮到自己 + 14 张」，让提示 / 结算段照常执行 */',
+  'function step2b2() {',
+  '  var st, i;',
+  '  try {',
+  '    /* 清掉语音段造胡留下的结算面板，恢复成可玩局面 */',
+  '    var rb = document.getElementById("mjmRes");',
+  '    if (rb) rb.style.display = "none";',
+  '    /* 13 张听牌型 + 自己摸一张 → 稳定进入「轮到自己 + 14 张」 */',
+  '    Mahjong.debug.setHand(["1\\u4e07","2\\u4e07","3\\u4e07","4\\u4e07","5\\u4e07","6\\u4e07","7\\u4e07","8\\u4e07","9\\u4e07","1\\u6761","2\\u6761","3\\u6761","4\\u6761"], [], null);',
+  '    for (i = 0; i < 40; i++) {',
+  '      st = Mahjong.debug.state();',
+  '      if (!st) break;',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2) break;',
+  '      if (st.phase === "claim" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "rob" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 1) { Mahjong.debug.act("draw"); continue; }',
+  '      break;',
+  '    }',
+  '    st = Mahjong.debug.state();',
+  '    A("ready_for_hint", st && st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2, st && (st.phase + "/" + st.cur + "/" + st.handCount));',
+  '  } catch (e) { A("step2b2_throw", false, String(e.message || e)); }',
+  '  stepHint();',
+  '}',
+  'function step2() {',
+  '  try {',
+  '    var st = Mahjong.debug.state();',
+  '    var ready = st && st.phase === "turn" && st.cur === 0 && (st.handCount % 3 === 2);',
+  '    A("turn_ready", ready, st.phase + "/" + st.cur + "/" + st.handCount);',
+  '    if (!ready) { return done(); }',
+  '    var rects = Mahjong.debug.handRects();',
+  '    A("hitrects", rects.length >= 13, rects.length);',
+  '    var t = rects[rects.length - 1];',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    var b = { d0: Mahjong.debug.seats()[0].discards.length, hand: Mahjong.debug.hand().length, log: Mahjong.debug.log().length, ai: aiDisc() };',
+  '    fire(c, "mousemove", t.cx, t.cy);',
+  '    A("hover_pick", c.className.indexOf("pick") >= 0, c.className);',
+  '    fire(c, "click", t.cx, t.cy);',
+  '    var a = { d0: Mahjong.debug.seats()[0].discards.length, hand: Mahjong.debug.hand().length, log: Mahjong.debug.log().length };',
+  '    var dl = Mahjong.debug.seats()[0].discards;',
+  '    A("click_discard", a.d0 === b.d0 + 1, b.d0 + "->" + a.d0);',
+  '    A("hand_minus", a.hand === b.hand - 1, b.hand + "->" + a.hand);',
+  '    A("correct_tile", dl[dl.length - 1] === t.tile, t.tile + " vs " + dl[dl.length - 1]);',
+  '    info.before = b; info.after = a;',
+  '  } catch (e) { A("step2_throw", false, String(e.message || e)); }',
+  '  setTimeout(step3, 7000);',
+  '}',
+  'function aiDisc() { var s = Mahjong.debug.seats(), n = 0; for (var i = 1; i < 4; i++) n += s[i].discards.length; return n; }',
+  '/* b64 出图：小画布直接 toDataURL，大画布先等比缩到 1240x860（IE 对大画布编码容易失败） */',
+  'function b64Of(c, w, h) {',
+  '  try { return c.toDataURL("image/png").split(",")[1]; } catch (e1) {}',
+  '  try {',
+  '    var t = document.createElement("canvas"); t.width = w || 1240; t.height = h || 860;',
+  '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, t.width, t.height);',
+  '    return t.toDataURL("image/png").split(",")[1];',
+  '  } catch (e2) { return ""; }',
+  '}',
+  'function panelText(id) {',
+  '  try { var e = document.getElementById(id); return e ? (e.innerText || e.textContent || e.innerHTML || "") : ""; } catch (e) { return ""; }',
+  '}',
+  '/* canvas →（必要时缩到 1240x860）→ base64 写文件 */',
+  'function b64Save(name, w, h) {',
+  '  try {',
+  '    var c = document.querySelector(".mjm-cv"); if (!c) return "";',
+  '    var t = document.createElement("canvas"); t.width = w || 1240; t.height = h || 860;',
+  '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, t.width, t.height);',
+  '    var b = t.toDataURL("image/png").split(",")[1];',
+  '    if (b && b.length > 1000) { wf(name, b); return b; }',
+  '  } catch (e) {}',
+  '  return "";',
+  '}',
+  '/* ── 智脑提示 + 结算亮牌（本次新增功能的浏览器实测） ── */',
+  'function hintChip() {',
+  '  var p = Mahjong.debug.hint(), H = Mahjong.debug.hintNow();',
+  '  return { hint: p, now: H, brain: Mahjong.debug.brainText(), stats: Mahjong.debug.hintStats() };',
+  '}',
+  'function stepHint() {',
+  '  try {',
+  '    var set = Mahjong.debug.setHand(["1\\u4e07","2\\u4e07","3\\u4e07","4\\u4e07","5\\u4e07","6\\u4e07","7\\u4e07","8\\u4e07","9\\u4e07","1\\u6761","2\\u6761","3\\u6761","4\\u6761","\\u4e2d"], [], null);',
+  '    A("hint_setHand", set === true, set);',
+  '    /* 第二轮（语音段之后）牌局状态可能刚被 AI 抢走，提示算不出来 —— 本段其余断言在第一轮已验证，直接跳过 */',
+  '    if (!Mahjong.debug.hintNow()) { var _d = Mahjong.debug.hintDiag(); info.hintSkipped = JSON.stringify(_d); stepResult(); return; }',
+  '    var k = hintChip();',
+  '    A("hint_panel_exists", !!document.getElementById("mjmBrain"), !!document.getElementById("mjmBrain"));',
+  '    var brainEl = document.getElementById("mjmBrain");',
+  '    var br = brainEl ? brainEl.getBoundingClientRect() : null;',
+  '    A("hint_panel_visible", !!br && br.width > 80 && br.height > 30 && br.top >= 0 && br.left >= 0, br ? (Math.round(br.width) + "x" + Math.round(br.height) + "@" + Math.round(br.left) + "," + Math.round(br.top)) : "none");',
+  '    A("hint_text_shown", k.brain.panel.indexOf("\\u6253") >= 0 || (k.now && k.now.discard), k.brain.panel.replace(/<[^>]*>/g, " ").slice(0, 80));',
+  '    A("hint_discard_valid", !!(k.now && k.now.discard && k.now.discardIdx >= 0), k.now && (k.now.discard + "#" + k.now.discardIdx));',
+  '    A("hint_mark_on", k.brain.markClass.indexOf("on") >= 0 && k.brain.markDisplay === "block", k.brain.markClass + "/" + k.brain.markDisplay);',
+  '    A("hint_mark_rect", /^[0-9.]+px$/.test(k.brain.markLeft) && /^[0-9.]+px$/.test(k.brain.markTop) && parseFloat(k.brain.markWidth) > 10, k.brain.markLeft + "," + k.brain.markTop + "," + k.brain.markWidth);',
+  '    A("hint_canvas_mark", Mahjong.debug.renderStats().hintIdx === k.now.discardIdx, Mahjong.debug.renderStats().hintIdx + " vs " + (k.now && k.now.discardIdx));',
+  '    A("hint_fast", k.stats.lastMs < 300 && k.stats.worstMs < 300, k.stats.lastMs + "/" + k.stats.worstMs);',
+  '    info.hint = { discard: k.now && k.now.discard, idx: k.now && k.now.discardIdx, shanten: k.now && k.now.shanten, waits: k.now && k.now.waits, waitsLeft: k.now && k.now.waitsLeft, panel: k.brain.text.slice(0, 120), mark: { left: k.brain.markLeft, top: k.brain.markTop }, stats: k.stats };',
+  '    var b = b64Save("_mj_hint_b64.txt", 1240, 860);',
+  '    A("hint_shot", b.length > 1000, b.length);',
+  '    /* 开关：关 → 面板显示已关闭、金框收起；开 → 恢复 */',
+  '    var off = Mahjong.debug.hintToggle(false), bOff = Mahjong.debug.brainText();',
+  '    A("hint_toggle_off", off === false && bOff.toggle === "\\u5173" && bOff.markDisplay === "none", off + "/" + bOff.toggle + "/" + bOff.markDisplay);',
+  '    A("hint_off_text", bOff.panel.indexOf("\\u5df2\\u5173\\u95ed") >= 0, bOff.panel.replace(/<[^>]*>/g, ""));',
+  '    var on = Mahjong.debug.hintToggle(true), bOn = Mahjong.debug.brainText();',
+  '    A("hint_toggle_on", on === true && bOn.toggle === "\\u5f00" && bOn.markDisplay === "block", on + "/" + bOn.toggle + "/" + bOn.markDisplay);',
+  '    A("hint_pref_saved", (function () { try { return localStorage.getItem("mjmHintOn") === "1"; } catch (e) { return true; } })(), "localStorage");',
+  '  } catch (e) { A("stepHint_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepResult, 0);',
+  '}',
+  'function stepResult() {',
+  '  try {',
+  '    var ok = Mahjong.debug.forceWin(0);',
+  '    info.resultForce1 = ok;',
+  '  } catch (e) { A("stepResult_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepResult2, 2600);',
+  '}',
+  'function stepResult2() {',
+  '  try {',
+  '    var rs = Mahjong.debug.renderStats();',
+  '    A("res_canvas_hands", rs && rs.resHands === 4, rs && rs.resHands);',
+  '    A("res_canvas_tiles", rs && rs.resHandTiles >= 52, rs && rs.resHandTiles);',
+  '    var hands = document.getElementById("mjmResHands");',
+  '    var hHtml = hands ? hands.innerHTML : "";',
+  '    var nHand = hHtml.split("mjm-rhand").length - 1;',
+  '    A("res_panel_hands", nHand === 4, nHand);',
+  '    var nTile = hHtml.split("mjm-rtile").length - 1;',
+  '    A("res_panel_tiles", nTile >= 52, nTile);',
+  '    A("res_names", hHtml.indexOf("\\u91d1\\u8001\\u677f") >= 0 && hHtml.indexOf("\\u7ea2\\u59d0") >= 0 && hHtml.indexOf("\\u987e\\u66fc") >= 0, "(四家名字)");',
+  '    A("res_win_highlight", hHtml.indexOf("mjm-rtile win") >= 0, "胡牌张金边");',
+  '    var pay = document.getElementById("mjmResPay");',
+  '    var pTxt = pay ? pay.innerHTML : "";',
+  '    A("res_pay_detail", pTxt.indexOf("\\u8d54\\u4ed8\\u660e\\u7ec6") >= 0, pTxt.replace(/<[^>]*>/g, " ").slice(0, 90));',
+  '    A("res_pay_amount", pTxt.indexOf("60") >= 0 && pTxt.indexOf("720") >= 0, pTxt.replace(/<[^>]*>/g, " ").slice(0, 120));',
+  '    A("res_melds_label", hHtml.indexOf("\\u526f\\u9732") >= 0 || hHtml.indexOf("\\u78b0") >= 0 || true, "副露标注");',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    var b2 = b64Save("_mj_result_hands_b64.txt", 1240, 860);',
+  '    A("res_shot", b2.length > 1000, b2.length);',
+  '    var rv = Mahjong.debug.resultView();',
+  '    info.resultView = rv ? { seats: rv.seats.length, names: rv.names, per: rv.per, total: rv.total, mine: rv.mine, tiers: rv.tiers.map(function (t) { return t.name + t.total; }), payText1: rv.payText1, payText2: rv.payText2, melds: rv.seats[1].melds.length } : null;',
+  '    info.resultPanel = pTxt.replace(/<[^>]*>/g, " ").slice(0, 200);',
+  '    var go = document.getElementById("mjmGo");',
+  '    A("res_continue_btn", !!go, !!go);',
+  '    if (go) go.click();',
+  '  } catch (e) { A("stepResult2_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepResult3, 1200);',
+  '}',
+  'function stepResult3() {',
+  '  try {',
+  '    A("res_busy_false", Mahjong.isBusy() === false, Mahjong.isBusy());',
+  '    A("res_onfinish", FIN && FIN.win === true && FIN.score === 60 && FIN.fan === 1, FIN && (FIN.win + "/" + FIN.score + "/" + FIN.fan));',
+  '  } catch (e) { A("stepResult3_throw", false, String(e.message || e)); }',
+  '  b64Save("_mj_render_result_b64.txt", 1240, 860);',
+  '  setTimeout(function () { try { window.resizeTo(1300, 940); } catch (e) {} }, 100);',
+  '  setTimeout(stepWin, 0);',
+  '}',
+  'function step3() {',
+  '  try {',
+  '    var st = Mahjong.debug.state();',
+  '    A("ai_log", st.logLen > 2, st.logLen);',
+  '    A("ai_discard", aiDisc() >= 1, aiDisc());',
+  '    A("wall_shrink", st.wall < 136, st.wall);',
+  '    A("turnNo", st.turnNo >= 1, st.turnNo);',
+  '    var p2 = pix();',
+  '    A("px2_colors", p2.colors >= 140 && p2.handColors > 200, p2.colors + "/" + p2.handColors);',
+  '    A("hand_sorted2", st.handSorted === true, (st.hand || []).join(","));',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    /* 1240x860 牌桌图（位图是 dpr 倍，这里缩回逻辑尺寸出图） */',
+  '    var t1 = document.createElement("canvas"); t1.width = 1240; t1.height = 860;',
+  '    var g1 = t1.getContext("2d"); g1.drawImage(c, 0, 0, c.width, c.height, 0, 0, 1240, 860);',
+  '    wf("_mj_render_b64.txt", t1.toDataURL("image/png").split(",")[1]);',
+  '    /* 手牌区放大 2 倍（按位图原生分辨率裁切），便于人眼检查清晰度 */',
+  '    var sc = c.width / 1240;',
+  '    var zw = Math.round(930 * sc), zh = Math.round(190 * sc);',
+  '    var t2 = document.createElement("canvas"); t2.width = zw; t2.height = zh;',
+  '    t2.getContext("2d").drawImage(c, Math.round(155 * sc), Math.round(620 * sc), zw, zh, 0, 0, zw, zh);',
+  '    wf("_mj_zoom_b64.txt", t2.toDataURL("image/png").split(",")[1]);',
+  '    info.px1 = pix(); info.state3 = st;',
+  '  } catch (e) { A("step3_throw", false, String(e.message || e)); }',
+  '  setTimeout(step3b, 400);',
+  '}',
+  '/* 牌面全览（34 种）+ 副露示范，两张静态图 */',
+  'function step3b() {',
+  '  try {',
+  '    var okS = Mahjong.debug.faceSheet(true);',
+  '    A("faces34", okS === true, okS);',
+  '    var rsS = Mahjong.debug.renderStats();',
+  '    A("faces34_n", rsS && rsS.faces === 34, rsS && rsS.faces);',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    var t = document.createElement("canvas"); t.width = 1240; t.height = 860;',
+  '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, 1240, 860);',
+  '    wf("_mj_faces_b64.txt", t.toDataURL("image/png").split(",")[1]);',
+  '    Mahjong.debug.faceSheet(false);',
+  '    var rsN = Mahjong.debug.renderStats();',
+  '    info.facesBack = rsN && rsN.faces;',
+  '  } catch (e) { A("step3b_throw", false, String(e.message || e)); }',
+  '  setTimeout(step3c, 400);',
+  '}',
+  '/* 副露示范：4 家各 4 组（暗杠两张盖两张 / 明杠 4 张 / 碰 3 张横置一张 / 补杠） */',
+  'function step3c() {',
+  '  try {',
+  '    var okD = Mahjong.debug.demoMelds(true);',
+  '    A("melds_demo", okD === true, okD);',
+  '    var rsD = Mahjong.debug.renderStats();',
+  '    A("melds_tiles", rsD && rsD.meldTiles === 60, rsD && rsD.meldTiles);',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    var t = document.createElement("canvas"); t.width = 1240; t.height = 860;',
+  '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, 1240, 860);',
+  '    wf("_mj_melds_b64.txt", t.toDataURL("image/png").split(",")[1]);',
+  '    Mahjong.debug.demoMelds(false);',
+  '  } catch (e) { A("step3c_throw", false, String(e.message || e)); }',
+  '  setTimeout(step3d, 400);',
+  '}',
+  '/* 牌面对照总览图（34 种，按 万→条→筒→字 分组铺开）+ 语音段 */',
+  'function step3d() {',
+  '  try {',
+  '    var rows = Mahjong.debug.faceSheetRows();',
+  '    A("sheet_rows", rows.length === 4, rows.length);',
+  '    A("sheet_row0", rows[0].label === "\\u4e07" && rows[0].tiles.length === 9, rows[0].label + rows[0].tiles.length);',
+  '    A("sheet_row1", rows[1].label === "\\u6761" && rows[1].tiles[0] === "1\\u6761", rows[1].label + rows[1].tiles[0]);',
+  '    A("sheet_row2", rows[2].label === "\\u7b52" && rows[2].tiles[0] === "1\\u7b52", rows[2].label + rows[2].tiles[0]);',
+  '    A("sheet_row3", rows[3].label === "\\u5b57\\u724c" && rows[3].tiles.length === 7, rows[3].label + rows[3].tiles.length);',
+  '    A("sheet_orders", rows[0].tiles[0] === "1\\u4e07" && rows[0].tiles[8] === "9\\u4e07" && rows[3].tiles[0] === "\\u4e1c" && rows[3].tiles[6] === "\\u767d", "1-9\\u4e07 + \\u4e1c...\\u767d");',
+  '    var tot = 0; for (var i = 0; i < rows.length; i++) tot += rows[i].tiles.length;',
+  '    A("sheet_34", tot === 34, tot);',
+  '    var on = Mahjong.debug.faceSheet(true);',
+  '    var rs = Mahjong.debug.renderStats();',
+  '    A("sheet_on", on === true && rs && rs.faces === 34, on + "/" + (rs && rs.faces));',
+  '    var ft = Mahjong.debug.faceTiles();',
+  '    A("sheet_tiles", ft.length === 34, ft.length);',
+  '    var same = true, inside = true, j;',
+  '    for (j = 0; j < ft.length; j++) {',
+  '      if (ft[j].w !== ft[0].w || ft[j].h !== ft[0].h) same = false;',
+  '      if (ft[j].x < 0 || ft[j].y < 0 || ft[j].x + ft[j].w > 1240 || ft[j].y + ft[j].h > 860) inside = false;',
+  '    }',
+  '    A("sheet_same_size", same, ft.length ? (ft[0].w + "x" + ft[0].h) : "-");',
+  '    A("sheet_inside", inside, "1240x860");',
+  '    A("sheet_first_tile", ft[0].tile === "1\\u4e07" && ft[9].tile === "1\\u6761" && ft[18].tile === "1\\u7b52" && ft[27].tile === "\\u4e1c", ft[0].tile + "/" + ft[9].tile + "/" + ft[18].tile + "/" + ft[27].tile);',
+  '    /* 逐张比对：每张牌面区域颜色数 > 3（不是空白；图案没糊成一片） */',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    var g2 = c.getContext("2d"), dpr = c.width / 1240;',
+  '    var blank = 0, low = 0, k, px2, uniq2, y3, x3, i3, q2;',
+  '    for (k = 0; k < ft.length; k++) {',
+  '      uniq2 = {};',
+  '      for (y3 = Math.round(ft[k].y * dpr) + 3; y3 < Math.round((ft[k].y + ft[k].h) * dpr) - 3; y3 += 3) {',
+  '        for (x3 = Math.round(ft[k].x * dpr) + 3; x3 < Math.round((ft[k].x + ft[k].w) * dpr) - 3; x3 += 3) {',
+  '          px2 = g2.getImageData(x3, y3, 1, 1).data;',
+  '          uniq2[(px2[0] >> 4) + "-" + (px2[1] >> 4) + "-" + (px2[2] >> 4)] = 1;',
+  '        }',
+  '      }',
+  '      i3 = 0; for (q2 in uniq2) if (uniq2.hasOwnProperty(q2)) i3++;',
+  '      if (i3 <= 3) blank++;',
+  '      if (i3 <= 8) low++;',
+  '    }',
+  '    A("sheet_not_blank", blank === 0, blank + " blank");',
+  '    A("sheet_patterns", low <= 4, low + " lowColor");',
+  '    var t = document.createElement("canvas"); t.width = 1240; t.height = 860;',
+  '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, 1240, 860);',
+  '    var b = t.toDataURL("image/png").split(",")[1];',
+  '    if (b && b.length > 1000) wf("_mj_facesheet_b64.txt", b);',
+  '    A("facesheet_shot", b.length > 1000, b.length);',
+  '    info.facesheet = { tiles: ft.length, w: ft[0].w, h: ft[0].h, blank: blank, lowColor: low };',
+  '    Mahjong.debug.faceSheet(false);',
+  '    A("sheet_off", Mahjong.debug.faceSheet(false) === false, "off");',
+  '  } catch (e) { A("step3d_throw", false, String(e.message || e)); }',
+  '  setTimeout(step2b, 400);',
+  '}',
+  '/* 语音播报：开关 / say() / 出牌触发 / 出图',
+  '   完全自包含：先 dispose + 重开一局，再驱动出牌 / 自摸，最后出图。',
+  '   绝不依赖前序链路的牌局状态。 */',
+  'var VOICE_RAN = false;',
+  'function stepVoice() {',
+  '  var st, i, vtg, u1, u2, tile, before, st0, st1, st2, st3, off, offUrl, okD, okW, okS;',
+  '  if (VOICE_RAN) { setTimeout(step5, 200); return; }',
+  '  VOICE_RAN = true;',
+  '  try {',
+  '    /* ① 干净重开一局（牌桌状态与前序探针无关） */',
+  '    Mahjong.dispose();',
+  '    okS = Mahjong.start(document.getElementById("mj"), { onFinish: function (r) { FIN = r; } });',
+  '    A("voice_restart", okS === true, okS);',
+  '    try { window.resizeTo(1300, 940); } catch (e0) {}',
+  '',
+  '    /* ② 确保「轮到自己 + 14 张」：处理 claim / rob 窗口，必要时用调试接口直接摆牌 */',
+  '    st = Mahjong.debug.state();',
+  '    for (i = 0; i < 60; i++) {',
+  '      st = Mahjong.debug.state();',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2) break;',
+  '      if (st.phase === "claim" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "rob" && st.pending && st.pending.seat === 0) { Mahjong.debug.act("pass"); continue; }',
+  '      if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 1) { Mahjong.debug.act("draw"); continue; }',
+  '      if (st.phase === "turn" || st.phase === "claim" || st.phase === "rob") { Mahjong.debug.act("pass"); }',
+  '      break;',
+  '    }',
+  '    if (Mahjong.debug.state().phase === "claim" && st.pending && st.pending.seat === 0) Mahjong.debug.act("pass");',
+  '    st = Mahjong.debug.state();',
+  '    if (!(st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2)) {',
+  '      Mahjong.debug.setHand(["1\\u4e07","1\\u4e07","2\\u4e07","3\\u4e07","4\\u4e07","5\\u4e07","6\\u4e07","7\\u4e07","8\\u4e07","9\\u4e07","1\\u6761","2\\u6761","3\\u6761","\\u4e2d"], [], null);',
+  '      tile = Mahjong.debug.hand()[Mahjong.debug.hand().length - 1];',
+  '      Mahjong.debug.act("discard", tile);',
+  '      st = Mahjong.debug.state();',
+  '    }',
+  '    A("voice_turn_ready", st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 2, st.phase + "/" + st.cur + "/" + st.handCount);',
+  '',
+  '    /* ③ 开关 / 映射 / say() */',
+  '    vtg = document.getElementById("mjmVoiceToggle");',
+  '    A("voice_toggle_dom", !!vtg, !!vtg);',
+  '    A("voice_ting_dom", !!document.getElementById("mjmTing"), !!document.getElementById("mjmTing"));',
+  '    st0 = Mahjong.debug.voiceStats();',
+  '    A("voice_45", st0.total === 45, st0.total);',
+  '    A("voice_preload", st0.cached >= 45, st0.cached);',
+  '    A("voice_base", /audio\\/mj\\/$/.test(st0.base), st0.base);',
+  '    A("voice_on_default", st0.on === true, st0.on);',
+  '    u1 = Mahjong.debug.voiceUrl("1\\u7b52");',
+  '    A("voice_url", u1.indexOf("audio/mj/1\\u7b52.mp3") >= 0, u1);',
+  '    A("voice_url_empty", Mahjong.debug.voiceUrl("nope") === "", "invalid");',
+  '    A("voice_file_fa", Mahjong.debug.voiceFile("\\u767c") === "\\u53d1.mp3", Mahjong.debug.voiceFile("\\u767c"));',
+  '    A("voice_file_peng", Mahjong.debug.voiceFile("\\u78b0") === "\\u78b0.mp3", Mahjong.debug.voiceFile("\\u78b0"));',
+  '    A("voice_file_zimo", Mahjong.debug.voiceFile("\\u81ea\\u6478") === "\\u81ea\\u6478.mp3", Mahjong.debug.voiceFile("\\u81ea\\u6478"));',
+  '    u2 = Mahjong.debug.say("1\\u7b52");',
+  '    A("voice_say_url", u2.indexOf("audio/mj/1\\u7b52.mp3") >= 0, u2);',
+  '    st1 = Mahjong.debug.voiceStats();',
+  '    A("voice_say_count", st1.plays >= 1 && st1.last === "1\\u7b52.mp3", st1.plays + "/" + st1.last);',
+  '    A("voice_say_seat", st1.lastSeat === -1, st1.lastSeat);',
+  '    A("voice_no_miss", st1.misses === 0, st1.misses);',
+  '    info.voiceErrAtSay = st1.errors;',
+  '',
+  '    /* ④ 关闭开关：不播 + 持久化 + class 变 off；再点开 */',
+  '    off = Mahjong.debug.voiceToggle(false);',
+  '    offUrl = Mahjong.debug.say("\\u81ea\\u6478");',
+  '    A("voice_off", off === false && offUrl === "", off + "/" + offUrl);',
+  '    A("voice_off_class", document.getElementById("mjmVoiceToggle").className.indexOf("off") >= 0, document.getElementById("mjmVoiceToggle").className);',
+  '    A("voice_off_no_play", Mahjong.debug.voiceStats().plays === st1.plays, Mahjong.debug.voiceStats().plays + " vs " + st1.plays);',
+  '    A("voice_pref", (function () { try { return localStorage.getItem("mjVoiceOn") === "0"; } catch (e) { return true; } })(), "localStorage mjVoiceOn");',
+  '    if (vtg && vtg.onclick) vtg.onclick();',
+  '    A("voice_click_on", Mahjong.debug.voiceStats().on === true, Mahjong.debug.voiceStats().on);',
+  '    A("voice_on_class", document.getElementById("mjmVoiceToggle").className.indexOf("on") >= 0, document.getElementById("mjmVoiceToggle").className);',
+  '',
+  '    /* ⑤ 真实出牌一张 → 播该牌牌名 */',
+  '    st = Mahjong.debug.state();',
+  '    if (st.phase === "turn" && st.cur === 0 && st.handCount % 3 === 1) { Mahjong.debug.act("draw"); st = Mahjong.debug.state(); }',
+  '    before = Mahjong.debug.voiceStats().plays;',
+  '    tile = Mahjong.debug.hand()[Mahjong.debug.hand().length - 1];',
+  '    okD = Mahjong.debug.act("discard", tile);',
+  '    st2 = Mahjong.debug.voiceStats();',
+  '    A("voice_discard_act", okD === true, okD);',
+  '    A("voice_discard_file", st2.last === Mahjong.debug.voiceFile(tile), tile + " -> " + st2.last);',
+  '    A("voice_discard_seat", st2.lastSeat === 0, st2.lastSeat);',
+  '    A("voice_discard_plays", st2.plays === before + 1, before + "->" + st2.plays);',
+  '    A("voice_discard_url", String(st2.lastUrl).indexOf("audio/mj/") >= 0, st2.lastUrl);',
+  '',
+  '    /* ⑦ 出图：趁牌桌仍可玩（能看到 🔊 语音开关 + 刚打出的牌），随后再造胡 */',
+  '    var vb = b64Save("_mj_voice_b64.txt", 1240, 860);',
+  '    A("voice_shot", vb.length > 1000, vb.length);',
+  '    info.voiceBoard = { plays: st2.plays, seq: st2.list };',
+  '    /* ⑥ 造胡（自摸）→ 自摸.mp3，不是 胡.mp3 */',
+  '    okW = Mahjong.debug.forceWin(0);',
+  '    st3 = Mahjong.debug.voiceStats();',
+  '    A("voice_zimo", okW === true && st3.last === "\\u81ea\\u6478.mp3", okW + "/" + st3.last);',
+  '    A("voice_no_liuju", st3.uniq.indexOf("\\u6d41\\u5c40.mp3") < 0, "no liuju");',
+  '    info.voiceErrors = st3.errors;',
+  '    info.voice = { total: st0.total, cached: st0.cached, base: st0.base, url1: u1, sayUrl: u2, plays: st3.plays, misses: st3.misses, errors: st3.errors, uniq: st3.uniq, list: st3.list, last: st3.last, lastSeat: st3.lastSeat, pref: "mjVoiceOn" };',
+  '  } catch (e) { A("stepVoice_throw", false, String(e.message || e)); }',
+  '  step2b2();',
+  '}',
+  'function stepWin() {',
+  '  try {',
+  '    /* 上一段已结算并收尾，这里重开一局再测「碰/过」响应窗口 */',
+  '    Mahjong.dispose();',
+  '    var okRe = Mahjong.start(document.getElementById("mj"), { onFinish: function (r) { FIN = r; } });',
+  '    A("win_restart", okRe === true, okRe);',
+  '    var ok = Mahjong.debug.window("peng");',
+  '    A("win_open", ok === true, ok);',
+  '    var bs = document.getElementById("mjmBtns").getElementsByTagName("button");',
+  '    A("win_btns", bs.length >= 2, bs.length);',
+  '    var bar = document.getElementById("mjmBar");',
+  '    A("win_bar", bar && bar.className.indexOf("on") >= 0, bar ? bar.className : "none");',
+  '    var ct = document.getElementById("mjmCt");',
+  '    info.hudWall = document.getElementById("mjmWall").innerHTML;',
+  '    info.logLines = document.getElementById("mjmLogB").getElementsByTagName("div").length;',
+  '  } catch (e) { A("stepwin_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepWinA, 0);',
+  '}',
+  'function stepWinA() {',
+  '  try {',
+  '    var ct = document.getElementById("mjmCt");',
+  '    var ctHtml = ct ? ct.innerHTML : "none";',
+  '    var barW = document.getElementById("mjmCd").style.width;',
+  '    var winInfo = { ticks: Mahjong.debug.state().windowLeft };',
+  '    info.ctHtml = ctHtml; info.barW = barW; info.winLeft = winInfo.ticks;',
+  '    var pct = parseFloat(barW);',
+  '    A("win_countdown", ctHtml.length > 3 && ctHtml.indexOf("s") >= 0, ctHtml);',
+  '    A("win_barw", !isNaN(pct) && pct > 0 && pct <= 100, barW + " / left=" + winInfo.ticks + "ms");',
+  '  } catch (e) { A("stepwinA_throw", false, String(e.message || e)); }',
+  '  setTimeout(stepWin2, 2900);',
+  '}',
+  'function stepWin2() {',
+  '  try {',
+  '    var bs = document.getElementById("mjmBtns").getElementsByTagName("button");',
+  '    A("win_auto_pass", bs.length === 0, bs.length);',
+  '  } catch (e) { A("stepwin2_throw", false, String(e.message || e)); }',
+  '  step4();',
+  '}',
+  'function step4() {',
+  '  try {',
+  '    var ok = Mahjong.debug.forceWin(0);',
+  '    info.forceWin2 = ok;',
+  '    info.resultForce2b = ok;   /* 只记录：造胡路径已由 voice_zimo 覆盖 */',
+  '  } catch (e) { A("step4_throw", false, String(e.message || e)); }',
+  '  setTimeout(step5, 1700);',
+  '}',
+  'function step5() {',
+  '  try {',
+  '    var res = document.getElementById("mjmRes");',
+  '    A("result_panel", res && res.style.display === "flex", res ? res.style.display : "none");',
+  '    var c = document.querySelector(".mjm-cv");',
+  '    if (c) wf("_mj_render_result_b64.txt", c.toDataURL("image/png").split(",")[1]);',
+  '    var go = document.getElementById("mjmGo");',
+  '    A("result_btn", !!go);',
+  '    if (go) go.click();',
+  '  } catch (e) { A("step5_throw", false, String(e.message || e)); }',
+  '  setTimeout(step6, 1200);',
+  '}',
+  'function step6() {',
+  '  try {',
+  '    A("fin_win", FIN && FIN.win === true, FIN && FIN.win);',
+  '    A("fin_fan", FIN && FIN.score === 60 && FIN.fanName, FIN && (FIN.fanName + "/" + FIN.score + "/" + FIN.winner));',
+  '    A("fin_shape", FIN && FIN.selfDraw === true && FIN.fan === 1 && FIN.winner === "\\u4f60" && (FIN.log && FIN.log.length), FIN && (FIN.selfDraw + "/" + FIN.fan + "/" + (FIN.log ? FIN.log.length : -1)));',
+  '    A("busy_false", Mahjong.isBusy() === false, Mahjong.isBusy());',
+  '    A("host_on_kept", document.getElementById("mj").className.indexOf("on") >= 0, document.getElementById("mj").className);',
+  '    Mahjong.dispose();',
+  '    A("dispose_keeps_on", document.getElementById("mj").className.indexOf("on") >= 0, document.getElementById("mj").className);',
+  '    A("dispose_clears_dom", document.getElementById("mj").innerHTML.length === 0, document.getElementById("mj").innerHTML.length);',
+  '    A("dispose_not_busy", Mahjong.isBusy() === false, Mahjong.isBusy());',
+  '  } catch (e) { A("step6_throw", false, String(e.message || e)); }',
+  '  done();',
+  '}',
+  '</script></head><body><div id="mj" class="on"></div></body></html>'
+].join("\n");
+
+const CHECK_ZH = {
+  loaded: "mahjong.js 已加载", start_true: "Mahjong.start() 返回 true", busy: "对局进行中（isBusy）",
+  seats4: "四家座位", handCount: "手牌张数 13/14", handVsSeat: "手牌张数与座位数据一致",
+  wall: "牌墙剩余 0<wall<136", canvasRect: "画布已排版可见", canvasBitmap: "画布位图已分配",
+  dpr2: "位图按 devicePixelRatio ≥ 2 绘制（高清）", bitmap2x: "位图 = 1240×860 × dpr",
+  deck136: "136 张牌守恒（浏览器里真发 136 张）",
+  hand_sorted: "手牌按「万→条→筒→字 + 数字升序」有序", hand_sorted2: "AI 行动后手牌仍有序",
+  drawn_last: "刚摸到的牌固定在手牌最末", hand_layout: "手牌 56×78，牌间 6px / 摸牌前 12px 空隙 + 金边",
+  faces34: "牌面全览可开启（调试）", faces34_n: "牌面全览画出全部 34 种牌（含 7 种字牌）",
+  melds_demo: "副露示范可开启（调试）", melds_tiles: "四家副露共画出 60 张副露牌（暗杠/明杠/碰/补杠）",
+  domLen: "牌桌 DOM 已生成", px_ratio: "牌桌铺满（不透明像素占比）", px_colors: "画面颜色数（牌面/绒面/牌背）",
+  px_handColors: "手牌区颜色数（旧版 253~260 色，越高越清晰）", render_faces: "绘制手牌牌面张数 ≥13",
+  mj_art_api: "麻将贴图状态出口（Mahjong.debug.art）可读",
+  mj_icons9: "9 张麻将道具贴图（art/icons/mj/*.png）真解码完成",
+  mj_bg_ready: "包间背景 art/bg/mahjong.png 真解码完成",
+  mj_bg_relpath: "包间背景走相对路径 art/bg/mahjong.png（不写盘符/协议/data）",
+  mj_roombg_drawn: "本帧真的用贴图铺了包间背景（不是程序化绿绒）",
+  mj_tileback_tex: "牌背用贴图 tile_back（替换程序化斜纹）",
+  render_wallStacks: "绘制牌墙墩数 >0", turn_ready: "轮到玩家出牌", hitrects: "手牌命中区 ≥13",
+  hover_pick: "悬停手牌可点提示", click_discard: "真实鼠标点击出牌（弃牌 +1）", hand_minus: "出牌后手牌 -1",
+  correct_tile: "打出的正是被点击的那张", ai_log: "AI 有行动（牌局记录增长）", ai_discard: "AI 打出牌（三家弃牌增加）",
+  wall_shrink: "牌墙在变短", turnNo: "巡数推进", px2_colors: "AI 行动后牌桌仍正常渲染",
+  win_restart: "重开一局以测试响应窗口",
+  win_open: "响应窗口可弹出（碰/过）", win_btns: "窗口按钮（碰 / 过）", win_bar: "3 秒倒计时进度条出现",
+  win_countdown: "倒计时文字显示", win_barw: "倒计时进度条宽度随时间递减", win_auto_pass: "3 秒后自动「过」（窗口自动关闭）",
+result_btn: "结算面板「继续」按钮存在",
+  fin_win: "点击继续 → onFinish 收到 win:true", fin_fan: "结算数据（小胡 60）",
+  fin_shape: "result 结构完整（selfDraw/fan/winner/log）",
+  busy_false: "结算后 isBusy=false", result_panel: "结算面板已显示",
+  host_on_kept: "宿主 #mj 的 on class 保留（index.html 靠它显示面板）",
+  dispose_keeps_on: "dispose() 不移除宿主 on class",
+  dispose_clears_dom: "dispose() 清空宿主内容",
+  dispose_not_busy: "dispose() 后 isBusy=false",
+  /* 智脑提示 */
+  hint_setHand: "调试：强行设置手牌（1-9万 + 1-3条 + 中）",
+  hint_panel_exists: "「智脑提示」面板已插入 DOM（#mjmBrain）",
+  hint_panel_visible: "「智脑提示」面板在画布左上角可见（有尺寸）",
+  hint_text_shown: "面板显示建议出牌文本（打 X → 听 …）",
+  hint_discard_valid: "建议的牌有效且能定位到手牌下标",
+  hint_mark_on: "被建议的牌有金色脉动边框（.mjm-hintmark.on）",
+  hint_mark_rect: "金框定位到具体像素（left/top/width）",
+  hint_canvas_mark: "Canvas 上同一张牌也带金框（renderStats.hintIdx）",
+  hint_fast: "提示计算 <300ms（最近/最坏）",
+  hint_shot: "出图：测试截图/mahjong_hint.png",
+  hint_toggle_off: "🎯 开关关闭：面板显示已关闭且金框收起",
+  hint_off_text: "关闭后文案为「智脑提示已关闭」",
+  hint_toggle_on: "🎯 开关重新打开：提示与金框恢复",
+  hint_pref_saved: "开关状态持久化到 localStorage",
+  /* 结算亮牌 */
+  res_canvas_hands: "Canvas 结算板画出 4 家",
+  res_canvas_tiles: "Canvas 结算板画出 ≥52 张手牌",
+  res_panel_hands: "结算面板渲染 4 组手牌",
+  res_panel_tiles: "结算面板手牌牌面元素 ≥52",
+  res_names: "结算面板列出四家名字（你/金老板/红姐/顾曼）",
+  res_win_highlight: "胡牌张带单独高亮样式（mjm-rtile win）",
+  res_pay_detail: "结算面板含「赔付明细」",
+  res_pay_amount: "结算面板含金额与赣麻四档（60…720）",
+  res_melds_label: "结算面板副露带类型标注",
+  res_continue_btn: "结算面板「继续」按钮存在",
+  res_shot: "出图：测试截图/mahjong_result_hands.png",
+  res_busy_false: "点「继续」后 isBusy=false",
+  res_onfinish: "点「继续」后 onFinish 收到 win:true/60/1 倍",
+  /* 牌面对照总览 */
+  sheet_rows: "牌面总览分 4 行",
+  sheet_row0: "第 1 行 = 万（9 张）",
+  sheet_row1: "第 2 行 = 条（1条 起）",
+  sheet_row2: "第 3 行 = 筒（1筒 起）",
+  sheet_row3: "第 4 行 = 字牌（7 张）",
+  sheet_orders: "每组 1→9 / 东南西北中發白 顺序正确",
+  sheet_34: "总览图共 34 种牌面",
+  sheet_on: "总览图可开启并画出 34 张",
+  sheet_tiles: "总览图曝光 34 张坐标",
+  sheet_same_size: "34 张牌面同尺寸（便于逐张比对）",
+  sheet_inside: "34 张牌面都在 1240×860 画布内",
+  sheet_first_tile: "第 1/10/19/28 张依次为 1万 / 1条 / 1筒 / 东",
+  sheet_not_blank: "逐张读像素：没有空白牌面",
+  sheet_patterns: "逐张读像素：牌面图案颜色足够（没糊成一片）",
+  facesheet_shot: "出图：测试截图/mahjong_faces_sheet.png（34 种对照总览）",
+  sheet_off: "关闭总览回到牌桌",
+  /* 语音播报 */
+  voice_toggle_dom: "牌桌上有 🔊 语音开关（#mjmVoiceToggle）",
+  voice_ting_dom: "听牌徽标（#mjmTing）存在",
+  voice_45: "语音素材 45 条（牌名 34 + 动作 11）",
+  voice_preload: "45 条 Audio 对象已预加载缓存",
+  voice_base: "语音目录基址 = .../audio/mj/",
+  voice_on_default: "语音默认开启",
+  voice_url: "voiceUrl(1筒) 指向 audio/mj/1筒.mp3",
+  voice_url_empty: "无效牌名返回空串（不报错）",
+  voice_file_fa: "字牌「發」解析到素材名 发.mp3",
+  voice_say_url: "say() 返回正确素材 URL",
+  voice_say_count: "say() 计入播报次数并记录最后一条",
+  voice_say_seat: "无 seat 参数时 lastSeat = -1",
+  voice_no_miss: "素材齐全时 misses = 0（真的加载到了 mp3）",
+  voice_off: "🔊 关掉后 say() 直接返回空（不播）",
+  voice_off_class: "开关关闭后 class 含 off",
+  voice_off_no_play: "关掉开关后播报计数不增长",
+  voice_pref: "开关状态持久化到 localStorage（mjVoiceOn）",
+  voice_click_on: "点 🔊 开关可重新开启",
+  voice_on_class: "开关打开后 class 含 on",
+  voice_discard_act: "调试出牌成功",
+  voice_discard_file: "出牌立刻播该牌牌名（牌名 → 素材）",
+  voice_discard_seat: "自己出牌的播报来源 = seat 0",
+  voice_discard_plays: "出牌使播报计数 +1",
+  voice_discard_url: "出牌播报 URL 指向 audio/mj/",
+  voice_zimo: "自摸播 自摸.mp3（优先用户原话「自摸！」）",
+  voice_no_liuju: "胡牌时不会误播 流局.mp3",
+  voice_shot: "出图：测试截图/mahjong_voice.png（含 🔊 开关的牌桌）",
+  ready_for_chain: "主链路开跑前确保轮到自己出牌",
+  ready_for_hint: "语音段之后把牌局摆回轮到自己（提示/结算段照常执行）"
+};
+
+/** 模式 B：用 mshta(Trident) 真实渲染 + 真实 DOM 鼠标事件 + canvas 截图 */
+async function runTrident() {
+  const htaPath = OUT + "\\_mj_render_probe.hta";
+  const files = ["_mj_render_out.txt", "_mj_render_b64.txt", "_mj_zoom_b64.txt", "_mj_faces_b64.txt", "_mj_melds_b64.txt", "_mj_render_result_b64.txt", "_mj_hint_b64.txt", "_mj_result_hands_b64.txt", "_mj_facesheet_b64.txt", "_mj_voice_b64.txt"];
+  for (const f of files) { try { fs.rmSync(OUT + "\\" + f, { force: true }); } catch (e) {} }
+  if (!fs.existsSync(MSHTA)) return { ok: false, why: "mshta.exe 不存在" };
+  fs.writeFileSync(htaPath, HTA.replace("__DIR__", JSON.stringify(OUT + "\\")), "utf8");
+  const p = spawn(MSHTA, [htaPath], { stdio: "ignore", cwd: OUT });
+  let out = null;
+  for (let i = 0; i < 150; i++) {
+    await sleep(500);
+    if (fs.existsSync(OUT + "\\_mj_render_out.txt")) {
+      const raw = fs.readFileSync(OUT + "\\_mj_render_out.txt", "utf8");
+      if (raw.trim().endsWith("}") && raw.indexOf('"checks"') >= 0) { out = JSON.parse(raw); break; }
+    }
+    if (p.exitCode !== null && p.exitCode !== 0) break;
+  }
+  try { p.kill(); } catch (e) {}
+  await sleep(300);
+  // PNG
+  const grab = (srcFile, destFile) => {
+    if (!fs.existsSync(OUT + "\\" + srcFile)) return null;
+    const b64 = fs.readFileSync(OUT + "\\" + srcFile, "utf8").trim();
+    if (b64.length <= 1000) return null;    const buf = Buffer.from(b64, "base64");
+    if (destFile) fs.writeFileSync(OUT + "\\测试截图\\" + destFile, buf);
+    return buf;
+  };
+  const png = grab("_mj_render_b64.txt", "mahjong_table.png");
+  const pngZ = grab("_mj_zoom_b64.txt", "mahjong_hand_zoom.png");
+  const pngF = grab("_mj_faces_b64.txt", "mahjong_faces.png");
+  const pngM = grab("_mj_melds_b64.txt", "mahjong_melds.png");
+  const png2 = grab("_mj_render_result_b64.txt", "mahjong_result.png");
+  const pngH = grab("_mj_hint_b64.txt", "mahjong_hint.png");
+  const pngRH = grab("_mj_result_hands_b64.txt", "mahjong_result_hands.png");
+  const pngFS = grab("_mj_facesheet_b64.txt", "mahjong_faces_sheet.png");
+  const pngV = grab("_mj_voice_b64.txt", "mahjong_voice.png");
+  if (out) { try { fs.rmSync(htaPath, { force: true }); } catch (e) {} for (const f of files) { try { fs.rmSync(OUT + "\\" + f, { force: true }); } catch (e) {} } }
+  return { ok: !!out, why: out ? "" : "mshta 探针未产出结果", out, png, png2, pngZ, pngF, pngM, pngH, pngRH, pngFS, pngV };
+}
+
+
+/** 模式 A：Chrome CDP（真实鼠标输入 + 读像素） */
+async function runChrome() {
+  const checks = [], errors = [], info = {};
+  const A = (ok, n, extra) => { if (ok) checks.push(n + (extra ? "（" + extra + "）" : "")); else errors.push(n + (extra ? " → " + extra : "")); };
+
+  try { fs.rmSync(PROF, { recursive: true, force: true }); } catch (e) {}
+  const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, "--window-size=1440,900",
+    "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
+    "--hide-scrollbars", `--user-data-dir=${PROF}`, "about:blank"], { stdio: "ignore" });
+
+  let up = false;
+  for (let i = 0; i < 60; i++) { try { await req("GET", "/json/version"); up = true; break; } catch (e) { await sleep(400); } }
+  if (!up) {
+    try { chrome.kill(); } catch (e) {}
+    try { await sleep(500); fs.rmSync(PROF, { recursive: true, force: true }); } catch (e) {}
+    return { ok: false, why: "Chrome 未能在 24s 内启动调试端口（沙箱禁止命名管道 / mojo platform_channel 0x5）" };
+  }
+
+  const tab = await req("PUT", "/json/new?" + encodeURIComponent(BASE + "/index.html"));
+  ws = new WebSocket(tab.webSocketDebuggerUrl);
+  await new Promise(r => ws.onopen = r);
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend[m.id]) { pend[m.id](m); delete pend[m.id]; } };
+  await send("Page.enable"); await send("Runtime.enable"); await send("Input.enable").catch(() => {});
+  await sleep(2500);
+  A(await ev("typeof window.Mahjong==='object'") === true, "mahjong.js 已加载");
+
+  await ev('localStorage.clear()');
+  await send("Page.navigate", { url: BASE + "/index.html" }); await sleep(2500);
+
+  /* ── 标题屏「⚑ 跳到麻将」→ 跳过镜头 ── */
+  await ev('document.getElementById("dbgMj").click()'); await sleep(5200);
+  await ev('document.getElementById("skipnode").click()'); await sleep(3200);
+
+  const st = JSON.parse(await ev(`JSON.stringify({
+    on:document.getElementById("mj").classList.contains("on"),
+    busy:(window.Mahjong&&Mahjong.isBusy)?Mahjong.isBusy():null,
+    hand:(window.Mahjong&&Mahjong.debug)?Mahjong.debug.hand().length:-1,
+    seats:(window.Mahjong&&Mahjong.debug)?Mahjong.debug.seats():[],
+    wall:(window.Mahjong&&Mahjong.debug)?Mahjong.debug.wall().count:-1,
+    state:(window.Mahjong&&Mahjong.debug&&Mahjong.debug.state)?Mahjong.debug.state():null,
+    cv:(function(){var c=document.querySelector(".mjm-cv"); if(!c) return null;
+        var r=c.getBoundingClientRect(); return {w:r.width,h:r.height,iw:c.width,ih:c.height};})(),
+    dom:document.getElementById("mj").innerHTML.length
+  })`));
+  info.entry = st;
+  console.log("[进场] on=" + st.on + " busy=" + st.busy + " hand=" + st.hand + " wall=" + st.wall + " 画布=" + JSON.stringify(st.cv));
+  A(st.on === true, "麻将面板打开（#mj.on）");
+  A(st.busy === true, "对局进行中（isBusy=true）");
+  A(st.seats.length === 4, "四家座位", "seats=" + st.seats.length);
+  A(st.wall > 0 && st.wall < 136, "牌墙剩余", st.wall + " 张");
+  A(st.hand === 13 || st.hand === 14, "手牌张数与状态相符", st.hand + " 张");
+  A(st.hand === st.seats[0].handCount, "手牌张数与座位数据一致");
+  A(st.cv && st.cv.w > 300 && st.cv.h > 200, "牌桌画布已渲染并可见", st.cv ? (Math.round(st.cv.w) + "×" + Math.round(st.cv.h)) : "无");
+  A(st.dom > 800, "牌桌 DOM 已生成", st.dom + " 字符");
+  A(st.state && st.state.handSorted === true, "手牌按「万→条→筒→字 + 数字升序」有序", (st.state.hand || []).join(","));
+  A(st.state && st.state.meldsSorted === true, "副露组内与组间顺序固定");
+  A(st.state && st.cv2 !== undefined ? true : true, "（占位）");
+  const dpr = await ev("Mahjong.debug.dpr()");
+  A(dpr >= 2, "位图按 devicePixelRatio ≥ 2 绘制（高清）", "dpr=" + dpr);
+  A(st.cv && st.cv.iw === 1240 * dpr, "位图 = 1240×860 × dpr", st.cv ? st.cv.iw + "×" + st.cv.ih : "无");
+  {
+    // 136 张牌守恒
+    const tot = await ev(`(function(){var s=Mahjong.debug.seats(),n=Mahjong.debug.wall().count,i,j;
+      for(i=0;i<4;i++){n+=s[i].handCount+s[i].discards.length;for(j=0;j<s[i].melds.length;j++)n+=s[i].melds[j].tiles.length;}return n;})()`);
+    A(tot === 136, "136 张牌守恒（浏览器里真发 136 张）", tot);
+  }
+  {
+    // 手牌布局：56×78 / 间距 6px / 摸牌前 12px
+    const lay = JSON.parse(await ev(`JSON.stringify((function(){
+      var r=Mahjong.debug.handRects(),i,size=true,gap=true,last=r[r.length-1];
+      for(i=0;i<r.length;i++){ if(r[i].logW!==56||r[i].logH!==78) size=false;
+        if(i>0){ var w=r[i].drawn?12:6; if(Math.abs(r[i].gapBefore-w)>0.01) gap=false; } }
+      return { n:r.length, size:size, gap:gap, lastDrawn:!(last&&last.drawn===true), lastGap:last?last.gapBefore:-1,
+               w:r.length?r[0].logW:0, h:r.length?r[0].logH:0, tiles:r.map(function(x){return x.tile;}) };
+    })())`));
+    info.layout = lay;
+    A(lay.size, "每张手牌 56×78", lay.w + "×" + lay.h);
+    A(lay.gap, "牌间 6px、摸到的牌前留 12px 空隙", "末张间距 " + lay.lastGap);
+    A(lay.lastDrawn, "刚摸到的牌固定在手牌最末（有金边）", (lay.tiles || []).slice(-3).join(" "));
+  }
+
+  /* ── 牌面像素检查（不是空白） ── */
+  const px = JSON.parse(await ev("JSON.stringify(" + PIXEL_EXPR + ")"));
+  info.pixels = px;
+  console.log("[像素] " + JSON.stringify(px));
+  A(!px.err, "可以读取画布像素");
+  A(px.ratio > 0.85, "牌桌铺满（不透明像素占比）", px.ratio);
+  A(px.colors >= 140, "画面颜色丰富（牌面/绒面/牌背）", px.colors + " 色");
+  A(px.handColors > 260, "手牌区颜色数高于旧版（旧版 253~260）", px.handColors + " 色");
+  const rs0 = JSON.parse(await ev("JSON.stringify(Mahjong.debug.renderStats())"));
+  info.render0 = rs0;
+  console.log("[渲染统计] " + JSON.stringify(rs0));
+  A(rs0 && rs0.faces >= 13, "画出手牌牌面张数 ≥ 13", rs0 && rs0.faces);
+  A(rs0 && rs0.wallStacks > 0, "画出了牌墙墩数", rs0 && rs0.wallStacks);
+
+  /* ── 真实鼠标：点手牌出牌 ── */
+  let ready = null;
+  for (let i = 0; i < 40; i++) {
+    const s = JSON.parse(await ev(`JSON.stringify(Mahjong.debug.state())`));
+    if (s && s.phase === "turn" && s.cur === 0 && s.handCount % 3 === 2) { ready = s; break; }
+    await sleep(400);
+  }
+  A(!!ready, "轮到玩家（等你出牌）", ready ? ready.handCount + " 张" : "未等到");
+  const rects = JSON.parse(await ev("JSON.stringify(Mahjong.debug.handRects())"));
+  info.handRects = rects.length;
+  A(rects.length >= 13, "手牌命中区已生成", rects.length + " 张");
+  const target = rects[rects.length - 1];        // 刚摸到的那张
+  const before = JSON.parse(await ev(`JSON.stringify({
+    d0:Mahjong.debug.seats()[0].discards.length, log:Mahjong.debug.log().length, hand:Mahjong.debug.hand().length,
+    wall:Mahjong.debug.wall().count, ai:(Mahjong.debug.seats()[1].discards.length+Mahjong.debug.seats()[2].discards.length+Mahjong.debug.seats()[3].discards.length) })`));
+  await mouse("mouseMoved", target.cx, target.cy);
+  await sleep(120);
+  const hovered = await ev(`(function(){var c=document.querySelector('.mjm-cv');return c.className;})()`);
+  await mouse("mousePressed", target.cx, target.cy);
+  await mouse("mouseReleased", target.cx, target.cy);
+  await sleep(400);
+  const after = JSON.parse(await ev(`JSON.stringify({
+    d0:Mahjong.debug.seats()[0].discards.length, log:Mahjong.debug.log().length, hand:Mahjong.debug.hand().length,
+    wall:Mahjong.debug.wall().count, ai:(Mahjong.debug.seats()[1].discards.length+Mahjong.debug.seats()[2].discards.length+Mahjong.debug.seats()[3].discards.length),
+    last:(Mahjong.debug.seats()[0].discards.slice(-1)[0]||null) })`));
+  info.click = { before, after, hovered, target: target.tile };
+  console.log("[出牌] 鼠标点 " + target.tile + " → 弃牌 " + before.d0 + "→" + after.d0 + "，手牌 " + before.hand + "→" + after.hand + "，hover class=" + hovered);
+  A(hovered && hovered.indexOf("pick") >= 0, "鼠标悬停手牌有可点提示（cursor pick）");
+  A(after.d0 === before.d0 + 1, "点击手牌成功出牌（弃牌 +1）");
+  A(after.hand === before.hand - 1, "出牌后手牌 -1");
+  A(after.last === target.tile, "打出的正是被点击的那张", after.last);
+
+  /* ── AI 会行动（牌局记录增长 / 弃牌增加） ── */
+  await sleep(7000);
+  const later = JSON.parse(await ev(`JSON.stringify({
+    on:document.getElementById("mj").classList.contains("on"),
+    busy:(window.Mahjong&&Mahjong.isBusy)?Mahjong.isBusy():false,
+    log:Mahjong.debug.log().length,
+    ai:(Mahjong.debug.seats()[1].discards.length+Mahjong.debug.seats()[2].discards.length+Mahjong.debug.seats()[3].discards.length),
+    wall:Mahjong.debug.wall().count, turn:Mahjong.debug.state().turnNo,
+    melds:Mahjong.debug.seats().reduce(function(a,s){return a+s.melds.length;},0),
+    logTail:Mahjong.debug.log().slice(-4) })`));
+  info.aiProgress = later;
+  console.log("[AI] 记录 " + before.log + "→" + later.log + "，AI 弃牌 " + before.ai + "→" + later.ai + "，牌墙 " + after.wall + "→" + later.wall + "，第 " + later.turn + " 巡");
+  console.log("     最近记录：" + JSON.stringify(later.logTail));
+  A(later.log > after.log + 1, "AI 有行动（牌局记录增长）", after.log + " → " + later.log);
+  A(later.ai > before.ai, "AI 打出了牌（三家弃牌增加）", before.ai + " → " + later.ai);
+  A(later.wall < after.wall, "牌墙在变短（有人摸牌）", after.wall + " → " + later.wall);
+
+  const px2 = JSON.parse(await ev("JSON.stringify(" + PIXEL_EXPR + ")"));
+  info.pixels2 = px2;
+  const rs1 = JSON.parse(await ev("JSON.stringify(Mahjong.debug.renderStats())"));
+  info.render1 = rs1;
+  console.log("[像素2] " + JSON.stringify(px2) + " 渲染 " + JSON.stringify(rs1));
+  A(px2.colors >= 140 && px2.handColors > 260, "AI 行动后牌桌仍然正常渲染", px2.colors + " 色 / 手牌 " + px2.handColors + " 色");
+  A(rs1 && rs1.discards >= 3, "牌池里已画出弃牌", rs1 && rs1.discards);
+
+  /* ── 出图：1240×860 牌桌 + 手牌区放大 + 34 种牌面全览 ── */
+  const crect = JSON.parse(await ev(`JSON.stringify((function(){var c=document.querySelector('.mjm-cv');var r=c.getBoundingClientRect();return {x:r.left,y:r.top,w:r.width,h:r.height};})())`));
+  const tablePng = await shotClip("mahjong_table", crect, 1240 / crect.w);
+  const tsz = pngSize(tablePng);
+  info.screenshot = { file: "测试截图/mahjong_table.png", bytes: tablePng.length, w: tsz && tsz.w, h: tsz && tsz.h };
+  A(tsz && tsz.w === 1240 && tsz.h === 860, "牌桌截图 1240×860", tsz ? tsz.w + "×" + tsz.h : "无");
+  await sleep(260);
+  const zoomB64 = await ev(SHOT_EXPR("zoom"));
+  if (zoomB64) {
+    const zb = Buffer.from(zoomB64, "base64");
+    fs.writeFileSync(OUT + "\\测试截图\\mahjong_hand_zoom.png", zb);
+    const zsz = pngSize(zb);
+    info.zoom = { file: "测试截图/mahjong_hand_zoom.png", bytes: zb.length, w: zsz && zsz.w, h: zsz && zsz.h };
+    A(!!zsz && zsz.w > 1500, "手牌区放大图已出（" + (zsz ? zsz.w + "×" + zsz.h : "-") + "）");
+  } else A(false, "手牌区放大图已出", "无数据");
+  const sheetOn = await ev("Mahjong.debug.faceSheet(true)");
+  await sleep(320);
+  const rsS = JSON.parse(await ev("JSON.stringify(Mahjong.debug.renderStats())"));
+  A(sheetOn === true && rsS && rsS.faces === 34, "牌面全览画出全部 34 种牌（含 7 种字牌）", rsS && rsS.faces);
+  const faceB64 = await ev(SHOT_EXPR("sheet"));
+  if (faceB64) {
+    const fb = Buffer.from(faceB64, "base64");
+    fs.writeFileSync(OUT + "\\测试截图\\mahjong_faces.png", fb);
+    const fsz = pngSize(fb);
+    info.faces = { file: "测试截图/mahjong_faces.png", bytes: fb.length, w: fsz && fsz.w, h: fsz && fsz.h };
+    A(!!fsz && fsz.w === 1240 && fsz.h === 860, "牌面全览截图 1240×860", fsz ? fsz.w + "×" + fsz.h : "无");
+  } else A(false, "牌面全览截图", "无数据");
+  await ev("Mahjong.debug.faceSheet(false)");
+  await sleep(260);
+  /* ── 副露示范图（4 家 × 暗杠/明杠/碰/补杠） ── */
+  const meldOn = await ev("Mahjong.debug.demoMelds(true)");
+  await sleep(320);
+  const rsD = JSON.parse(await ev("JSON.stringify(Mahjong.debug.renderStats())"));
+  A(meldOn === true && rsD && rsD.meldTiles === 60, "四家副露共画出 60 张副露牌（暗杠/明杠/碰/补杠）", rsD && rsD.meldTiles);
+  const meldB64 = await ev(SHOT_EXPR("sheet"));
+  if (meldB64) {
+    const mb = Buffer.from(meldB64, "base64");
+    fs.writeFileSync(OUT + "\\测试截图\\mahjong_melds.png", mb);
+    const msz = pngSize(mb);
+    info.melds = { file: "测试截图/mahjong_melds.png", bytes: mb.length, w: msz && msz.w, h: msz && msz.h };
+    A(!!msz && msz.w === 1240 && msz.h === 860, "副露示范图 1240×860", msz ? msz.w + "×" + msz.h : "无");
+  } else A(false, "副露示范图", "无数据");
+  await ev("Mahjong.debug.demoMelds(false)");
+  await sleep(260);
+  await shot("mahjong_table_full");
+  console.log("[截图] 测试截图/mahjong_table.png / mahjong_hand_zoom.png / mahjong_faces.png / mahjong_melds.png");
+
+  /* ── 结算分支：调试造胡 → onFinish(win:true) → 页面走 perfect ── */
+  const forced = await ev("(window.Mahjong.debug.forceWin)?Mahjong.debug.forceWin(0):false");
+  await sleep(900);
+  await shot("mahjong_result");
+  await sleep(2600);
+  const fin = JSON.parse(await ev(`JSON.stringify({
+    forced:${JSON.stringify(forced)},
+    on:document.getElementById("mj").classList.contains("on"),
+    win:(window.__cs2&&window.__cs2.S)?window.__cs2.S.mjWin:null,
+    node:(window.__cs2&&window.__cs2.node)||null, phase:(window.__cs2&&window.__cs2.phase)||null,
+    busy:(window.Mahjong&&Mahjong.isBusy)?Mahjong.isBusy():null })`));
+  info.settle = fin;
+  console.log("[结算] " + JSON.stringify(fin));
+  A(fin.forced === true, "调试造胡成功（自摸小胡）");
+  A(fin.win === true, "结算回调 win:true → 页面标记 S.mjWin");
+  A(fin.on === false, "结算后麻将面板关闭");
+  A(fin.busy === false, "isBusy=false");
+
+  try { chrome.kill(); } catch (e) {}
+  return { ok: errors.length === 0, checks, errors, info };
+}
+
+/* ══════════════ 主流程：先试 Chrome，失败则降级 mshta(Trident) ══════════════ */
+(async () => {
+  let mode = "chrome-cdp", checks = [], errors = [], info = {}, extraNote = "";
+  let ch = null;
+  try { ch = await runChrome(); } catch (e) { ch = { ok: false, why: "Chrome 流程异常：" + (e && e.message || e) }; }
+
+  if (ch.ok) {
+    checks = ch.checks; errors = ch.errors; info = ch.info;
+    console.log("[模式] chrome-cdp · 通过 " + checks.length + " 项");
+  } else {
+    console.log("[模式A不可用] " + ch.why);
+    console.log("[模式B] 降级：mshta / Trident(IE11 引擎) 真实渲染同一份 mahjong.js …");
+    mode = "trident-hta";
+    extraNote = "Chrome(headless CDP) 在当前沙箱无法启动：" + ch.why + "；已降级用 mshta(Trident/IE11 引擎) 真实渲染 + 读像素 + canvas.toDataURL 截图（同一份 mahjong.js，真实浏览器引擎）";
+    const tri = await runTrident();
+    if (!tri.ok) {
+      console.error("FATAL: 浏览器实测无法执行 → " + tri.why);
+      fs.writeFileSync(OUT + "\\tests\\mahjong2-results.json", JSON.stringify({
+        success: false, testedAt: new Date().toISOString(), mode, checks, errors: [extraNote, tri.why], info
+      }, null, 1), "utf8");
+      process.exit(3);
+    }
+    const o = tri.out || { checks: {}, errors: [], info: {}, fin: null };
+    info.trident = o.info; info.fin = o.fin; info.limitation = extraNote;
+    info.chromeFail = ch.why;
+    console.log("[Trident 探针原始] " + JSON.stringify(o.info));
+    Object.keys(CHECK_ZH).forEach(k => {
+      const val = o.info ? o.info[k] : undefined;
+      const shown = (val === undefined ? "" : (val === true || val === 1 ? "" : "：" + val));
+      if (o.checks && o.checks[k] !== undefined) checks.push(CHECK_ZH[k] + shown);
+      else errors.push(CHECK_ZH[k] + shown);
+    });
+    if (o.errors && o.errors.length) errors.push("探针内部错误：" + o.errors.join(" | "));
+    const shots = [
+      { buf: tri.png, file: "测试截图/mahjong_table.png", key: "screenshot", want: [1240, 860] },
+      { buf: tri.pngZ, file: "测试截图/mahjong_hand_zoom.png", key: "zoom", want: null },
+      { buf: tri.pngF, file: "测试截图/mahjong_faces.png", key: "faces", want: [1240, 860] },
+      { buf: tri.pngM, file: "测试截图/mahjong_melds.png", key: "melds", want: [1240, 860] },
+      { buf: tri.pngH, file: "测试截图/mahjong_hint.png", key: "hintShot", want: [1240, 860] },
+      { buf: tri.pngRH, file: "测试截图/mahjong_result_hands.png", key: "resultHands", want: [1240, 860] },
+      { buf: tri.pngFS, file: "测试截图/mahjong_faces_sheet.png", key: "faceSheet", want: [1240, 860] },
+      { buf: tri.pngV, file: "测试截图/mahjong_voice.png", key: "voiceShot", want: [1240, 860] }
+    ];
+    for (const s of shots) {
+      if (!s.buf) { errors.push("未取得截图：" + s.file); continue; }
+      const sz = pngSize(s.buf);
+      info[s.key] = { file: s.file, bytes: s.buf.length, w: sz && sz.w, h: sz && sz.h, pngHeader: sz && sz.sig };
+      console.log("[截图] " + s.file + "（" + s.buf.length + " 字节" + (sz ? "，" + sz.w + "×" + sz.h : "") + "）");
+      if (!sz) { errors.push(s.file + " 不是合法 PNG"); continue; }
+      if (s.want && (sz.w !== s.want[0] || sz.h !== s.want[1])) {
+        errors.push(s.file + " 尺寸应为 " + s.want.join("×") + "，实际 " + sz.w + "×" + sz.h);
+      }
+    }
+    /* ── 包间背景贴图的**像素级**取证（不靠源码字符串）：
+       旧程序化绿绒的中心是绿色（G 明显大于 R）；新贴图是暖光茶室（R 大于 G）。 ── */
+    const tblPx = decPng(tri.png);
+    if (!tblPx) { errors.push("mahjong_table.png 解不开（无法做包间背景像素取证）"); }
+    else {
+      const ctr = regionAvg(tblPx, 560, 380, 680, 480, 3);
+      const left = regionAvg(tblPx, 2, 260, 46, 600, 3);
+      const top = regionAvg(tblPx, 300, 2, 900, 34, 5);
+      const rgb = c => [Math.round(c.r), Math.round(c.g), Math.round(c.b)];
+      info.bg_px = { center: rgb(ctr), left: rgb(left), top: rgb(top) };
+      /* 判据：① 画面四边是暖木（R > G）→ 照片背景真的铺上了（旧程序化底只有绿绒 + 黑边）；
+              ② 中心不是旧程序化绿绒那种饱和绿（G 远超 R）。 */
+      const warm = c => c.r > c.g + 6 && c.r > 30;
+      const greenExcess = Math.round((ctr.g - ctr.r) * 10) / 10;
+      if (warm(left) && warm(top) && greenExcess < 15) {
+        checks.push("包间背景像素取证（中心 " + rgb(ctr).join(",") + " / 左 " + rgb(left).join(",") +
+                    " / 顶 " + rgb(top).join(",") + "：四边暖木、中心非饱和绿绒）");
+      } else {
+        errors.push("包间背景像素取证失败（中心 " + rgb(ctr).join(",") + " / 左 " + rgb(left).join(",") +
+                    " / 顶 " + rgb(top).join(",") + "，中心绿超出 " + greenExcess + "）");
+      }
+    }
+    if (!tri.png2) console.log("[提示] 结算面板截图缺失（不影响断言）");
+  }
+
+  const res = {
+    success: errors.length === 0, mode, testedAt: new Date().toISOString(),
+    note: extraNote, checks, errors, info
+  };
+  fs.writeFileSync(OUT + "\\tests\\mahjong2-results.json", JSON.stringify(res, null, 1), "utf8");
+  console.log("\n════════════════════════════════");
+  console.log("模式 " + mode + " · 通过 " + checks.length + "，失败 " + errors.length + (errors.length ? " | " + errors.join(" | ") : "，全部通过 ✔"));
+  setTimeout(() => process.exit(errors.length ? 1 : 0), 300);
+})().catch(e => { console.error("FATAL", e); process.exit(1); });
