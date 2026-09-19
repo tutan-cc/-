@@ -365,6 +365,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
     <button id="dbgJump" style="padding:9px 22px;border:1px solid var(--purple);color:var(--purple);font-size:12px;letter-spacing:2px;background:rgba(176,125,255,.08)">⚑ 跳到谈判（调试）</button>
     <button id="dbgFight" style="padding:9px 22px;border:1px solid var(--red);color:var(--red);font-size:12px;letter-spacing:2px;background:rgba(255,77,109,.08)">⚑ 跳到打斗</button>
     <button id="dbgMj" style="padding:9px 22px;border:1px solid var(--cyan);color:var(--cyan);font-size:12px;letter-spacing:2px;background:rgba(77,216,255,.08)">⚑ 跳到麻将</button>
+    <button id="dbgBf" style="padding:9px 22px;border:1px solid #ff9ec7;color:#ffd76e;font-size:12px;letter-spacing:2px;background:rgba(255,158,199,.08)">⚑ 跳到早餐店</button>
     <button id="dbgTalk" style="padding:9px 22px;border:1px solid var(--line);color:var(--dim);font-size:12px;letter-spacing:2px;background:rgba(255,255,255,.04)">⚑ 全部解锁</button>
   </div>
   <div class="tmeta">互动影游原型 v0.5 · 序章 + 第一章 + 第二章 · 14 节点 · 5 种小游戏 · 全台词配音<br>架构仿照《天枢 v1.6》· 实拍素材来自 重生2视频提取</div>
@@ -2578,9 +2579,14 @@ makeRain();
 $("dbgJump").addEventListener("click",()=>{ AudioSys.init(); debugJumpTo("negotiate"); });
 $("dbgFight").addEventListener("click",()=>{ AudioSys.init(); debugJumpTo("brawl"); });
 $("dbgMj").addEventListener("click",()=>{ AudioSys.init(); debugJumpTo("mahjong"); });
+/* ⚑ 跳到早餐店：数值沿用 debugState()，此时只有羁绊 20~79 的角色收得下早餐
+   （hong 24 / man 24 可选；其余需先「全部解锁」或自行提升羁绊），面板空时 openBreakfast 会 toast 说明原因 */
+$("dbgBf").addEventListener("click",()=>{ enterGame();
+  setTimeout(()=>{ if(openBreakfast()===false) toast("早餐店需要先把羁绊提到 <b>20~79</b>"); }, 300); });
 $("dbgTalk").addEventListener("click",()=>{ AudioSys.init(); CS2_DEBUG.unlockAll();
   $("title").classList.add("hide"); $("game").classList.add("on"); render(); });
-$("startBtn").addEventListener("click",()=>{
+/* ═══ 进入游戏运行时（开始重生 / 各调试跳转共用，避免 S 未初始化就 render） ═══ */
+function enterGame(){
   AudioSys.init();
   S = load() || newState();
   $("title").classList.add("hide");
@@ -2590,6 +2596,7 @@ $("startBtn").addEventListener("click",()=>{
   $("vobtn").textContent="🎙 "+voModeLabel();
   $("vobtn").classList.toggle("off", S.voMode==="off");
   init3D();
+  if(window.Breakfast && Breakfast.debug) window.__cs2.bf = Breakfast.debug;
   // 启动自检：能否取到 video/ 资源
   probeMedia().then(r=>{
     mediaOK = r.video;
@@ -2597,7 +2604,10 @@ $("startBtn").addEventListener("click",()=>{
     else if(!r.video) { mediaOK=false; showMediaWarn("no-video-frame"); }
     else toast("<b>媒体自检通过</b> · 视频与剧照均可读取");
   });
-  if(window.Breakfast && Breakfast.debug) window.__cs2.bf = Breakfast.debug;
+  return S;
+}
+$("startBtn").addEventListener("click",()=>{
+  enterGame();
   if(!S.done.includes("intro")) setTimeout(()=>playNode("intro"), 700);
   else if(S.active && !S.done.includes(S.active.node)){
     const a=S.active; setTimeout(()=>{ playNode(a.node);
