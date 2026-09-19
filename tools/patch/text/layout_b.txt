@@ -1,0 +1,67 @@
+  /**
+   * 牌墙（照参考图 2）：四边整齐的长条墙 —— 对面最长、玩家这面次之、左右两侧最短；
+   * 每边**双层叠放**（外层 / 内层两排牌背，条条对齐），随剩余张数各自从两端同时变短
+   * （缺口留在正中，与真实牌局一致）。同一侧的牌背尺寸完全一致。
+   *   · 横向边：每张 30×22（wall.tw × wall.th），外层 / 内层相差 24px 深
+   *   · 纵向边：每张 22×30（wall.side.tw × wall.side.th）
+   * 34 墩（136 张）的分配：上 13 / 下 9 / 左 6 / 右 6 —— 合计 34。
+   */
+  var WALL_SHARE = [
+    { side: "top", n: 13 }, { side: "right", n: 6 }, { side: "bottom", n: 9 }, { side: "left", n: 6 }
+  ];
+  var WALL_GEO = {
+    top: { horiz: true, cx: 620, outer: 26, inner: 50 },
+    bottom: { horiz: true, cx: 620, outer: 664, inner: 642 },
+    left: { horiz: false, cy: 430, outer: 26, inner: 50 },
+    right: { horiz: false, cy: 430, outer: 1192, inner: 1168 }
+  };
+  /** 牌墙墩数分配：按各边上限等比缩小，最后一边吃掉余数，保证总数恰好 = stacks */
+  function wallCounts(stacks) {
+    var out = {}, acc = 0, i, want, max;
+    for (i = 0; i < WALL_SHARE.length; i++) {
+      max = WALL_SHARE[i].n;
+      want = (i === WALL_SHARE.length - 1) ? (stacks - acc) : Math.round(stacks * max / 34);
+      if (want > max) want = max;
+      if (want < 0) want = 0;
+      out[WALL_SHARE[i].side] = want;
+      acc += want;
+    }
+    return out;
+  }
+  /** 牌墙的所有可能位置（满墙 34 墩 × 双层 = 68 块）——装饰安全区按它取保守外接框。
+      同一侧的牌从各自中心向两端交替编号：画前 n 块 = 以中心为轴的对称长条。 */
+  function wallSlots() {
+    if (G.wallSlots) return G.wallSlots;
+    var out = [], s, k, layer, side, geo, maxN, tw, th, off;
+    for (s = 0; s < WALL_SHARE.length; s++) {
+      side = WALL_SHARE[s].side; geo = WALL_GEO[side]; maxN = WALL_SHARE[s].n;
+      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;        // 沿长条的尺寸
+      th = geo.horiz ? LAYOUT.wall.th : LAYOUT.wall.side.tw;        // 沿深度的尺寸
+      for (k = 0; k < maxN; k++) {
+        off = (k % 2 ? Math.ceil(k / 2) : -k / 2) * tw;
+        for (layer = 0; layer < 2; layer++) {                       // layer 0 = 内层（靠桌心）
+          if (geo.horiz) {
+            out.push({ side: side, k: k, layer: layer, x: geo.cx + off - tw / 2,
+                       y: layer === 0 ? geo.inner : geo.outer, w: tw, h: th });
+          } else {
+            out.push({ side: side, k: k, layer: layer, x: layer === 0 ? geo.inner : geo.outer,
+                       y: geo.cy + off - tw / 2, w: th, h: tw });
+          }
+        }
+      }
+    }
+    G.wallSlots = out;
+    return out;
+  }
+  function drawWall(g, remaining) {
+    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots = wallSlots();
+    var i, s, drawn = 0;
+    G.stat.wallStacks = stacks;
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i];
+      if (s.k >= (need[s.side] || 0)) continue;     // 这一边已经变短
+      drawTileBack(g, s.x, s.y, s.w, s.h, { light: s.layer === 0 });
+      drawn++;
+    }
+    G.stat.wallTiles = drawn;
+  }

@@ -228,7 +228,7 @@ const HTA = [
   '    A("mj_bg_ready", ar && ar.bg && ar.bg.ready === true, ar && (ar.bg && ar.bg.file + " w=" + ar.bg.naturalWidth));',
   '    A("mj_bg_relpath", ar && ar.bg && ar.bg.file === "art/bg/mahjong.png" && !/^[A-Za-z]:|^https?:|^data:/i.test(ar.bg.file), ar && ar.bg && ar.bg.file);',
   '    A("mj_roombg_drawn", ar && ar.roomBg === true, ar && String(ar.roomBg));',
-  '    A("mj_tileback_tex", ar && ar.tileBackTex > 0, ar && (ar.tileBackTex + " 次"));',
+  '    A("mj_tileback_tex", !!(ar && ar.tileBackSolid > 0 && ar.tileBackTex === 0), ar && ("纯色矢量牌背 " + ar.tileBackSolid + " 张 · tile_back 贴图命中 " + ar.tileBackTex + " 次（素材是蓝底鱼鳞纹，按用户要求不接）"));',
   '    /* ── 本批新增：牌桌静态装饰（骰子 / 筹码 / 牌尺 / 烟灰缸）── */',
   '    A("mj_decor_dice", !!(ar && ar.decor) && ar.decor.dice === 1, ar && ar.decor && ("dice 贴图 ×" + ar.decor.dice + "（素材本身即两枚，只画一次）"));',
   '    A("mj_decor_chips", !!(ar && ar.decor) && ar.decor.chips === 3, ar && ar.decor && ("筹码贴图 ×" + ar.decor.chips + "（金一摞 + 红 + 蓝）"));',
@@ -237,9 +237,14 @@ const HTA = [
   '    var dk = (Mahjong.debug.decor ? Mahjong.debug.decor() : null);',
   '    A("mj_decor_api", !!dk, dk ? (dk.frames.length + " 个装饰框 / " + dk.reserved + " 个保留框") : "no-api");',
   '    A("mj_decor_safe", !!(dk && dk.ok), dk ? (dk.ok ? "与牌墙 / 四家手牌 / 副露 / 四家牌河 / 中央面板零相交 ✔" : JSON.stringify(dk.hits)) : "no-api");',
-  '    A("mj_decor_count", !!(dk && dk.frames.length === 6 && dk.reserved >= 30), dk && (dk.frames.length + " 装饰框 × " + dk.reserved + " 保留框（27 墩牌墙 + 4 手牌 + 4 副露 + 4 牌河 + 中央面板）"));',
+  '    A("mj_decor_count", !!(dk && dk.frames.length === 6 && dk.reserved >= 30), dk && (dk.frames.length + " 装饰框 × " + dk.reserved + " 保留框（34 墩牌墙双层 68 块 + 4 手牌 + 4 副露 + 4 牌河 + 中央指示盘）"));',
   '    A("mj_decor_inside", !!(dk && dk.frames.length === 6 && dk.frames.every(function (f) { return f.x >= 14 && f.y >= 14 && f.x + f.w <= 1226 && f.y + f.h <= 846; })), "6 个装饰框全部落在牌桌绒面 14..1226 × 14..846 内");',
   '    A("mj_decor_fallback", !!(ar && ar.fallback) && ar.fallback.join("|").indexOf("dice-texture>vector-dice") >= 0 && ar.fallback.join("|").indexOf("chip-texture>vector-chip") >= 0, ar && ar.fallback.join(" / "));',
+  '    /* 牌墙几何：同一侧牌背尺寸一致（横向 30×22 / 纵向 22×30，双层共 68 块）*/',
+  '    var wf2 = (Mahjong.debug.wallInfo ? Mahjong.debug.wallInfo() : null);',
+  '    A("wall_info_api", !!wf2, wf2 ? (wf2.total + " 块 / " + wf2.sizes.map(function (x) { return x.size + "×" + x.n; }).join(" · ")) : "no-api");',
+  '    A("wall_size_uniform", !!(wf2 && wf2.sizes.length <= 2 && wf2.total === 68), wf2 && (wf2.sizes.length + " 种尺寸 / 共 " + wf2.total + " 块（满墙 34 墩 × 双层）"));',
+  '    A("wall_share_total", !!(wf2 && wf2.counts && (wf2.counts.top + wf2.counts.right + wf2.counts.bottom + wf2.counts.left) === Math.ceil(Mahjong.debug.wall().count / 4)), wf2 && wf2.counts && ("上" + wf2.counts.top + "/右" + wf2.counts.right + "/下" + wf2.counts.bottom + "/左" + wf2.counts.left));',
   '    A("render_wallStacks", rs && rs.wallStacks > 0, rs && rs.wallStacks);',
   '    /* ── 手牌排序 / 摸牌位置 / 牌面尺寸 ── */',
   '    A("hand_sorted", st.handSorted === true, (st.hand || []).join(","));',
@@ -480,6 +485,20 @@ const HTA = [
   '    A("melds_demo", okD === true, okD);',
   '    var rsD = Mahjong.debug.renderStats();',
   '    A("melds_tiles", rsD && rsD.meldTiles === 60, rsD && rsD.meldTiles);',
+  '    /* 用户追加要求：副露同组内所有牌尺寸完全一致，横置只是绕中心旋转 90°、绝不缩放 */',
+  '    var mrs = (Mahjong.debug.meldRects ? Mahjong.debug.meldRects() : []), muni = {}, mrot = {}, mbad = 0, mi, kk, k2, ww;',
+  '    for (mi = 0; mi < mrs.length; mi++) {',
+  '      kk = mrs[mi].seat + "|" + mrs[mi].type;',
+  '      if (!muni[kk]) muni[kk] = {};',
+  '      muni[kk][mrs[mi].w.toFixed(2) + "x" + mrs[mi].h.toFixed(2)] = 1;',
+  '      mrot[mrs[mi].rot] = 1;',
+  '      if (mrs[mi].rot !== 0 && mrs[mi].rot !== 90) mbad++;',
+  '    }',
+  '    var msame = true, mks = [], nrot = 0;',
+  '    for (kk in muni) { if (muni.hasOwnProperty(kk)) { ww = []; for (k2 in muni[kk]) { if (muni[kk].hasOwnProperty(k2)) ww.push(k2); } mks.push(kk + "=" + ww.join("/")); if (ww.length !== 1) msame = false; } }',
+  '    for (k2 in mrot) { if (mrot.hasOwnProperty(k2)) nrot++; }',
+  '    A("meld_size_uniform", mrs.length === 60 && msame, mrs.length + " 张 · " + mks.join(" / "));',
+  '    A("meld_rotate_only", nrot === 2 && mrot[0] === 1 && mrot[90] === 1 && mbad === 0, "rot 取值=" + nrot + " 种（0 / 90）· 非 0/90 的 " + mbad + " 张");',
   '    var c = document.querySelector(".mjm-cv");',
   '    var t = document.createElement("canvas"); t.width = 1240; t.height = 860;',
   '    t.getContext("2d").drawImage(c, 0, 0, c.width, c.height, 0, 0, 1240, 860);',
@@ -735,6 +754,11 @@ const CHECK_ZH = {
   drawn_last: "刚摸到的牌固定在手牌最末", hand_layout: "手牌 56×78，牌间 6px / 摸牌前 12px 空隙 + 金边",
   faces34: "牌面全览可开启（调试）", faces34_n: "牌面全览画出全部 34 种牌（含 7 种字牌）",
   melds_demo: "副露示范可开启（调试）", melds_tiles: "四家副露共画出 60 张副露牌（暗杠/明杠/碰/补杠）",
+  meld_size_uniform: "副露尺寸统一：同组内所有牌 (宽,高) 只有一种（用户追加要求，防退化）",
+  meld_rotate_only: "副露横置牌只旋转不缩放：rot 只出现 0 / 90，没有第三种取值",
+  wall_info_api: "牌墙几何出口（Mahjong.debug.wallInfo）可读",
+  wall_size_uniform: "牌墙牌背尺寸一致：只有横向 30×22 / 纵向 22×30 两种，满墙 68 块（34 墩双层）",
+  wall_share_total: "牌墙四边墩数分配之和 = 剩余墩数（上/右/下/左 等比缩短）",
   domLen: "牌桌 DOM 已生成", px_ratio: "牌桌铺满（不透明像素占比）", px_colors: "画面颜色数（牌面/绒面/牌背）",
   px_handColors: "手牌区颜色数（旧版 253~260 色，越高越清晰）", render_faces: "绘制手牌牌面张数 ≥13",
   mj_art_api: "麻将贴图状态出口（Mahjong.debug.art）可读",
@@ -742,7 +766,7 @@ const CHECK_ZH = {
   mj_bg_ready: "包间背景 art/bg/mahjong.png 真解码完成",
   mj_bg_relpath: "包间背景走相对路径 art/bg/mahjong.png（不写盘符/协议/data）",
   mj_roombg_drawn: "本帧真的用贴图铺了包间背景（不是程序化绿绒）",
-  mj_tileback_tex: "牌背用贴图 tile_back（替换程序化斜纹）",
+  mj_tileback_tex: "牌背是饱满立体的纯色矢量（无斜纹；tile_back.png 蓝底鱼鳞纹素材按用户要求不接）",
   /* 本批新增：牌桌静态装饰（骰子 / 筹码 / 牌尺 / 烟灰缸） */
   mj_decor_dice: "牌桌装饰·骰子：用 dice.png 贴图（素材本身即两枚，只画一次）",
   mj_decor_chips: "牌桌装饰·筹码：chip_gold / chip_red / chip_blue 三张贴图都画上了",
@@ -898,6 +922,11 @@ async function runChrome() {
   try { fs.rmSync(PROF, { recursive: true, force: true }); } catch (e) {}
   const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, "--window-size=1440,900",
     "--enable-unsafe-swiftshader", "--use-gl=angle", "--use-angle=swiftshader",
+    /* BASE 是 file:// —— 画布上画过本地图片（包间背景 / 牌背素材）后会变「被污染」，
+       之后 getImageData() 直接抛 SecurityError，整条 CDP 断言链会断在像素取证那一步。
+       加这两个开关让 file:// 页面可以读自己的本地文件（等价于给测试页开同源），
+       只影响这个测试浏览器实例，不影响被测代码。 */
+    "--allow-file-access-from-files", "--disable-web-security",
     "--hide-scrollbars", `--user-data-dir=${PROF}`, "about:blank"], { stdio: "ignore" });
 
   let up = false;

@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  /** 牌背（深蓝斜纹 + 细边框，与正面明显对比） */",
+      "to": "    rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();\r\n  }",
+      "textFile": "tools/patch/text/backs_a.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, resHands: 0, resHandTiles: 0, meldRects: [] };",
+      "text": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, backSolid: 0, resHands: 0, resHandTiles: 0, meldRects: [] };" },
+
+    { "file": "mahjong.js",
+      "from": "    roomBg: false, tileBackTex: 0, decor: null,",
+      "text": "    roomBg: false, tileBackTex: 0, tileBackSolid: 0, decor: null," },
+
+    { "file": "mahjong.js",
+      "from": "      roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0,",
+      "text": "      roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0, tileBackSolid: G.tileBackSolid || 0,\r\n      /* tileBackTex 恒为 0：tile_back.png 是「深蓝 + 鱼鳞纹」，与用户「纯色无花纹」要求冲突，\r\n         按指示改用纯色矢量（drawTileBack）；tileBackSolid 是本帧画出的纯色牌背张数。*/" }
+  ]
+}

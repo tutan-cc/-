@@ -153,12 +153,16 @@ function createCanvas(w, h, o) {
     }
     return wind !== 0;
   }
-  /* 描边：把折线按 lineWidth 加宽成四边形再填充 */
+  /* 描边：把折线按 lineWidth 加宽成四边形再填充。
+     ⚠ 这里**不能**先 apply()：fillPath() 内部本来就会对每个点做一次 apply(transform)，
+       再预先变换一次等于把变换平方 —— DPR=2/3（缩放 4/9 倍）时整条描边跑到画布外，
+       带旋转（副露横置牌）时更会绕原点转 180°。2025 修复：折线点一律保持逻辑坐标，
+       线宽也保持逻辑单位，由 fillPath 统一施加当前变换（与浏览器语义一致）。 */
   function strokePath(paths, style, alpha, lw) {
     const hw = Math.max(0.4, lw / 2);
     for (const sp of paths) {
       for (let i = 0; i + 1 < sp.length; i++) {
-        const a = apply(sp[i][0], sp[i][1]), b = apply(sp[i + 1][0], sp[i + 1][1]);
+        const a = sp[i], b = sp[i + 1];
         let dx = b[0] - a[0], dy = b[1] - a[1];
         const len = Math.hypot(dx, dy); if (len < 1e-6) continue;
         dx /= len; dy /= len;
@@ -167,9 +171,8 @@ function createCanvas(w, h, o) {
       }
       // 简单圆角接缝
       for (const pt of sp) {
-        const p = apply(pt[0], pt[1]);
         const q = [];
-        for (let k = 0; k < 8; k++) q.push([p[0] + Math.cos(k / 8 * Math.PI * 2) * hw, p[1] + Math.sin(k / 8 * Math.PI * 2) * hw]);
+        for (let k = 0; k < 8; k++) q.push([pt[0] + Math.cos(k / 8 * Math.PI * 2) * hw, pt[1] + Math.sin(k / 8 * Math.PI * 2) * hw]);
         fillPath([q], style, alpha, "nonzero");
       }
     }

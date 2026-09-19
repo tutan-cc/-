@@ -1,0 +1,56 @@
+  /**
+   * 牌背：饱满立体的「一张纯色麻将」（照参考图里那种绿背）。
+   *   · 圆角矩形 + 顶面亮 / 侧面暗的厚度过渡 + 顶左高光边 + 细描边 → 是一张**有厚度的实心牌**
+   *   · **没有任何斜纹 / 花纹**（用户明确要求：不要斜杠）
+   *   · 同一套画法用在三处：① 剩余牌堆（牌墙）② 三家对家手牌背面 ③ 暗杠盖着的那两张
+   *   · 尺寸只由调用方给的 (w,h) 决定 —— 牌墙 / 对家手牌每张尺寸完全一致
+   * ⚠ art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」的一版素材，与「纯色、无花纹」冲突，
+   *   按用户指示改为纯色矢量画法，该素材**故意不接**（与 tile_white / tile_fa 同理，
+   *   见 art() 的 fallback 声明与 e2e 的 tileback_solid 断言）。
+   * o: { light: 顶面稍亮（牌墙外层用），默认 true }
+   */
+  function drawTileBack(g, x, y, w, h, o) {
+    o = o || {};
+    var m = Math.min(w, h);
+    var r = Math.max(2, m * .22);                      // 圆角
+    var d = Math.max(1.1, m * .17);                    // 厚度（顶面相对底面的内缩）
+    var light = o.light !== false;
+    g.save();
+    /* ① 投影：让牌在桌面上「坐得住」（不是厚 3D，只留一点落影） */
+    g.save();
+    g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = Math.max(2, m * .20);
+    g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, h * .05);
+    g.fillStyle = "#0e2c1d";
+    rr(g, x, y, w, h, r); g.fill();
+    g.restore();
+    /* ② 侧面 / 厚度：整体深绿底面 */
+    var gs = g.createLinearGradient(x, y, x + w * .30, y + h);
+    gs.addColorStop(0, light ? "#2f8455" : "#287349");
+    gs.addColorStop(1, light ? "#164c2d" : "#123f26");
+    g.fillStyle = gs;
+    rr(g, x, y, w, h, r); g.fill();
+    /* ③ 顶面：向左上偏移内缩（光源在左上）→ 右下露出「侧面」，就是厚度 */
+    var fx = x + d * .40, fy = y + d * .40, fw = w - d * 1.05, fh = h - d * 1.15;
+    var gf = g.createLinearGradient(fx, fy, fx, fy + fh);
+    gf.addColorStop(0, light ? "#4cb87c" : "#43ab72");
+    gf.addColorStop(.55, light ? "#3a9d63" : "#338c58");
+    gf.addColorStop(1, light ? "#2b7d4a" : "#256c40");
+    g.fillStyle = gf;
+    rr(g, fx, fy, fw, fh, Math.max(1.4, r * .70)); g.fill();
+    /* ④ 顶面高光边（上）+ 底面压边（下）→ 立体感；没有花纹 */
+    var inx = Math.max(1.2, fw * .16), iny = Math.max(1, fh * .085);
+    g.strokeStyle = "rgba(226,255,238,.34)"; g.lineWidth = Math.max(1, m * .075);
+    g.beginPath();
+    g.moveTo(fx + inx, fy + iny); g.lineTo(fx + fw - inx, fy + iny);
+    g.stroke();
+    g.strokeStyle = "rgba(6,34,20,.35)"; g.lineWidth = Math.max(1, m * .065);
+    g.beginPath();
+    g.moveTo(fx + inx, fy + fh - iny); g.lineTo(fx + fw - inx, fy + fh - iny);
+    g.stroke();
+    /* ⑤ 细描边：小尺寸下也能看出「一张牌」的轮廓 */
+    g.strokeStyle = "rgba(9,38,24,.55)"; g.lineWidth = Math.max(1, m * .05);
+    rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();
+    g.restore();
+    if (G.stat) G.stat.backSolid = (G.stat.backSolid || 0) + 1;
+    G.tileBackSolid = (G.tileBackSolid || 0) + 1;
+  }

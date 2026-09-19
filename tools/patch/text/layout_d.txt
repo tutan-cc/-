@@ -1,0 +1,54 @@
+    var i, x, y, res, backN, m0, m2, mS, j, tot, cen;
+    if (seat === 0) {
+      /* 副露：手牌上方一行、右对齐到 meld0.x，按牌面（万→条→筒→字，数字升序）排列 */
+      m0 = meldLayout(melds, LAYOUT.meld0, 0, "h", LAYOUT.meld0.avail);
+      y = LAYOUT.meld0.y;
+      tot = 0;
+      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], m0, 0, "h") + (j ? m0.groupGap : 0);
+      x = LAYOUT.meld0.x - tot;
+      for (j = 0; j < melds.length; j++) {
+        res = drawMeldGroup(g, melds[j], x, y, m0, "h", false, 0);
+        x += res + m0.groupGap;
+      }
+    } else if (seat === 2) {
+      /* 对家（上）：手牌背面整齐一横排，紧贴牌墙内侧；副露横排在手牌**外侧**（更靠牌墙那侧）*/
+      backN = p.hand.length;
+      drawBackRowV(g, 620, 135, backN, false);
+      G.stat.backs += backN;
+      m2 = meldLayout(melds, LAYOUT.meldTop, 2, "h", 700);
+      tot = 0;
+      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], m2, 2, "h") + (j ? m2.groupGap : 0);
+      x = 620 - tot / 2;
+      y = 82;
+      for (j = 0; j < melds.length; j++) {
+        res = drawMeldGroup(g, melds[j], x, y, m2, "h", false, 2);
+        x += res + m2.groupGap;
+      }
+    } else if (seat === 1) {
+      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右墙那侧）*/
+      backN = p.hand.length;
+      drawBackRowV(g, 1110, 400, backN, true);
+      G.stat.backs += backN;
+      mS = meldLayout(melds, LAYOUT.meldSide, 1, "v", 380);
+      tot = 0;
+      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 1, "v") + (j ? mS.groupGap : 0);
+      y = 400 - tot / 2;
+      for (j = 0; j < melds.length; j++) {
+        res = drawMeldGroup(g, melds[j], 1128, y, mS, "v", false, 1);
+        y += res + mS.groupGap;
+      }
+    } else {
+      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左墙那侧）*/
+      backN = p.hand.length;
+      drawBackRowV(g, 131, 400, backN, true);
+      G.stat.backs += backN;
+      mS = meldLayout(melds, LAYOUT.meldSide, 3, "v", 380);
+      tot = 0;
+      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 3, "v") + (j ? mS.groupGap : 0);
+      y = 400 - tot / 2;
+      for (j = 0; j < melds.length; j++) {
+        res = drawMeldGroup(g, melds[j], 78, y, mS, "v", false, 3);
+        y += res + mS.groupGap;
+      }
+    }
+    if (seat !== 0) {

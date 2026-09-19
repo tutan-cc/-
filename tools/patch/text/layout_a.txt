@@ -1,0 +1,32 @@
+  /** 手牌 56×78（放大到看得清牌面），牌与牌之间 6px 间隙；对手手牌 / 牌墙按同比例缩放 */
+  var LAYOUT = {
+    felt: { x: 14, y: 14, w: W - 28, h: H - 28, r: 26 },
+    hand: { y: 752, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },
+    meld0: { x: 1057, y: 690, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },
+    back: { wide: 26, depth: 30, step: 26 },
+    meldSide: { tw: 34, th: 30, gap: 3, groupGap: 12 },
+    meldTop: { tw: 34, th: 30, gap: 4, groupGap: 14 },
+    disc: { tw: 30, th: 40, sx: 32, sy: 42 },
+    wall: { tw: 30, th: 22, side: { tw: 22, th: 30 }, step: 30 },
+    center: { x: 620, y: 402, w: 116, h: 116 }
+  };
+  /* 尺寸纪律（用户 2025 追加要求）：**同一副露组内所有牌尺寸完全一致**。
+       · 正立牌 = meld0/meldTop/meldSide 的 tw × th（本组内统一）
+       · 横置牌 = 同一张牌**绕中心旋转 90°**，绝不缩放 → 外接框 = th × tw
+       · 整组统一行高（垂直于行的方向）= max(tw, th)，所有牌按它居中 → 顶边 / 底边齐平
+       · 牌墙：同一侧的牌背尺寸一致（横向 30×22 / 纵向 22×30），双层叠放两排同尺寸
+     e2e 与 tools/mj/check-geometry.js 会断言「同组内 (w,h) 只有一种、rot ∈ {0,90}」。 */
+  /** 弃牌区：每家一块，照参考图统一**每行 6 张**换行 */
+  var DISC_ZONE = {
+    0: { x: 525, y: 590, perRow: 6, dir: "up" },
+    1: { x: 850, y: 275, perRow: 6, dir: "left" },
+    2: { x: 525, y: 176, perRow: 6, dir: "down" },
+    3: { x: 390, y: 275, perRow: 6, dir: "right" }
+  };
+  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左) */
+  var SEAT_POS = {
+    0: { x: 62, y: 752, align: "left" },
+    1: { x: 1052, y: 612, align: "left" },
+    2: { x: 878, y: 84, align: "left" },
+    3: { x: 58, y: 600, align: "left" }
+  };

@@ -1,0 +1,29 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  var DOT_R = { 1: .300, 2: .200, 3: .155, 4: .150, 5: .115, 6: .115, 7: .105, 8: .100, 9: .105 };",
+      "text": "  var DOT_R = { 1: .360, 2: .215, 3: .160, 4: .165, 5: .120, 6: .135, 7: .120, 8: .115, 9: .120 };" },
+
+    { "file": "mahjong.js",
+      "from": "    5: [[.25, .225], [.75, .225], [.50, .50], [.25, .775], [.75, .775]],            // 四角绿(左上/右下)+墨(右上/左下) + 中心红",
+      "text": "    5: [[.24, .225], [.76, .225], [.50, .50], [.24, .775], [.76, .775]],            // 四角绿(左上/右下)+墨(右上/左下) + 中心红" },
+
+    { "file": "mahjong.js",
+      "from": "  function drawDot(g, cx, cy, r, col) {\r\n    var lw = Math.max(r * .24, .95), r2 = Math.max(.7, r - lw / 2);",
+      "to": "    if (r >= 5.5) {                                      // 靶心（太小时省略，避免糊成实心团）\r\n      g.beginPath(); g.arc(cx, cy, Math.max(r * .21, .8), 0, Math.PI * 2);\r\n      g.fillStyle = col; g.fill();\r\n    }\r\n  }",
+      "textFile": "tools/patch/text/faces2_dot.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  function drawBird(g, cx, cy, s) {",
+      "to": "    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.1, .6); g.stroke();\r\n  }",
+      "textFile": "tools/patch/text/faces2_bird.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    if (n === 1) { drawBird(g, x + w * .5, y + h * .50, Math.min(w, h * .96) * .98); return; }",
+      "text": "    if (n === 1) { drawBird(g, x + w * .5, y + h * .50, Math.min(w, h * .96) * 1.10); return; }" },
+
+    { "file": "mahjong.js",
+      "from": "    var iw = w * .40, ih = h * .62;                // 白色内芯（细长圆头槽）",
+      "text": "    var iw = w * .44, ih = h * .64;                // 白色内芯（细长圆头槽）" }
+  ]
+}

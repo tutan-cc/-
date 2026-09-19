@@ -1,0 +1,88 @@
+  /**
+   * 一根竹节（照参考图 1 的画法）：圆头长条 + 中段内收的「节纹」 + 白色细长内芯。
+   * 为什么这么画：原来画成「两段实心圆头 + 一条节纹」，缩小后连成珠串，数不出条数。
+   * 现在每根都是**一条独立、细长、带白芯的竖条**：白芯把相邻两根的绿分开，
+   * 手牌 56×78 下单根 8.3×22px、净缝 ≥3px，一眼能数。
+   */
+  function drawStick(g, cx, cy, w, h, col) {
+    var hw = w / 2, t = cy - h / 2, b = cy + h / 2;
+    var r = Math.min(hw, h * .42);                 // 圆头半径
+    var ny = h * .085, nw = hw * .62;              // 节纹：半高 / 节处半宽
+    g.beginPath();
+    g.moveTo(cx - hw + r, t);
+    g.lineTo(cx + hw - r, t);
+    g.quadraticCurveTo(cx + hw, t, cx + hw, t + r);
+    g.lineTo(cx + hw, cy - ny);
+    g.quadraticCurveTo(cx + hw, cy, cx + nw, cy);           // 内收（节纹上半）
+    g.quadraticCurveTo(cx + hw, cy, cx + hw, cy + ny);      // 外扩
+    g.lineTo(cx + hw, b - r);
+    g.quadraticCurveTo(cx + hw, b, cx + hw - r, b);
+    g.lineTo(cx - hw + r, b);
+    g.quadraticCurveTo(cx - hw, b, cx - hw, b - r);
+    g.lineTo(cx - hw, cy + ny);
+    g.quadraticCurveTo(cx - hw, cy, cx - nw, cy);
+    g.quadraticCurveTo(cx - hw, cy, cx - hw, cy - ny);
+    g.lineTo(cx - hw, t + r);
+    g.quadraticCurveTo(cx - hw, t, cx - hw + r, t);
+    g.closePath();
+    g.fillStyle = col; g.fill();
+    var iw = w * .40, ih = h * .62;                // 白色内芯（细长圆头槽）
+    if (h >= 7 && w >= 3) {
+      rr(g, cx - iw / 2, cy - ih / 2, iw, ih, Math.min(iw / 2, ih * .30));
+      g.fillStyle = "#fdfbf4"; g.fill();
+    }
+  }
+  /**
+   * 一条：工笔绿鸟（照参考图 1）——绿冠 / 白眼红瞳 / 绿身白腹 / 胸羽三笔 / 下垂长尾 / 右侧圆点。
+   * 参考图是手绘工笔，这里用矢量按同一构图重画：色块 + 描边，缩到副露尺寸仍认得出是「鸟」。
+   */
+  function drawBird(g, cx, cy, s) {
+    var X = cx, Y = cy, i;
+    var DK = "#1c5c3a", MD = "#2f7d4f", LT = "#e7f2e6";
+    var lw = Math.max(s * .022, .7);
+    g.lineJoin = "round"; g.lineCap = "round";
+    /* ① 下垂长尾（参考图最抢眼的一笔：从身体往下拖到牌面底部，尾端收细） */
+    g.beginPath();
+    g.moveTo(X - s * .055, Y + s * .06);
+    g.quadraticCurveTo(X - s * .20, Y + s * .22, X - s * .175, Y + s * .50);
+    g.quadraticCurveTo(X - s * .08, Y + s * .40, X + s * .015, Y + s * .22);
+    g.closePath();
+    g.fillStyle = LT; g.fill();
+    g.strokeStyle = DK; g.lineWidth = lw * 1.25; g.stroke();
+    /* ② 身体：向右侧倾的椭圆（绿底 + 浅色腹） */
+    g.beginPath();
+    if (g.ellipse) g.ellipse(X - s * .02, Y + s * .10, s * .215, s * .195, -.22, 0, Math.PI * 2);
+    else g.arc(X - s * .02, Y + s * .10, s * .20, 0, Math.PI * 2);
+    g.fillStyle = MD; g.fill();
+    g.strokeStyle = DK; g.lineWidth = lw * 1.25; g.stroke();
+    /* ③ 头（与身体相接的圆头，偏左上） */
+    g.beginPath();
+    if (g.ellipse) g.ellipse(X - s * .10, Y - s * .155, s * .165, s * .150, 0, 0, Math.PI * 2);
+    else g.arc(X - s * .10, Y - s * .155, s * .155, 0, Math.PI * 2);
+    g.fillStyle = MD; g.fill(); g.stroke();
+    /* ④ 绿冠：从头顶向右上甩出的一钩（参考图的标志性造型） */
+    g.beginPath();
+    g.moveTo(X - s * .16, Y - s * .27);
+    g.quadraticCurveTo(X + s * .02, Y - s * .40, X + s * .20, Y - s * .27);
+    g.quadraticCurveTo(X + s * .04, Y - s * .31, X - s * .07, Y - s * .20);
+    g.closePath();
+    g.fillStyle = DK; g.fill();
+    /* ⑤ 胸羽三笔（参考图眼睛下方的深绿短竖线） */
+    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.5, .8);
+    for (i = 0; i < 3; i++) {
+      g.beginPath();
+      g.moveTo(X - s * .20 + i * s * .075, Y - s * .03);
+      g.lineTo(X - s * .185 + i * s * .075, Y + s * .10);
+      g.stroke();
+    }
+    /* ⑥ 白眼 + 红瞳（参考图：白眼球 / 深绿描边 / 红心瞳） */
+    g.beginPath(); g.arc(X - s * .115, Y - s * .155, Math.max(s * .105, 1.1), 0, Math.PI * 2);
+    g.fillStyle = "#fdfbf4"; g.fill();
+    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.3, .7); g.stroke();
+    g.beginPath(); g.arc(X - s * .125, Y - s * .155, Math.max(s * .046, .8), 0, Math.PI * 2);
+    g.fillStyle = "#cf5a5a"; g.fill();
+    /* ⑦ 右侧圆点（参考图身体右侧的小白圈） */
+    g.beginPath(); g.arc(X + s * .255, Y + s * .045, Math.max(s * .058, .7), 0, Math.PI * 2);
+    g.fillStyle = "#fdfbf4"; g.fill();
+    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.1, .6); g.stroke();
+  }

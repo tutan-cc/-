@@ -1,0 +1,28 @@
+  /* ── 中央信息盘（照参考图 2 的圆形指示盘，仍全部用矢量画）── */
+  function drawCenter(g) {
+    var c = LAYOUT.center, E = G.E, R = Math.min(c.w, c.h) / 2;
+    g.save();
+    /* 圆盘：深绿底 + 金外环 + 内圈细金线 */
+    var grd = g.createRadialGradient(c.x, c.y - R * .32, R * .12, c.x, c.y, R);
+    grd.addColorStop(0, "rgba(26,48,36,.96)"); grd.addColorStop(1, "rgba(4,12,9,.94)");
+    g.beginPath(); g.arc(c.x, c.y, R, 0, Math.PI * 2); g.fillStyle = grd; g.fill();
+    g.strokeStyle = "rgba(255,215,110,.46)"; g.lineWidth = 2; g.stroke();
+    g.beginPath(); g.arc(c.x, c.y, R * .84, 0, Math.PI * 2);
+    g.strokeStyle = "rgba(255,215,110,.16)"; g.lineWidth = 1; g.stroke();
+    /* 四向指示箭头（当前行动方金色），贴在圆盘外的四个方位 */
+    var marks = [[0, 1], [1, 0], [0, -1], [-1, 0]], i, mx, my, act;
+    for (i = 0; i < 4; i++) {
+      mx = c.x + marks[i][0] * (R + 15); my = c.y + marks[i][1] * (R + 13);
+      act = (E.phase === "turn" && E.cur === i) || (E.phase !== "turn" && E.pending && E.pending.seat === i);
+      g.fillStyle = act ? "#ffd76e" : "rgba(255,255,255,.22)";
+      g.beginPath();
+      g.moveTo(mx, my - 7); g.lineTo(mx + 7, my + 5); g.lineTo(mx - 7, my + 5); g.closePath(); g.fill();
+    }
+    /* 盘心数字 */
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "#ffd76e"; g.font = "bold 21px " + FONT_CN;
+    g.fillText("余 " + E.wall.length, c.x, c.y - 12);
+    g.fillStyle = "rgba(223,230,242,.88)"; g.font = "12px 'Microsoft YaHei',sans-serif";
+    g.fillText("张 · 第 " + E.turnNo + " 巡", c.x, c.y + 12);
+    g.restore();
+  }

@@ -1,0 +1,46 @@
+  /**
+   * 筒的一个圆点：标准「双圈 + 描边 + 靶心」——彩色外环 → 白圈 → 彩色内环 → 白圈 → 实心点。
+   * 小尺寸下投影成两层空心环，缩到副露 / 牌河尺寸仍是「一个点」；线宽 ≥0.95px 保证不糊。
+   */
+  function drawDot(g, cx, cy, r, col) {
+    var lw = Math.max(r * .24, .95), r2 = Math.max(.7, r - lw / 2);
+    g.beginPath(); g.arc(cx, cy, r2, 0, Math.PI * 2);
+    g.lineWidth = lw; g.strokeStyle = col; g.stroke();
+    var r3 = r * .58;                                    // 内环
+    if (r3 > lw * .92) {
+      g.beginPath(); g.arc(cx, cy, r3, 0, Math.PI * 2);
+      g.lineWidth = Math.max(lw * .78, .9); g.strokeStyle = col; g.stroke();
+    }
+    if (r >= 5.5) {                                      // 靶心（太小时省略，避免糊成实心团）
+      g.beginPath(); g.arc(cx, cy, Math.max(r * .21, .8), 0, Math.PI * 2);
+      g.fillStyle = col; g.fill();
+    }
+  }
+  /** 一筒：大靶心（深绿外环 + 白色花瓣圈 + 红心白十字）——照参考图 1 的画法 */
+  function drawTong1(g, cx, cy, R) {
+    var i, a, n = 16, ring = Math.max(R * .12, .8), pr = Math.max(R * .175, .7), prr = R * .655;
+    g.beginPath(); g.arc(cx, cy, Math.max(R - ring / 2, .8), 0, Math.PI * 2);
+    g.lineWidth = ring; g.strokeStyle = "#1c4f33"; g.stroke();
+    for (i = 0; i < n; i++) {                            // 白花瓣圈（16 瓣）
+      a = i / n * Math.PI * 2;
+      g.beginPath(); g.arc(cx + Math.cos(a) * prr, cy + Math.sin(a) * prr, pr, 0, Math.PI * 2);
+      g.fillStyle = "#fdfbf4"; g.fill();
+      g.lineWidth = Math.max(R * .035, .55); g.strokeStyle = "#1c4f33"; g.stroke();
+    }
+    g.beginPath(); g.arc(cx, cy, Math.max(R * .45, .9), 0, Math.PI * 2);
+    g.fillStyle = C_RED; g.fill();
+    g.lineWidth = Math.max(R * .05, .7); g.strokeStyle = "#7d1717"; g.stroke();
+    g.strokeStyle = "#fdfbf4"; g.lineWidth = Math.max(R * .10, .9);
+    g.beginPath();
+    g.moveTo(cx - R * .34, cy); g.lineTo(cx + R * .34, cy);
+    g.moveTo(cx, cy - R * .34); g.lineTo(cx, cy + R * .34);
+    g.stroke();
+  }
+  function drawTongFace(g, n, x, y, w, h) {
+    var pos = DOT_POS[n], col = DOT_COL[n], i;
+    var r = DOT_R[n] * Math.min(w, h * .96);
+    if (n === 1) { drawTong1(g, x + pos[0][0] * w, y + pos[0][1] * h, r); return; }
+    for (i = 0; i < pos.length; i++) {
+      drawDot(g, x + pos[i][0] * w, y + pos[i][1] * h, r, col[i]);
+    }
+  }

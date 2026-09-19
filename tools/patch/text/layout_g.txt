@@ -1,0 +1,10 @@
+  /* ── 三家对家手牌：背面朝上、整齐一横排（或按方位一竖排），紧贴牌墙内侧 ──
+     尺寸统一：横向每张 back.wide × back.depth = 26×30、步距 26；纵向 30×26、步距 26。
+     全部同尺寸同色调（不再给「刚摸的那张」单独提亮，避免一排里出现大小/明暗不一）。*/
+  function drawBackRowV(g, cx, cy, n, vertical) {
+    var b = LAYOUT.back, i, x, y, total = (n - 1) * b.step + b.wide;
+    for (i = 0; i < n; i++) {
+      if (vertical) { x = cx - b.depth / 2; y = cy - total / 2 + i * b.step; drawTileBack(g, x, y, b.depth, b.wide, {}); }
+      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, {}); }
+    }
+  }

@@ -1,0 +1,15 @@
+  /**
+   * 筒的一个圆点：标准「双圈 + 描边 + 靶心」——彩色外环 → 白圈 → 彩色内环 → 白圈 → 实心点。
+   * 线宽按半径走（r*.30），缩到副露 / 牌河尺寸时内环与靶心自动退化，仍读作「一个点」。
+   */
+  function drawDot(g, cx, cy, r, col) {
+    var lw = Math.max(r * .30, 1.05), r2 = Math.max(.7, r - lw / 2);
+    g.beginPath(); g.arc(cx, cy, r2, 0, Math.PI * 2);
+    g.lineWidth = lw; g.strokeStyle = col; g.stroke();
+    g.beginPath(); g.arc(cx, cy, Math.max(r * .55, .9), 0, Math.PI * 2);
+    g.lineWidth = Math.max(lw * .80, .95); g.strokeStyle = col; g.stroke();
+    if (r >= 5) {                                        // 靶心（太小时省略，避免糊成实心团）
+      g.beginPath(); g.arc(cx, cy, Math.max(r * .20, .85), 0, Math.PI * 2);
+      g.fillStyle = col; g.fill();
+    }
+  }

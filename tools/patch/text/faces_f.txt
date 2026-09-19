@@ -1,0 +1,33 @@
+  function drawHonorFace(g, t, x, y, w, h) {
+    var m = Math.min(w, h);
+    if (t === "白") {
+      /* 参考图 1 的白板 = 墨色双线空心框：外框粗、内框细、内框四角带斜切小三角 */
+      var pad = m * .13, bw = Math.min(m, w) - pad * 2, bh = h - pad * 2;
+      var bx = x + (w - Math.min(m, w)) / 2 + pad;
+      g.strokeStyle = C_INK;
+      g.lineWidth = Math.max(m * .095, 1.8);
+      rr(g, bx, y + pad, bw, bh, Math.max(m * .05, 2)); g.stroke();
+      var ip = Math.max(m * .13, 2.2), ix = bx + ip, iy = y + pad + ip;
+      var iw = bw - ip * 2, ih = bh - ip * 2;
+      if (iw > 1 && ih > 1) {
+        g.lineWidth = Math.max(m * .040, .9);
+        rr(g, ix, iy, iw, ih, Math.max(m * .03, 1.2)); g.stroke();
+        var k = Math.max(m * .075, 1.6);                 // 四角斜切小三角
+        g.beginPath();
+        g.moveTo(ix, iy + k); g.lineTo(ix + k, iy); g.lineTo(ix + k * 1.7, iy);
+        g.lineTo(ix, iy + k * 1.7); g.closePath();
+        g.moveTo(ix + iw, iy + k); g.lineTo(ix + iw - k, iy); g.lineTo(ix + iw - k * 1.7, iy);
+        g.lineTo(ix + iw, iy + k * 1.7); g.closePath();
+        g.moveTo(ix, iy + ih - k); g.lineTo(ix + k, iy + ih); g.lineTo(ix + k * 1.7, iy + ih);
+        g.lineTo(ix, iy + ih - k * 1.7); g.closePath();
+        g.moveTo(ix + iw, iy + ih - k); g.lineTo(ix + iw - k, iy + ih); g.lineTo(ix + iw - k * 1.7, iy + ih);
+        g.lineTo(ix + iw, iy + ih - k * 1.7); g.closePath();
+        g.fillStyle = C_INK; g.fill();
+      }
+      return;
+    }
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = HONOR_COL[t] || C_INK;
+    g.font = fontPx(Math.min(h * .82, w * (t.length > 1 ? .46 : .96)));
+    g.fillText(t, x + w / 2, y + h * .54);
+  }

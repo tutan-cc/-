@@ -1,0 +1,47 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  /** 手牌 56×78（放大到看得清牌面），牌与牌之间 6px 间隙；对手手牌 / 牌墙按同比例缩放 */",
+      "to": "    3: { x: 56, y: 646, align: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/layout_a.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 牌墙：4 段，按 108/4 墩排列，随摸牌变短 */",
+      "to": "      else { g.beginPath(); g.moveTo(s.x + s.w * .42, s.y + 2); g.lineTo(s.x + s.w * .42, s.y + s.h - 2); g.stroke(); }\r\n    }\r\n  }",
+      "textFile": "tools/patch/text/layout_b.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /**\r\n   * 画一组副露：",
+      "to": "    G.stat.meldTiles += tiles.length;\r\n    return s.len;\r\n  }",
+      "textFile": "tools/patch/text/layout_c.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    var i, x, y, res, backN, m0, m2, mS;",
+      "to": "    if (seat !== 0) {",
+      "textFile": "tools/patch/text/layout_d.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 牌桌上「会变的东西」的保守外接矩形（宁可估大也不能漏；数字与上面注释一一对应）*/",
+      "to": "    out.push({ name: \"disc3\", x: 344 - 4 * d.sx, y: 272, w: 4 * d.sx + d.tw, h: 6 * d.sy });",
+      "textFile": "tools/patch/text/layout_e.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /* ── 中央信息圈 ── */",
+      "to": "  /** 调试用：把全部牌面排成一张大图，行序「万 → 筒 → 条 → 字牌」（与标准参考图分组一致） */",
+      "textFile": "tools/patch/text/layout_f.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  function drawBackRowV(g, cx, cy, n, vertical) {",
+      "to": "        x = cx - total / 2 + i * b.step; y = cy - b.depth / 2;\r\n        drawTileBack(g, x, y, b.wide, b.depth, { light: i === n - 1 });\r\n      }\r\n    }\r\n  }",
+      "textFile": "tools/patch/text/layout_g.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /* ── 牌桌静态装饰：骰子 / 筹码 / 牌尺 / 烟灰缸（纯装饰，不参与任何规则）───────────",
+      "to": "    ashtray: { x: 438, y: 566, s: 66,  id: \"ashtray\" }\r\n  };",
+      "textFile": "tools/patch/text/layout_h.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, resHands: 0, resHandTiles: 0 };",
+      "text": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, resHands: 0, resHandTiles: 0, meldRects: [] };" }
+  ]
+}

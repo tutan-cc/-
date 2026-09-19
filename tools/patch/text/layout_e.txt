@@ -1,0 +1,20 @@
+  /** 牌桌上「会变的东西」的保守外接矩形（宁可估大也不能漏；与 layout_a 的常量一一对应）*/
+  function decorReserved() {
+    var out = [], i, s, slots = wallSlots(), d = LAYOUT.disc;
+    /* 牌墙：满墙 34 墩 × 双层 = 68 块，逐块进保留框（最保守） */
+    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: "wall", x: s.x, y: s.y, w: s.w, h: s.h }); }
+    /* 四家手牌：下 186..1054（14 张最宽）· 右 x1095..1125 · 上 x451..789 · 左 x116..146 */
+    out.push({ name: "hand0", x: 186, y: LAYOUT.hand.y, w: 868, h: LAYOUT.hand.th });
+    out.push({ name: "hand1", x: 1095, y: 231, w: 30, h: 338 });
+    out.push({ name: "hand2", x: 451, y: 120, w: 338, h: 30 });
+    out.push({ name: "hand3", x: 116, y: 231, w: 30, h: 338 });
+    /* 副露：下（右对齐 x1057）/ 右 x1128..1162 / 上（居中 y82..116）/ 左 x78..112 */
+    out.push({ name: "melds0", x: 437, y: LAYOUT.meld0.y, w: 620, h: LAYOUT.meld0.th });
+    out.push({ name: "melds1", x: 1128, y: 210, w: 34, h: 380 });
+    out.push({ name: "melds2", x: 270, y: 82, w: 700, h: 34 });
+    out.push({ name: "melds3", x: 78, y: 210, w: 34, h: 380 });
+    /* 牌河：四家统一每行 6 张；行 / 列组数按「一轮长局最多 4 组」保守估（大于真实牌局的弃牌数） */
+    out.push({ name: "disc0", x: 525, y: 590 - 3 * d.sy, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc2", x: 525, y: 176, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc1", x: 850 - 3 * d.sx, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
+    out.push({ name: "disc3", x: 390, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });

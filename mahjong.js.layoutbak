@@ -1911,86 +1911,79 @@
   /** 手牌 56×78（放大到看得清牌面），牌与牌之间 6px 间隙；对手手牌 / 牌墙按同比例缩放 */
   var LAYOUT = {
     felt: { x: 14, y: 14, w: W - 28, h: H - 28, r: 26 },
-    hand: { y: 752, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },
-    meld0: { x: 1057, y: 690, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },
-    back: { wide: 26, depth: 30, step: 26 },
-    meldSide: { tw: 34, th: 30, gap: 3, groupGap: 12 },
+    hand: { y: 700, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },
+    meld0: { x: 1057, y: 632, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },
+    back: { wide: 26, depth: 38, step: 29 },
+    meldSide: { tw: 28, th: 32, gap: 3, groupGap: 12 },
     meldTop: { tw: 34, th: 30, gap: 4, groupGap: 14 },
-    disc: { tw: 30, th: 40, sx: 32, sy: 42 },
-    wall: { tw: 30, th: 22, side: { tw: 22, th: 30 }, step: 30 },
-    center: { x: 620, y: 402, w: 116, h: 116 }
+    disc: { tw: 28, th: 38, sx: 30, sy: 40 },
+    wall: { tw: 32, th: 28, side: { tw: 28, th: 32 }, step: 34 },
+    center: { x: 620, y: 432, w: 140, h: 72 }
   };
-  /* 尺寸纪律（用户 2025 追加要求）：**同一副露组内所有牌尺寸完全一致**。
-       · 正立牌 = meld0/meldTop/meldSide 的 tw × th（本组内统一）
-       · 横置牌 = 同一张牌**绕中心旋转 90°**，绝不缩放 → 外接框 = th × tw
-       · 整组统一行高（垂直于行的方向）= max(tw, th)，所有牌按它居中 → 顶边 / 底边齐平
-       · 牌墙：同一侧的牌背尺寸一致（横向 30×22 / 纵向 22×30），双层叠放两排同尺寸
-     e2e 与 tools/mj/check-geometry.js 会断言「同组内 (w,h) 只有一种、rot ∈ {0,90}」。 */
-  /** 弃牌区：每家一块，照参考图统一**每行 6 张**换行 */
+  /** 弃牌区：每家一块，按打出顺序每行 6~8 张换行 */
   var DISC_ZONE = {
-    0: { x: 525, y: 590, perRow: 6, dir: "up" },
-    1: { x: 850, y: 275, perRow: 6, dir: "left" },
-    2: { x: 525, y: 176, perRow: 6, dir: "down" },
-    3: { x: 390, y: 275, perRow: 6, dir: "right" }
+    0: { x: 512, y: 586, perRow: 8, dir: "up" },
+    1: { x: 900, y: 272, perRow: 6, dir: "right" },
+    2: { x: 508, y: 272, perRow: 8, dir: "down" },
+    3: { x: 344, y: 272, perRow: 6, dir: "left" }
   };
   /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左) */
   var SEAT_POS = {
-    0: { x: 62, y: 752, align: "left" },
-    1: { x: 1052, y: 612, align: "left" },
-    2: { x: 878, y: 84, align: "left" },
-    3: { x: 58, y: 600, align: "left" }
+    0: { x: 62, y: 700, align: "left" },
+    1: { x: 1078, y: 646, align: "left" },
+    2: { x: 288, y: 66, align: "left" },
+    3: { x: 56, y: 646, align: "left" }
   };
-
   /* ── 牌面几何（严格照「麻将零基础教学」标准参考图） ──
      筒：圆点「双圈 + 描边」，大小一致 / 间距均匀；条：竹节圆头竖条；
      坐标均为「牌面内」0~1 比例，(x, y) 是点心 / 棒心。 */
   var DOT_POS = {
     1: [[.50, .50]],
-    2: [[.50, .27], [.50, .73]],                                                    // 上下两圆（上绿 / 下墨）
-    3: [[.26, .24], [.50, .50], [.74, .76]],                                        // 斜排三圆（绿 → 红 → 墨）
-    4: [[.29, .29], [.71, .29], [.29, .71], [.71, .71]],                            // 2×2：左上 / 右下绿，右上 / 左下墨
-    5: [[.24, .225], [.76, .225], [.50, .50], [.24, .775], [.76, .775]],            // 四角绿(左上/右下)+墨(右上/左下) + 中心红
-    6: [[.28, .215], [.72, .215], [.28, .545], [.72, .545], [.28, .855], [.72, .855]],  // 上排 2 红 + 下 2×2 绿
-    7: [[.22, .30], [.50, .215], [.78, .13], [.29, .60], [.71, .60], [.29, .875], [.71, .875]],  // 上 3 斜排红（右高）+ 下 2×2 绿
-    8: [[.30, .135], [.70, .135], [.30, .385], [.70, .385], [.30, .635], [.70, .635], [.30, .885], [.70, .885]],  // 2 列 × 4 行（墨）
-    9: [[.245, .205], [.50, .205], [.755, .205], [.245, .50], [.50, .50], [.755, .50], [.245, .795], [.50, .795], [.755, .795]]  // 3×3：上绿 / 中红 / 下墨
+    2: [[.50, .28], [.50, .72]],                                                    // 上下两圆（绿）
+    3: [[.28, .24], [.50, .50], [.72, .76]],                                        // 斜排三圆（绿）
+    4: [[.30, .30], [.70, .30], [.30, .70], [.70, .70]],                            // 2×2（左上/右下绿，右上/左下蓝）
+    5: [[.27, .25], [.73, .25], [.50, .50], [.27, .75], [.73, .75]],                // 四角绿 + 中心红
+    6: [[.25, .26], [.50, .26], [.75, .26], [.25, .74], [.50, .74], [.75, .74]],    // 上排 3 绿 / 下排 3 红
+    7: [[.28, .14], [.50, .31], [.72, .48], [.30, .70], [.70, .70], [.30, .88], [.70, .88]],  // 上 3 斜排绿 + 下 2×2 蓝
+    8: [[.30, .13], [.70, .13], [.30, .38], [.70, .38], [.30, .63], [.70, .63], [.30, .88], [.70, .88]],  // 2 列 × 4 行（蓝）
+    9: [[.24, .20], [.50, .20], [.76, .20], [.24, .50], [.50, .50], [.76, .50], [.24, .80], [.50, .80], [.76, .80]]  // 3×3：上绿 / 中红 / 下蓝
   };
-  /* 筒的配色严格照参考图 1：2 上绿下墨 · 3 绿红墨斜排 · 4 对角绿墨 · 5 四角绿墨 + 中心红 ·
-     6 上 2 红 + 下 4 绿 · 7 上 3 红斜排 + 下 4 绿 · 8 全墨 2×4 · 9 上绿中红下墨 */
   var DOT_COL = {
     1: [C_RED],
-    2: [C_GREEN, C_INK],
-    3: [C_GREEN, C_RED, C_INK],
-    4: [C_GREEN, C_INK, C_INK, C_GREEN],
-    5: [C_GREEN, C_INK, C_RED, C_INK, C_GREEN],
-    6: [C_RED, C_RED, C_GREEN, C_GREEN, C_GREEN, C_GREEN],
-    7: [C_RED, C_RED, C_RED, C_GREEN, C_GREEN, C_GREEN, C_GREEN],
-    8: [C_INK, C_INK, C_INK, C_INK, C_INK, C_INK, C_INK, C_INK],
-    9: [C_GREEN, C_GREEN, C_GREEN, C_RED, C_RED, C_RED, C_INK, C_INK, C_INK]
+    2: [C_GREEN, C_GREEN],
+    3: [C_GREEN, C_GREEN, C_GREEN],
+    4: [C_GREEN, C_BLUE, C_BLUE, C_GREEN],
+    5: [C_GREEN, C_GREEN, C_RED, C_GREEN, C_GREEN],
+    6: [C_GREEN, C_GREEN, C_GREEN, C_RED, C_RED, C_RED],
+    7: [C_GREEN, C_GREEN, C_GREEN, C_BLUE, C_BLUE, C_BLUE, C_BLUE],
+    8: [C_BLUE, C_BLUE, C_BLUE, C_BLUE, C_BLUE, C_BLUE, C_BLUE, C_BLUE],
+    9: [C_GREEN, C_GREEN, C_GREEN, C_RED, C_RED, C_RED, C_BLUE, C_BLUE, C_BLUE]
   };
-  /** 圆点半径（牌面短边比例）：1 筒大靶心，2 筒大圆，其余按行列数收敛（保证双圈 + 靶心不糊） */
-  var DOT_R = { 1: .360, 2: .215, 3: .160, 4: .165, 5: .120, 6: .135, 7: .120, 8: .115, 9: .120 };
+  /** 圆点半径（牌面短边比例）：1 筒大靶心，2~3 筒大圆，其余按行列数收敛（保证双圈不糊） */
+  var DOT_R = { 1: .285, 2: .205, 3: .170, 4: .162, 5: .140, 6: .132, 7: .095, 8: .100, 9: .105 };
+  /** 条：竹节竖条（圆头 + 中间节纹）位置；9 条中列为红 */
   var TIAO_POS = {
-    /* 条：竹节竖条几何（照参考图 1 逐张对齐）。坐标是「牌面内」0~1 比例：(x, y) = 单根竹节的心。
-       sw = 单根宽 / 牌面宽，sh = 单根高 / 牌面高；red = 染红的那些根的下标。
-       纪律（写死在这里，改表时一起看）：
-         · 单根宽 ≤ 牌面宽 1/5：sw 最大 .175 → 手牌 56×78（牌面 47.6 宽）下单根 8.3px ≤ 9.5px ✔
-         · 相邻两根的净缝（手牌 56×78 / 牌面 47.6×69.6 下）：最小 2.78px（5 条上下角↔心），
-           其次 9 条行间 3.13px · 8 条列间 4.06px · 6 条列间 4.95px —— 都分得开
-         · 行列数严格照参考图：2=1列×2行 · 3=上1下2 · 4=2×2 · 5=四角4+中心红1 ·
-           6=3列×2行 · 7=上1红+下2行×3列绿 · 8=4列×2行 · 9=3×3（中列红） */
-    2: { p: [[.50, .275], [.50, .725]], sw: .175, sh: .400 },
-    3: { p: [[.50, .255], [.28, .745], [.72, .745]], sw: .175, sh: .320 },
-    4: { p: [[.285, .29], [.715, .29], [.285, .71], [.715, .71]], sw: .175, sh: .320 },
-    5: { p: [[.265, .225], [.735, .225], [.50, .50], [.265, .775], [.735, .775]], sw: .160, sh: .235, red: [2] },
-    6: { p: [[.24, .28], [.50, .28], [.76, .28], [.24, .72], [.50, .72], [.76, .72]], sw: .155, sh: .300 },
-    7: { p: [[.50, .145], [.24, .47], [.50, .47], [.76, .47], [.24, .815], [.50, .815], [.76, .815]], sw: .155, sh: .245, red: [0] },
-    8: { p: [[.185, .285], [.395, .285], [.605, .285], [.815, .285], [.185, .715], [.395, .715], [.605, .715], [.815, .715]], sw: .125, sh: .330 },
-    9: { p: [[.205, .22], [.50, .22], [.795, .22], [.205, .50], [.50, .50], [.795, .50], [.205, .78], [.50, .78], [.795, .78]], sw: .160, sh: .235, red: [1, 4, 7] }
+    1: [[.50, .50]],
+    2: [[.50, .28], [.50, .72]],
+    3: [[.50, .20], [.28, .72], [.72, .72]],                                        // 上 1 下 2（绿）
+    4: [[.30, .30], [.70, .30], [.30, .70], [.70, .70]],                            // 2×2 绿
+    5: [[.27, .25], [.73, .25], [.50, .50], [.27, .75], [.73, .75]],                // 四角绿 + 中心红
+    6: [[.30, .21], [.70, .21], [.30, .50], [.70, .50], [.30, .79], [.70, .79]],    // 2 列 × 3 行 全绿
+    7: [[.50, .14], [.27, .47], [.50, .47], [.73, .47], [.27, .81], [.50, .81], [.73, .81]],  // 上 1 红 + 下 2×3 绿
+    8: [[.30, .13], [.70, .13], [.30, .38], [.70, .38], [.30, .63], [.70, .63], [.30, .88], [.70, .88]],  // 2 列 × 4 行 绿
+    9: [[.24, .20], [.50, .20], [.76, .20], [.24, .50], [.50, .50], [.76, .50], [.24, .80], [.50, .80], [.76, .80]]  // 3×3，中列红
   };
-  /** 字牌配色：东南西北 黑 / 中 红 / 發 绿 / 白 墨色双线（参考图 1 的白板即黑色双线空框，不是蓝框）*/
-
-  var HONOR_COL = { "东": C_INK, "南": C_INK, "西": C_INK, "北": C_INK, "中": C_RED, "發": C_GREEN, "白": C_INK };  /* 白板画成墨色双线空框，见 drawHonorFace */
+  var BAMBOO_COL = {
+    1: [C_GREEN],
+    2: [C_GREEN, C_GREEN], 3: [C_GREEN, C_GREEN, C_GREEN], 4: [C_GREEN, C_GREEN, C_GREEN, C_GREEN],
+    5: [C_GREEN, C_GREEN, C_RED, C_GREEN, C_GREEN],
+    6: [C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN],
+    7: [C_RED, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN],
+    8: [C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN, C_GREEN],
+    9: [C_GREEN, C_RED, C_GREEN, C_GREEN, C_RED, C_GREEN, C_GREEN, C_RED, C_GREEN]  // 中列红
+  };
+  /** 字牌配色：东南西北 黑 / 中 红 / 發 绿 / 白 蓝框 */
+  var HONOR_COL = { "东": C_INK, "南": C_INK, "西": C_INK, "北": C_INK, "中": C_RED, "發": C_GREEN, "白": C_BLUE };
   /* 牌面「墨线」色：细深色描边（参考图是扁平清爽风，不用厚 3D 斜切） */
   var C_LINE = "#4a4237", C_IVORY = "#fffdf7";
   /* 总览图行标签：下标同 tileGroup（万=0 / 条=1 / 筒=2 / 字=3） */
@@ -2023,210 +2016,131 @@
     g.fillText("萬", cx, y + h * .73);
   }
   /**
-   * 筒的一个圆点：标准「双圈 + 描边 + 靶心」——彩色外环 → 白圈 → 彩色内环 → 白圈 → 实心点。
-   * 小尺寸下投影成两层空心环，缩到副露 / 牌河尺寸仍是「一个点」；线宽 ≥0.95px 保证不糊。
+   * 筒的一个圆点：标准「双圈 + 描边」——彩色外环 → 白圈 → 彩色内环 → 白心；
+   * 小尺寸下至少 2px 线宽，保证 2x DPR 下不糊。
    */
-  /**
-   * 筒的一个圆点：标准「双圈 + 描边 + 靶心」——彩色外环 → 白圈 → 彩色内环 → 白圈 → 实心点。
-   * 线宽按半径走（r*.30），缩到副露 / 牌河尺寸时内环与靶心自动退化，仍读作「一个点」。
-   */
-  function drawDot(g, cx, cy, r, col) {
-    var lw = Math.max(r * .30, 1.05), r2 = Math.max(.7, r - lw / 2);
+  function drawDot(g, cx, cy, r, col, target) {
+    var lw = Math.max(r * .34, 1.15), r2 = r - lw / 2;
     g.beginPath(); g.arc(cx, cy, r2, 0, Math.PI * 2);
     g.lineWidth = lw; g.strokeStyle = col; g.stroke();
-    g.beginPath(); g.arc(cx, cy, Math.max(r * .55, .9), 0, Math.PI * 2);
-    g.lineWidth = Math.max(lw * .80, .95); g.strokeStyle = col; g.stroke();
-    if (r >= 5) {                                        // 靶心（太小时省略，避免糊成实心团）
-      g.beginPath(); g.arc(cx, cy, Math.max(r * .20, .85), 0, Math.PI * 2);
-      g.fillStyle = col; g.fill();
+    if (target) {                                        // 1 筒：大靶心（外环 + 白环 + 中心红点）
+      g.beginPath(); g.arc(cx, cy, r * .52, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+    } else {
+      var r3 = r - lw * 1.62;                            // 内环：与白环等宽
+      if (r3 > Math.max(1.6, r * .22)) {
+        g.beginPath(); g.arc(cx, cy, r3, 0, Math.PI * 2);
+        g.lineWidth = Math.max(lw * .78, 1); g.strokeStyle = col; g.stroke();
+      } else {
+        g.beginPath(); g.arc(cx, cy, Math.max(.9, r * .17), 0, Math.PI * 2);
+        g.fillStyle = col; g.fill();
+      }
     }
-  }
-
-  /** 一筒：大靶心（深绿外环 + 白色花瓣圈 + 红心白十字）——照参考图 1 的画法 */
-  function drawTong1(g, cx, cy, R) {
-    var i, a, n = 16, ring = Math.max(R * .12, .8), pr = Math.max(R * .175, .7), prr = R * .655;
-    g.beginPath(); g.arc(cx, cy, Math.max(R - ring / 2, .8), 0, Math.PI * 2);
-    g.lineWidth = ring; g.strokeStyle = "#1c4f33"; g.stroke();
-    for (i = 0; i < n; i++) {                            // 白花瓣圈（16 瓣）
-      a = i / n * Math.PI * 2;
-      g.beginPath(); g.arc(cx + Math.cos(a) * prr, cy + Math.sin(a) * prr, pr, 0, Math.PI * 2);
-      g.fillStyle = "#fdfbf4"; g.fill();
-      g.lineWidth = Math.max(R * .035, .55); g.strokeStyle = "#1c4f33"; g.stroke();
+    if (r >= 7) {                                        // 大点补一点高光（小点会糊，省略）
+      g.beginPath(); g.arc(cx - r * .34, cy - r * .36, Math.max(.9, r * .13), 0, Math.PI * 2);
+      g.fillStyle = "rgba(255,255,255,.62)"; g.fill();
     }
-    g.beginPath(); g.arc(cx, cy, Math.max(R * .45, .9), 0, Math.PI * 2);
-    g.fillStyle = C_RED; g.fill();
-    g.lineWidth = Math.max(R * .05, .7); g.strokeStyle = "#7d1717"; g.stroke();
-    g.strokeStyle = "#fdfbf4"; g.lineWidth = Math.max(R * .10, .9);
-    g.beginPath();
-    g.moveTo(cx - R * .34, cy); g.lineTo(cx + R * .34, cy);
-    g.moveTo(cx, cy - R * .34); g.lineTo(cx, cy + R * .34);
-    g.stroke();
   }
   function drawTongFace(g, n, x, y, w, h) {
     var pos = DOT_POS[n], col = DOT_COL[n], i;
     var r = DOT_R[n] * Math.min(w, h * .96);
-    if (n === 1) { drawTong1(g, x + pos[0][0] * w, y + pos[0][1] * h, r); return; }
     for (i = 0; i < pos.length; i++) {
-      drawDot(g, x + pos[i][0] * w, y + pos[i][1] * h, r, col[i]);
+      drawDot(g, x + pos[i][0] * w, y + pos[i][1] * h, r, col[i], n === 1);
     }
   }
-
-  /**
-   * 一根竹节（照参考图 1 的画法）：圆头长条 + 中段内收的「节纹」 + 白色细长内芯。
-   * 为什么这么画：原来画成「两段实心圆头 + 一条节纹」，缩小后连成珠串，数不出条数。
-   * 现在每根都是**一条独立、细长、带白芯的竖条**：白芯把相邻两根的绿分开，
-   * 手牌 56×78 下单根 8.3×22px、净缝 ≥3px，一眼能数。
-   */
+  /** 条：竹节（两段圆头竖条 + 中间节纹 + 高光），描边 ≥2px */
   function drawStick(g, cx, cy, w, h, col) {
-    var hw = w / 2, t = cy - h / 2, b = cy + h / 2;
-    var r = Math.min(hw, h * .42);                 // 圆头半径
-    var ny = h * .085, nw = hw * .62;              // 节纹：半高 / 节处半宽
-    g.beginPath();
-    g.moveTo(cx - hw + r, t);
-    g.lineTo(cx + hw - r, t);
-    g.quadraticCurveTo(cx + hw, t, cx + hw, t + r);
-    g.lineTo(cx + hw, cy - ny);
-    g.quadraticCurveTo(cx + hw, cy, cx + nw, cy);           // 内收（节纹上半）
-    g.quadraticCurveTo(cx + hw, cy, cx + hw, cy + ny);      // 外扩
-    g.lineTo(cx + hw, b - r);
-    g.quadraticCurveTo(cx + hw, b, cx + hw - r, b);
-    g.lineTo(cx - hw + r, b);
-    g.quadraticCurveTo(cx - hw, b, cx - hw, b - r);
-    g.lineTo(cx - hw, cy + ny);
-    g.quadraticCurveTo(cx - hw, cy, cx - nw, cy);
-    g.quadraticCurveTo(cx - hw, cy, cx - hw, cy - ny);
-    g.lineTo(cx - hw, t + r);
-    g.quadraticCurveTo(cx - hw, t, cx - hw + r, t);
-    g.closePath();
-    g.fillStyle = col; g.fill();
-    var iw = w * .44, ih = h * .64;                // 白色内芯（细长圆头槽）
-    if (h >= 7 && w >= 3) {
-      rr(g, cx - iw / 2, cy - ih / 2, iw, ih, Math.min(iw / 2, ih * .30));
-      g.fillStyle = "#fdfbf4"; g.fill();
-    }
+    var seg = h * .44, mid = h * .12, x = cx - w / 2, r = Math.min(w / 2, h * .20);
+    var y1 = cy - h / 2, y2 = cy + mid / 2;
+    var lw = Math.max(w * .20, 1.1);
+    g.fillStyle = col;
+    rr(g, x, y1, w, seg, r); g.fill();
+    rr(g, x, y2, w, seg, r); g.fill();
+    g.strokeStyle = "rgba(0,0,0,.30)"; g.lineWidth = Math.max(lw * .70, 1);
+    rr(g, x, y1, w, seg, r); g.stroke();
+    rr(g, x, y2, w, seg, r); g.stroke();
+    g.fillStyle = "rgba(0,0,0,.26)";                        // 节纹
+    g.fillRect(cx - w * .62, cy - h * .035, w * 1.24, Math.max(1, h * .06));
+    g.fillStyle = "rgba(255,255,255,.44)";                  // 竖高光
+    rr(g, cx - w * .30, y1 + h * .05, w * .22, seg * .58, w * .10); g.fill();
+    rr(g, cx - w * .30, y2 + h * .05, w * .22, seg * .58, w * .10); g.fill();
   }
-  /**
-   * 一条：工笔绿鸟（照参考图 1）——绿冠 / 白眼红瞳 / 绿身白腹 / 胸羽三笔 / 下垂长尾 / 右侧圆点。
-   * 参考图是手绘工笔，这里用矢量按同一构图重画：色块 + 描边，缩到副露尺寸仍认得出是「鸟」。
-   */
-  /**
-   * 一条：工笔绿鸟（照参考图 1 的构图：绿冠 / 白眼红瞳 / 黄喙 / 绿身白翅 / 胸羽三笔 /
-   * 下垂长尾 / 双爪 / 右侧圆点）。参考图是手绘工笔，这里用矢量按同一构图重画，
-   * 缩到副露 34×46 仍认得出是「鸟」而不是一团绿。
-   */
+  /** 一条：绿色鸟形（绿身 + 红喙 + 红尾 + 红爪；朝左站立，照标准参考图） */
   function drawBird(g, cx, cy, s) {
-    var X = cx, Y = cy, i;
-    var DK = "#17583a", MD = "#2f7d4f", LT = "#e9f3e8";
-    var lw = Math.max(s * .020, .7);
+    var i, X = cx + s * .07, Y = cy + s * .09, lw = Math.max(s * .020, .8);
     g.lineJoin = "round"; g.lineCap = "round";
-    /* ① 长尾：从身体往左下甩出、尾端收细（参考图最抢眼的一笔，直落到牌面下部） */
+    /* 红尾羽：身体左下方一片扇形（外缘用一段弧，避免锯齿） */
+    g.fillStyle = C_RED;
     g.beginPath();
-    g.moveTo(X + s * .02, Y + s * .10);
-    g.quadraticCurveTo(X - s * .16, Y + s * .26, X - s * .21, Y + s * .50);
-    g.quadraticCurveTo(X - s * .05, Y + s * .40, X + s * .09, Y + s * .20);
-    g.closePath();
-    g.fillStyle = LT; g.fill();
-    g.strokeStyle = DK; g.lineWidth = lw * 1.3; g.stroke();
-    g.beginPath();                                       // 尾羽内两笔
-    g.moveTo(X - s * .02, Y + s * .17); g.lineTo(X - s * .10, Y + s * .40);
-    g.moveTo(X + s * .06, Y + s * .15); g.lineTo(X - s * .01, Y + s * .35);
-    g.lineWidth = Math.max(lw * .9, .5); g.stroke();
-    /* ② 身体：向右下微倾的圆身（绿底 + 深绿描边） */
+    g.moveTo(X - s * .04, Y - s * .06);
+    g.quadraticCurveTo(X - s * .26, Y + s * .06, X - s * .22, Y + s * .24);
+    g.quadraticCurveTo(X - s * .08, Y + s * .30, X + s * .05, Y + s * .24);
+    g.quadraticCurveTo(X + s * .06, Y + s * .08, X - s * .04, Y - s * .06);
+    g.closePath(); g.fill();
+    g.strokeStyle = "rgba(120,10,10,.45)"; g.lineWidth = Math.max(lw * .7, .6); g.stroke();
+    /* 绿身体：水滴形（上窄下宽），与头颈重叠消除缝隙 */
+    g.fillStyle = C_GREEN;
     g.beginPath();
-    if (g.ellipse) g.ellipse(X + s * .01, Y + s * .03, s * .255, s * .250, -.12, 0, Math.PI * 2);
-    else g.arc(X + s * .01, Y + s * .03, s * .25, 0, Math.PI * 2);
-    g.fillStyle = MD; g.fill();
-    g.strokeStyle = DK; g.lineWidth = lw * 1.3; g.stroke();
-    /* ③ 头：左上方的圆头（与身体连成一体） */
+    g.moveTo(X - s * .06, Y - s * .30);
+    g.quadraticCurveTo(X - s * .21, Y - s * .02, X - s * .15, Y + s * .18);
+    g.quadraticCurveTo(X - s * .07, Y + s * .30, X + s * .07, Y + s * .25);
+    g.quadraticCurveTo(X + s * .19, Y + s * .12, X + s * .12, Y - s * .10);
+    g.quadraticCurveTo(X + s * .09, Y - s * .26, X - s * .06, Y - s * .30);
+    g.closePath(); g.fill();
+    g.strokeStyle = "rgba(0,0,0,.34)"; g.lineWidth = lw; g.stroke();
+    /* 绿头（与身体重叠） */
+    g.fillStyle = C_GREEN;
+    g.beginPath(); g.moveTo(X - s * .16, Y - s * .24);
+    g.quadraticCurveTo(X - s * .13, Y - s * .41, X + s * .04, Y - s * .39);
+    g.quadraticCurveTo(X + s * .16, Y - s * .36, X + s * .13, Y - s * .19);
+    g.quadraticCurveTo(X + s * .02, Y - s * .12, X - s * .16, Y - s * .24);
+    g.closePath(); g.fill(); g.stroke();
+    /* 白色眼睛 + 黑瞳（参考图是一条的经典画法） */
+    g.fillStyle = "#fffdf7";
+    g.beginPath(); g.arc(X + s * .01, Y - s * .30, Math.max(s * .048, 1.1), 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(0,0,0,.45)"; g.lineWidth = Math.max(lw * .6, .6); g.stroke();
+    g.fillStyle = "#1b1f28";
+    g.beginPath(); g.arc(X - s * .005, Y - s * .30, Math.max(s * .022, .7), 0, Math.PI * 2); g.fill();
+    /* 红喙（朝左） */
+    g.fillStyle = C_RED;
     g.beginPath();
-    if (g.ellipse) g.ellipse(X - s * .145, Y - s * .225, s * .175, s * .172, 0, 0, Math.PI * 2);
-    else g.arc(X - s * .145, Y - s * .225, s * .17, 0, Math.PI * 2);
-    g.fillStyle = MD; g.fill(); g.stroke();
-    /* ④ 喙：朝左的小三角（参考图的黄喙） */
+    g.moveTo(X - s * .15, Y - s * .31); g.lineTo(X - s * .33, Y - s * .26);
+    g.lineTo(X - s * .15, Y - s * .20); g.closePath(); g.fill();
+    /* 绿翅膀 + 白色羽纹 */
+    g.fillStyle = "rgba(255,255,255,.55)";
     g.beginPath();
-    g.moveTo(X - s * .295, Y - s * .245);
-    g.lineTo(X - s * .465, Y - s * .175);
-    g.lineTo(X - s * .285, Y - s * .125);
-    g.closePath();
-    g.fillStyle = "#d9a24a"; g.fill();
-    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.1, .6); g.stroke();
-    /* ⑤ 冠羽：头顶向右上甩出的一钩（参考图的标志性造型） */
+    if (g.ellipse) g.ellipse(X - s * .01, Y + s * .01, s * .065, s * .115, .25, 0, Math.PI * 2);
+    else g.arc(X - s * .01, Y + s * .01, s * .075, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = C_GREEN; g.lineWidth = Math.max(lw * .9, .7); g.stroke();
+    /* 红爪（两条） */
+    g.strokeStyle = C_RED; g.lineWidth = Math.max(s * .038, 1.1);
     g.beginPath();
-    g.moveTo(X - s * .235, Y - s * .345);
-    g.quadraticCurveTo(X - s * .05, Y - s * .545, X + s * .175, Y - s * .40);
-    g.quadraticCurveTo(X - s * .02, Y - s * .42, X - s * .13, Y - s * .285);
-    g.closePath();
-    g.fillStyle = DK; g.fill();
-    /* ⑥ 胸羽三笔（眼睛下方的深绿短竖线） */
-    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.6, .85);
-    for (i = 0; i < 3; i++) {
-      g.beginPath();
-      g.moveTo(X - s * .245 + i * s * .085, Y - s * .055);
-      g.lineTo(X - s * .225 + i * s * .085, Y + s * .085);
-      g.stroke();
-    }
-    /* ⑦ 翅：身体上的一道浅色弧 */
-    g.beginPath();
-    g.moveTo(X + s * .02, Y - s * .10);
-    g.quadraticCurveTo(X + s * .21, Y + s * .02, X + s * .07, Y + s * .21);
-    g.strokeStyle = LT; g.lineWidth = Math.max(lw * 1.8, 1); g.stroke();
-    /* ⑧ 白眼 + 红瞳（参考图：白眼球 / 深绿描边 / 红心瞳） */
-    g.beginPath(); g.arc(X - s * .16, Y - s * .235, Math.max(s * .120, 1.2), 0, Math.PI * 2);
-    g.fillStyle = "#fdfbf4"; g.fill();
-    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.4, .75); g.stroke();
-    g.beginPath(); g.arc(X - s * .175, Y - s * .235, Math.max(s * .052, .8), 0, Math.PI * 2);
-    g.fillStyle = "#cf5a5a"; g.fill();
-    /* ⑨ 右侧圆点（参考图身体右侧的小白圈） */
-    g.beginPath(); g.arc(X + s * .315, Y + s * .075, Math.max(s * .070, .75), 0, Math.PI * 2);
-    g.fillStyle = "#fdfbf4"; g.fill();
-    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.1, .6); g.stroke();
-    /* ⑩ 双爪 */
-    g.strokeStyle = DK; g.lineWidth = Math.max(lw * 1.5, .8);
-    g.beginPath();
-    g.moveTo(X - s * .075, Y + s * .255); g.lineTo(X - s * .125, Y + s * .40);
-    g.moveTo(X + s * .075, Y + s * .255); g.lineTo(X + s * .045, Y + s * .40);
+    g.moveTo(X + s * .00, Y + s * .24); g.lineTo(X + s * .04, Y + s * .40);
+    g.moveTo(X + s * .10, Y + s * .21); g.lineTo(X + s * .14, Y + s * .37);
     g.stroke();
+    g.fillStyle = C_RED;
+    g.fillRect(X + s * .00, Y + s * .36, s * .055, s * .055);
+    g.fillRect(X + s * .10, Y + s * .33, s * .055, s * .055);
   }
-
-
   function drawTiaoFace(g, n, x, y, w, h) {
-    if (n === 1) { drawBird(g, x + w * .5, y + h * .50, Math.min(w, h * .96) * 1.10); return; }
-    var t = TIAO_POS[n], i, p, col;
-    var sw = t.sw * w, sh = t.sh * h;
-    for (i = 0; i < t.p.length; i++) {
-      p = t.p[i];
-      col = (t.red && t.red.indexOf(i) >= 0) ? C_RED : C_GREEN;
-      drawStick(g, x + p[0] * w, y + p[1] * h, sw, sh, col);
-    }
+    var s = Math.min(w, h * .96);
+    if (n === 1) { drawBird(g, x + w / 2, y + h * .52, s * .80); return; }
+    var pos = TIAO_POS[n], col = BAMBOO_COL[n], i;
+    var sw = s * (n <= 3 ? .22 : .19), sh = s * (n <= 3 ? .52 : .34);
+    for (i = 0; i < pos.length; i++) drawStick(g, x + pos[i][0] * w, y + pos[i][1] * h, sw, sh, col[i]);
   }
-  /** 字牌：东南西北 黑色大字（占满牌面）/ 中 红 / 發 绿 / 白 墨色双线空心框（照参考图 1） */
-
+  /** 字牌：东南西北 黑色大字（占满牌面）/ 中 红 / 發 绿 / 白 蓝色双线空心方框 */
   function drawHonorFace(g, t, x, y, w, h) {
     var m = Math.min(w, h);
     if (t === "白") {
-      /* 参考图 1 的白板 = 墨色双线空心框：外框粗、内框细、内框四角带斜切小三角 */
-      var pad = m * .13, bw = Math.min(m, w) - pad * 2, bh = h - pad * 2;
-      var bx = x + (w - Math.min(m, w)) / 2 + pad;
-      g.strokeStyle = C_INK;
-      g.lineWidth = Math.max(m * .095, 1.8);
-      rr(g, bx, y + pad, bw, bh, Math.max(m * .05, 2)); g.stroke();
-      var ip = Math.max(m * .13, 2.2), ix = bx + ip, iy = y + pad + ip;
-      var iw = bw - ip * 2, ih = bh - ip * 2;
-      if (iw > 1 && ih > 1) {
-        g.lineWidth = Math.max(m * .040, .9);
-        rr(g, ix, iy, iw, ih, Math.max(m * .03, 1.2)); g.stroke();
-        var k = Math.max(m * .075, 1.6);                 // 四角斜切小三角
-        g.beginPath();
-        g.moveTo(ix, iy + k); g.lineTo(ix + k, iy); g.lineTo(ix + k * 1.7, iy);
-        g.lineTo(ix, iy + k * 1.7); g.closePath();
-        g.moveTo(ix + iw, iy + k); g.lineTo(ix + iw - k, iy); g.lineTo(ix + iw - k * 1.7, iy);
-        g.lineTo(ix + iw, iy + k * 1.7); g.closePath();
-        g.moveTo(ix, iy + ih - k); g.lineTo(ix + k, iy + ih); g.lineTo(ix + k * 1.7, iy + ih);
-        g.lineTo(ix, iy + ih - k * 1.7); g.closePath();
-        g.moveTo(ix + iw, iy + ih - k); g.lineTo(ix + iw - k, iy + ih); g.lineTo(ix + iw - k * 1.7, iy + ih);
-        g.lineTo(ix + iw, iy + ih - k * 1.7); g.closePath();
-        g.fillStyle = C_INK; g.fill();
-      }
+      var pad = m * .16;
+      var bxx = x + (w - m) / 2 + pad, byy = y + pad;
+      var bw = m - pad * 2, bh = h - pad * 2;
+      g.strokeStyle = C_BLUE;
+      g.lineWidth = Math.max(m * .085, 2);
+      rr(g, bxx, byy, bw, bh, Math.max(m * .07, 2)); g.stroke();
+      g.lineWidth = Math.max(m * .048, 1.3);
+      rr(g, bxx + pad * .72, byy + pad * .72, bw - pad * 1.44, bh - pad * 1.44, Math.max(m * .04, 1.5)); g.stroke();
       return;
     }
     g.textAlign = "center"; g.textBaseline = "middle";
@@ -2234,7 +2148,6 @@
     g.font = fontPx(Math.min(h * .82, w * (t.length > 1 ? .46 : .96)));
     g.fillText(t, x + w / 2, y + h * .54);
   }
-
 
   /**
    * 画一张牌正面：扁平清爽风（象牙白打底 + 细深色描边 + 小圆角 ≈ 牌宽 8%），
@@ -2296,63 +2209,48 @@
     }
     g.restore();
   }
-  /**
-   * 牌背：饱满立体的「一张纯色麻将」（照参考图里那种绿背）。
-   *   · 圆角矩形 + 顶面亮 / 侧面暗的厚度过渡 + 顶左高光边 + 细描边 → 是一张**有厚度的实心牌**
-   *   · **没有任何斜纹 / 花纹**（用户明确要求：不要斜杠）
-   *   · 同一套画法用在三处：① 剩余牌堆（牌墙）② 三家对家手牌背面 ③ 暗杠盖着的那两张
-   *   · 尺寸只由调用方给的 (w,h) 决定 —— 牌墙 / 对家手牌每张尺寸完全一致
-   * ⚠ art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」的一版素材，与「纯色、无花纹」冲突，
-   *   按用户指示改为纯色矢量画法，该素材**故意不接**（与 tile_white / tile_fa 同理，
-   *   见 art() 的 fallback 声明与 e2e 的 tileback_solid 断言）。
-   * o: { light: 顶面稍亮（牌墙外层用），默认 true }
-   */
+  /** 牌背（深蓝斜纹 + 细边框，与正面明显对比） */
   function drawTileBack(g, x, y, w, h, o) {
     o = o || {};
-    var m = Math.min(w, h);
-    var r = Math.max(2, m * .22);                      // 圆角
-    var d = Math.max(1.1, m * .17);                    // 厚度（顶面相对底面的内缩）
-    var light = o.light !== false;
+    var r = Math.max(2.5, w * .14);
     g.save();
-    /* ① 投影：让牌在桌面上「坐得住」（不是厚 3D，只留一点落影） */
-    g.save();
-    g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = Math.max(2, m * .20);
-    g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, h * .05);
-    g.fillStyle = "#0e2c1d";
+    g.shadowColor = "rgba(0,0,0,.5)"; g.shadowBlur = Math.max(3, w * .2);
+    g.shadowOffsetX = 1; g.shadowOffsetY = Math.max(2, h * .05);
+    g.fillStyle = "#0d131e";
     rr(g, x, y, w, h, r); g.fill();
     g.restore();
-    /* ② 侧面 / 厚度：整体深绿底面 */
-    var gs = g.createLinearGradient(x, y, x + w * .30, y + h);
-    gs.addColorStop(0, light ? "#2f8455" : "#287349");
-    gs.addColorStop(1, light ? "#164c2d" : "#123f26");
-    g.fillStyle = gs;
-    rr(g, x, y, w, h, r); g.fill();
-    /* ③ 顶面：向左上偏移内缩（光源在左上）→ 右下露出「侧面」，就是厚度 */
-    var fx = x + d * .40, fy = y + d * .40, fw = w - d * 1.05, fh = h - d * 1.15;
-    var gf = g.createLinearGradient(fx, fy, fx, fy + fh);
-    gf.addColorStop(0, light ? "#4cb87c" : "#43ab72");
-    gf.addColorStop(.55, light ? "#3a9d63" : "#338c58");
-    gf.addColorStop(1, light ? "#2b7d4a" : "#256c40");
-    g.fillStyle = gf;
-    rr(g, fx, fy, fw, fh, Math.max(1.4, r * .70)); g.fill();
-    /* ④ 顶面高光边（上）+ 底面压边（下）→ 立体感；没有花纹 */
-    var inx = Math.max(1.2, fw * .16), iny = Math.max(1, fh * .085);
-    g.strokeStyle = "rgba(226,255,238,.34)"; g.lineWidth = Math.max(1, m * .075);
-    g.beginPath();
-    g.moveTo(fx + inx, fy + iny); g.lineTo(fx + fw - inx, fy + iny);
-    g.stroke();
-    g.strokeStyle = "rgba(6,34,20,.35)"; g.lineWidth = Math.max(1, m * .065);
-    g.beginPath();
-    g.moveTo(fx + inx, fy + fh - iny); g.lineTo(fx + fw - inx, fy + fh - iny);
-    g.stroke();
-    /* ⑤ 细描边：小尺寸下也能看出「一张牌」的轮廓 */
-    g.strokeStyle = "rgba(9,38,24,.55)"; g.lineWidth = Math.max(1, m * .05);
+    /* 本批素材：深蓝斜纹牌背贴图（等比塞满牌背矩形，居中裁切）。
+       贴图不可用 → 回退下面的程序化斜纹（原样保留，一处没删）。 */
+    var tbi = artOf("tile_back");
+    if (tbi) {
+      var inw = tbi.naturalWidth || 0, inh = tbi.naturalHeight || 0;
+      if (inw > 0 && inh > 0) {
+        var arT = inw / inh, arB = w / h, swT, shT;
+        if (arT > arB) { shT = inh; swT = inh * arB; } else { swT = inw; shT = inw / arB; }
+        g.save();
+        rr(g, x, y, w, h, r); g.clip();
+        if (o.light) g.globalAlpha = 1; else g.globalAlpha = 0.94;
+        g.drawImage(tbi, (inw - swT) / 2, (inh - shT) / 2, swT, shT, x, y, w, h);
+        g.restore();
+        G.tileBackTex = (G.tileBackTex || 0) + 1;
+      }
+    } else {
+    var grd = g.createLinearGradient(x, y, x, y + h);
+    grd.addColorStop(0, o.light ? "#33629f" : "#274c88");
+    grd.addColorStop(1, o.light ? "#1d4079" : "#132b57");
+    g.fillStyle = grd; rr(g, x, y, w, h, r); g.fill();
+    g.save();
+    rr(g, x + 1.5, y + 1.5, w - 3, h - 3, Math.max(1, r - 1)); g.clip();
+    g.strokeStyle = "rgba(178,214,255,.26)"; g.lineWidth = Math.max(1.2, w * .05);
+    var i;
+    for (i = -h; i < w + h; i += Math.max(5, w * .18)) { g.beginPath(); g.moveTo(x + i, y); g.lineTo(x + i + h, y + h); g.stroke(); }
+    g.restore();
+    }
+    g.strokeStyle = "rgba(198,226,255,.5)"; g.lineWidth = 1.4;
+    rr(g, x + 1.2, y + 1.2, w - 2.4, h - 2.4, Math.max(1, r - 1)); g.stroke();
+    g.strokeStyle = "rgba(140,180,235,.5)"; g.lineWidth = 1.2;
     rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();
-    g.restore();
-    if (G.stat) G.stat.backSolid = (G.stat.backSolid || 0) + 1;
-    G.tileBackSolid = (G.tileBackSolid || 0) + 1;
   }
-
   function drawGlowPlate(g, x, y, w, h, r, color, blur) {
     g.save();
     g.shadowColor = color; g.shadowBlur = blur;
@@ -2425,24 +2323,23 @@
      之前只有 tile_back 接进了渲染。这里把它们点缀到牌桌上，**只增加「画什么」**：
      不碰赣麻规则、不碰 AI、不碰智脑提示算法、不碰结算逻辑、不碰点击热区、不碰牌河布局。
 
-     位置纪律（每一块都按「会变的东西」的保守外接矩形验算过，零相交；见 decorCheck()）——
-     本轮布局照参考图 2 重排后，各块保守外接框是：
-       · 牌墙四边（双层）：上 x425..815 y26..72 · 下 x485..755 y642..686
-                          左 x26..72 y340..520 · 右 x1168..1214 y340..520
-       · 四家手牌：下 x186..1054 y752..830（14 张最宽）/ 右 x1095..1125 y231..569
-                   上 x451..789 y120..150          / 左 x116..146 y231..569
-       · 副露：下 x437..1057 y690..736 / 右 x1128..1162 y210..590
-               上 x270..970  y82..116  / 左 x78..112   y210..590
-       · 牌河：下 x525..715 y464..630 / 上 x525..715 y176..342
-               右 x754..880 y275..525 / 左 x390..516 y275..525
-       · 中央圆形指示盘 x562..678 y344..460（LAYOUT.center）
+     位置纪律（每一块都按「会变的东西」的保守外接矩形验算过，零相交；见 decorCheck）：
+       · 牌墙 4 段：下 x958..1196 y814..842 / 左 x30..58 y552..788
+                   上 x34..270 y30..58     / 右 x1182..1210 y34..236
+       · 四家手牌：下 x189..1051 y700..778（14 张最宽）/ 右 x1133..1171 y243..617
+                   上 x433..807 y65..103   / 左 x60..98 y243..617
+       · 副露：下 y632..678（右对齐到 x1057）/ 右 x1032..1060 y296..636
+               上 x430.. y118..148         / 左 x112..140 y296..
+       · 牌河：下 x512..752 y466..624 / 上 x508..748 y272..430
+               右 x900..1048 y272..512 / 左 x224..372 y272..512
+       · 中央「余 N 张」面板 x550..690 y396..468（LAYOUT.center）
        · 结算亮牌板铺满 18..W-18 × 18..H-18 —— **结算分支根本不画装饰**（见 renderTable），
          所以结构上不可能被结算面板遮住，也不可能遮住它
-       · DOM 覆盖层：智脑提示在左上（1.2%/1.0%）、HUD 在顶部一条、牌局记录 + 按钮在右下
-     于是剩下两块空地（都在中央深色绒面圈内，且留 8px 以上余量）：
-       A x 920..1060 y 235..560 —— 玩家右手边：两枚骰子（dice.png 素材本身就是两枚）
-                                    + 一摞金筹码 + 红 / 蓝筹码各一枚
-       B x 187..313  y 357..593 —— 桌子左侧窄条（在智脑面板下方）：牌尺 + 烟灰缸
+       · DOM 覆盖层：智脑提示在左上（1.2%/1.0%），牌局记录 + 按钮在右下
+     于是只剩两块空地（都在中央深色绒面圈 250..990 × 240..620 内，且留 3px 以上余量）：
+       A x 761..1031 y 497..629 —— 玩家右手边：两枚骰子（dice.png 素材本身就是两枚）
+                                   + 一摞金筹码 + 红 / 蓝筹码各一枚
+       B x 375..501  y 237..629 —— 桌子左侧窄条：牌尺（ruler.png）+ 烟灰缸（ashtray.png）
      ⚠ tile_white / tile_fa 故意**不接**：立着的白板 / 发财与牌河里打出去的牌长得一模一样，
         摆上去就是凭空多两张「假弃牌」，直接破坏牌河与手牌的可读性 —— 明确不做（报告里写明）。
 
@@ -2454,15 +2351,14 @@
      路径仍由 pageDir() + art/icons/mj/ 拼出来 —— 无盘符 / 无协议 / 无 data URI。 */
   var DECOR = {
     /* dice.png 素材本身就是「两枚骰子」一版画 → 只画一次就是桌上两枚，避免四枚的怪画面 */
-    dice:    { x: 990, y: 300, s: 104, rot: -0.10, id: "dice" },
+    dice:    { x: 826, y: 560, s: 104, rot: -0.10, id: "dice" },
     /* chip_gold.png 本身就是一摞四片；红 / 蓝是单片 → 三件摆成一小簇 */
-    chips:   [ { x: 960, y: 470, s: 80, id: "chip_gold", color: "#e0a92e", n: 4 },
-               { x: 1035, y: 445, s: 50, id: "chip_red",  color: "#c0392b", n: 1 },
-               { x: 1035, y: 535, s: 50, id: "chip_blue", color: "#2a6bb5", n: 1 } ],
-    ruler:   { x: 250, y: 420, s: 126, id: "ruler" },
-    ashtray: { x: 250, y: 560, s: 66,  id: "ashtray" }
+    chips:   [ { x: 958, y: 556, s: 80, id: "chip_gold", color: "#e0a92e", n: 4 },
+               { x: 910, y: 604, s: 50, id: "chip_red",  color: "#c0392b", n: 1 },
+               { x: 1002, y: 600, s: 50, id: "chip_blue", color: "#2a6bb5", n: 1 } ],
+    ruler:   { x: 438, y: 300, s: 126, id: "ruler" },
+    ashtray: { x: 438, y: 566, s: 66,  id: "ashtray" }
   };
-
   /** 贴图装饰：以 (cx,cy) 为中心等比画 s 宽（可按 rot 旋转）→ 返回是否真的画了 */
   function decorTex(g, id, cx, cy, s, rot) {
     var img = artOf(id);
@@ -2523,27 +2419,24 @@
     out.push({ name: "ashtray", x: DECOR.ashtray.x - DECOR.ashtray.s / 2, y: DECOR.ashtray.y - DECOR.ashtray.s / 2, w: DECOR.ashtray.s, h: DECOR.ashtray.s });
     return out;
   }
-  /** 牌桌上「会变的东西」的保守外接矩形（宁可估大也不能漏；与 layout_a 的常量一一对应）*/
+  /** 牌桌上「会变的东西」的保守外接矩形（宁可估大也不能漏；数字与上面注释一一对应）*/
   function decorReserved() {
     var out = [], i, s, slots = wallSlots(), d = LAYOUT.disc;
-    /* 牌墙：满墙 34 墩 × 双层 = 68 块，逐块进保留框（最保守） */
     for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: "wall", x: s.x, y: s.y, w: s.w, h: s.h }); }
-    /* 四家手牌：下 186..1054（14 张最宽）· 右 x1095..1125 · 上 x451..789 · 左 x116..146 */
-    out.push({ name: "hand0", x: 186, y: LAYOUT.hand.y, w: 868, h: LAYOUT.hand.th });
-    out.push({ name: "hand1", x: 1095, y: 231, w: 30, h: 338 });
-    out.push({ name: "hand2", x: 451, y: 120, w: 338, h: 30 });
-    out.push({ name: "hand3", x: 116, y: 231, w: 30, h: 338 });
-    /* 副露：下（右对齐 x1057）/ 右 x1128..1162 / 上（居中 y82..116）/ 左 x78..112 */
+    out.push({ name: "hand0", x: 189, y: LAYOUT.hand.y, w: 862, h: LAYOUT.hand.th });
+    out.push({ name: "hand1", x: 1133, y: 243, w: 38, h: 374 });
+    out.push({ name: "hand2", x: 433, y: 65, w: 374, h: 38 });
+    out.push({ name: "hand3", x: 60, y: 243, w: 38, h: 374 });
     out.push({ name: "melds0", x: 437, y: LAYOUT.meld0.y, w: 620, h: LAYOUT.meld0.th });
-    out.push({ name: "melds1", x: 1128, y: 210, w: 34, h: 380 });
-    out.push({ name: "melds2", x: 270, y: 82, w: 700, h: 34 });
-    out.push({ name: "melds3", x: 78, y: 210, w: 34, h: 380 });
-    /* 牌河：四家统一每行 6 张；行 / 列组数按「一轮长局最多 4 组」保守估（大于真实牌局的弃牌数） */
-    out.push({ name: "disc0", x: 525, y: 590 - 3 * d.sy, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
-    out.push({ name: "disc2", x: 525, y: 176, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
-    out.push({ name: "disc1", x: 850 - 3 * d.sx, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
-    out.push({ name: "disc3", x: 390, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
-
+    out.push({ name: "melds1", x: 1032, y: 296, w: 28, h: 340 });
+    out.push({ name: "melds2", x: 430, y: 118, w: 600, h: LAYOUT.meldTop.th });
+    out.push({ name: "melds3", x: 112, y: 296, w: 28, h: 340 });
+    /* 牌河：上下两家 perRow=8（最多 8 列）· 左右两家 perRow=6（最多 6 行）；
+       行 / 列组数按「一轮长局最多 4 组」保守估（大于真实牌局的弃牌数）。 */
+    out.push({ name: "disc0", x: 512, y: 586 - 3 * d.sy, w: 8 * d.sx, h: 3 * d.sy + d.th });
+    out.push({ name: "disc2", x: 508, y: 272, w: 8 * d.sx, h: 3 * d.sy + d.th });
+    out.push({ name: "disc1", x: 900, y: 272, w: 4 * d.sx + d.tw, h: 6 * d.sy });
+    out.push({ name: "disc3", x: 344 - 4 * d.sx, y: 272, w: 4 * d.sx + d.tw, h: 6 * d.sy });
     out.push({ name: "center", x: LAYOUT.center.x - LAYOUT.center.w / 2, y: LAYOUT.center.y - LAYOUT.center.h / 2,
                w: LAYOUT.center.w, h: LAYOUT.center.h });
     return out;
@@ -2587,88 +2480,47 @@
     if (decorTex(g, DECOR.ashtray.id, DECOR.ashtray.x, DECOR.ashtray.y, DECOR.ashtray.s, 0)) G.decor.ashtray++;
     else G.decor.skipped++;
   }
-  /**
-   * 牌墙（照参考图 2）：四边整齐的长条墙 —— 对面最长、玩家这面次之、左右两侧最短；
-   * 每边**双层叠放**（外层 / 内层两排牌背，条条对齐），随剩余张数各自从两端同时变短
-   * （缺口留在正中，与真实牌局一致）。同一侧的牌背尺寸完全一致。
-   *   · 横向边：每张 30×22（wall.tw × wall.th），外层 / 内层相差 24px 深
-   *   · 纵向边：每张 22×30（wall.side.tw × wall.side.th）
-   * 34 墩（136 张）的分配：上 13 / 下 9 / 左 6 / 右 6 —— 合计 34。
-   */
-  var WALL_SHARE = [
-    { side: "top", n: 13 }, { side: "right", n: 6 }, { side: "bottom", n: 9 }, { side: "left", n: 6 }
-  ];
-  var WALL_GEO = {
-    top: { horiz: true, cx: 620, outer: 26, inner: 50 },
-    bottom: { horiz: true, cx: 620, outer: 664, inner: 642 },
-    left: { horiz: false, cy: 430, outer: 26, inner: 50 },
-    right: { horiz: false, cy: 430, outer: 1192, inner: 1168 }
-  };
-  /** 牌墙墩数分配：按各边上限等比缩小，最后一边吃掉余数，保证总数恰好 = stacks */
-  function wallCounts(stacks) {
-    var out = {}, acc = 0, i, want, max;
-    for (i = 0; i < WALL_SHARE.length; i++) {
-      max = WALL_SHARE[i].n;
-      want = (i === WALL_SHARE.length - 1) ? (stacks - acc) : Math.round(stacks * max / 34);
-      if (want > max) want = max;
-      if (want < 0) want = 0;
-      out[WALL_SHARE[i].side] = want;
-      acc += want;
-    }
-    return out;
-  }
-  /** 牌墙的所有可能位置（满墙 34 墩 × 双层 = 68 块）——装饰安全区按它取保守外接框。
-      同一侧的牌从各自中心向两端交替编号：画前 n 块 = 以中心为轴的对称长条。 */
+  /** 牌墙：4 段，按 108/4 墩排列，随摸牌变短 */
+
   function wallSlots() {
     if (G.wallSlots) return G.wallSlots;
-    var out = [], s, k, layer, side, geo, maxN, tw, th, off;
-    for (s = 0; s < WALL_SHARE.length; s++) {
-      side = WALL_SHARE[s].side; geo = WALL_GEO[side]; maxN = WALL_SHARE[s].n;
-      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;        // 沿长条的尺寸
-      th = geo.horiz ? LAYOUT.wall.th : LAYOUT.wall.side.tw;        // 沿深度的尺寸
-      for (k = 0; k < maxN; k++) {
-        off = (k % 2 ? Math.ceil(k / 2) : -k / 2) * tw;
-        for (layer = 0; layer < 2; layer++) {                       // layer 0 = 内层（靠桌心）
-          if (geo.horiz) {
-            out.push({ side: side, k: k, layer: layer, x: geo.cx + off - tw / 2,
-                       y: layer === 0 ? geo.inner : geo.outer, w: tw, h: th });
-          } else {
-            out.push({ side: side, k: k, layer: layer, x: layer === 0 ? geo.inner : geo.outer,
-                       y: geo.cy + off - tw / 2, w: th, h: tw });
-          }
-        }
-      }
-    }
+    var out = [], st = LAYOUT.wall.step, w = LAYOUT.wall.tw, h = LAYOUT.wall.th;
+    var sw = LAYOUT.wall.side.tw, sh = LAYOUT.wall.side.th, i;
+    for (i = 0; i < 7; i++) out.push({ side: "bottom", x: 1200 - 4 - (i + 1) * st, y: 846 - h - 4, w: w, h: h });
+    for (i = 0; i < 7; i++) out.push({ side: "left", x: 30, y: 790 - (i + 1) * st, w: sw, h: sh });
+    for (i = 0; i < 7; i++) out.push({ side: "top", x: 34 + i * st, y: 30, w: w, h: h });
+    for (i = 0; i < 6; i++) out.push({ side: "right", x: 1210 - sw, y: 34 + i * st, w: sw, h: sh });
     G.wallSlots = out;
     return out;
   }
   function drawWall(g, remaining) {
-    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots = wallSlots();
-    var i, s, drawn = 0;
+    var slots = wallSlots(), stacks = Math.ceil(remaining / 4), i, s;
     G.stat.wallStacks = stacks;
-    for (i = 0; i < slots.length; i++) {
+    for (i = 0; i < slots.length && i < stacks; i++) {
       s = slots[i];
-      if (s.k >= (need[s.side] || 0)) continue;     // 这一边已经变短
-      drawTileBack(g, s.x, s.y, s.w, s.h, { light: s.layer === 0 });
-      drawn++;
+      drawTileBack(g, s.x, s.y, s.w, s.h, { light: i + 1 < stacks });
+      // 两层分界线（上薄下厚）
+      g.strokeStyle = "rgba(0,0,0,.45)"; g.lineWidth = 1;
+      if (s.w > s.h) { g.beginPath(); g.moveTo(s.x + 2, s.y + s.h * .42); g.lineTo(s.x + s.w - 2, s.y + s.h * .42); g.stroke(); }
+      else { g.beginPath(); g.moveTo(s.x + s.w * .42, s.y + 2); g.lineTo(s.x + s.w * .42, s.y + s.h - 2); g.stroke(); }
     }
-    G.stat.wallTiles = drawn;
   }
-
 
   /* ── 各家手牌 / 副露 / 弃牌 ── */
   function playerHandCount(p) { return p.isHuman ? p.hand.length : Math.max(0, p.hand.length); }
-  /* ── 三家对家手牌：背面朝上、整齐一横排（或按方位一竖排），紧贴牌墙内侧 ──
-     尺寸统一：横向每张 back.wide × back.depth = 26×30、步距 26；纵向 30×26、步距 26。
-     全部同尺寸同色调（不再给「刚摸的那张」单独提亮，避免一排里出现大小/明暗不一）。*/
   function drawBackRowV(g, cx, cy, n, vertical) {
-    var b = LAYOUT.back, i, x, y, total = (n - 1) * b.step + b.wide;
+    var b = LAYOUT.back, i, x, y;
+    var total = (n - 1) * b.step + (vertical ? b.wide : b.wide);
     for (i = 0; i < n; i++) {
-      if (vertical) { x = cx - b.depth / 2; y = cy - total / 2 + i * b.step; drawTileBack(g, x, y, b.depth, b.wide, {}); }
-      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, {}); }
+      if (vertical) {                       // 左 / 右家：牌长边朝桌心，沿 y 排列
+        x = cx - b.depth / 2; y = cy - total / 2 + i * b.step;
+        drawTileBack(g, x, y, b.depth, b.wide, { light: i === n - 1 });
+      } else {                              // 上 / 下家：沿 x 排列
+        x = cx - total / 2 + i * b.step; y = cy - b.depth / 2;
+        drawTileBack(g, x, y, b.wide, b.depth, { light: i === n - 1 });
+      }
     }
   }
-
   /* ── 副露：位置固定 · 组内按牌面排序 · 碰/明杠有一张横置表示来源 ── */
   /** 调试：每家塞 4 组示范副露（暗杠 / 明杠 / 碰 / 补杠），只影响渲染，不动牌局 */
   function demoMeldsFor(seat) {
@@ -2713,38 +2565,27 @@
     }
     return { tw: tw, th: th, gap: gap, groupGap: cfg.groupGap };
   }
+  /**
+   * 画一组副露：
+   *   碰   → 3 张横放，其中一张横置表示来源
+   *   明杠 → 4 张（横置一张）  补杠 → 4 张（第 4 张横置）
+   *   暗杠 → 两张盖两张
+   * 返回这一组在主轴上占的长度。
+   */
   function drawMeldGroup(g, meld, x, y, cfg, dir, hl, seat) {
     var tiles = meld.tiles, s = meldSlots(meld, cfg.tw, cfg.th, cfg.gap, seat, dir), i, tx, ty, w, h, sl;
-    var cross = Math.max(cfg.tw, cfg.th);          // 整组统一行高（垂直行长条那个方向）
     for (i = 0; i < tiles.length; i++) {
       sl = s.slots[i];
-      w = sl.side ? cfg.th : cfg.tw;               // 行内占位 = 该牌的外接框（横置牌恰好是 th 宽）
+      w = sl.side ? cfg.th : cfg.tw;
       h = sl.side ? cfg.tw : cfg.th;
-      if (dir === "h") { tx = x + sl.off; ty = y + (cross - h) / 2; }
-      else { tx = x + (cross - w) / 2; ty = y + sl.off; }
-      /* 尺寸取证：同组内所有牌都是 cfg.tw × cfg.th，横置只是 rot=90（绕中心旋转），
-         绝不缩放 —— tools/mj/check-geometry.js 与 e2e 都按这个记帐断言。 */
-      if (G.stat.meldRects) {
-        G.stat.meldRects.push({ seat: seat, type: meld.type + (meld.an ? "-an" : ""), gi: i,
-                                w: cfg.tw, h: cfg.th, rot: sl.side ? 90 : 0, x: tx, y: ty });
-      }
-      if (meld.an && i < 2) {
-        drawTileBack(g, tx, ty, w, h, { light: true });                 // 暗杠：两张盖两张（背牌同尺寸）
-      } else if (sl.side) {
-        /* 横置牌：同一张牌**绕中心旋转 90°** 画（牌面仍是 cfg.tw × cfg.th）—— 只旋转、不缩放 */
-        g.save();
-        g.translate(tx + w / 2, ty + h / 2);
-        g.rotate(Math.PI / 2);
-        drawTileFace(g, tiles[i], -cfg.tw / 2, -cfg.th / 2, cfg.tw, cfg.th, { hl: hl });
-        g.restore();
-      } else {
-        drawTileFace(g, tiles[i], tx, ty, cfg.tw, cfg.th, { hl: hl });
-      }
+      if (dir === "h") { tx = x + sl.off; ty = y + (cfg.th - h) / 2; }
+      else { tx = x + (cfg.tw - w) / 2; ty = y + sl.off; }
+      if (meld.an && i < 2) drawTileBack(g, tx, ty, w, h, { light: true });   // 暗杠：两张盖两张
+      else drawTileFace(g, tiles[i], tx, ty, w, h, { hl: hl });
     }
     G.stat.meldTiles += tiles.length;
     return s.len;
   }
-
   function drawDiscards(g, seat) {
     var p = G.E.P[seat], zone = DISC_ZONE[seat], d = LAYOUT.disc, i, pos, last = p.discards.length - 1, out = [];
     for (i = 0; i < p.discards.length; i++) {
@@ -2785,61 +2626,58 @@
     var E = G.E, p = E.P[seat], active = (E.phase !== "over" && ((E.phase === "turn" && E.cur === seat) ||
       (E.phase !== "turn" && E.pending && E.pending.seat === seat))) ? true : false;
     var melds = G.demo ? demoMeldsFor(seat) : p.melds;
-    var i, x, y, res, backN, m0, m2, mS, j, tot, cen;
+    var i, x, y, res, backN, m0, m2, mS;
     if (seat === 0) {
-      /* 副露：手牌上方一行、右对齐到 meld0.x，按牌面（万→条→筒→字，数字升序）排列 */
+      // 副露：手牌右上方固定位置，右对齐、按牌面（万→条→筒→字，数字升序）排列
       m0 = meldLayout(melds, LAYOUT.meld0, 0, "h", LAYOUT.meld0.avail);
       y = LAYOUT.meld0.y;
-      tot = 0;
+      var tot = 0, j;                                          // 先量总长 → 右对齐
       for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], m0, 0, "h") + (j ? m0.groupGap : 0);
       x = LAYOUT.meld0.x - tot;
       for (j = 0; j < melds.length; j++) {
         res = drawMeldGroup(g, melds[j], x, y, m0, "h", false, 0);
         x += res + m0.groupGap;
       }
-    } else if (seat === 2) {
-      /* 对家（上）：手牌背面整齐一横排，紧贴牌墙内侧；副露横排在手牌**外侧**（更靠牌墙那侧）*/
+    } else if (seat === 2 || seat === 1) {
       backN = p.hand.length;
-      drawBackRowV(g, 620, 135, backN, false);
+      var cx = seat === 2 ? 620 : 1152, cy = seat === 2 ? 84 : 430;
+      drawBackRowV(g, cx, cy, backN, seat !== 2);
       G.stat.backs += backN;
-      m2 = meldLayout(melds, LAYOUT.meldTop, 2, "h", 700);
-      tot = 0;
-      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], m2, 2, "h") + (j ? m2.groupGap : 0);
-      x = 620 - tot / 2;
-      y = 82;
-      for (j = 0; j < melds.length; j++) {
-        res = drawMeldGroup(g, melds[j], x, y, m2, "h", false, 2);
-        x += res + m2.groupGap;
-      }
-    } else if (seat === 1) {
-      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右墙那侧）*/
-      backN = p.hand.length;
-      drawBackRowV(g, 1110, 400, backN, true);
-      G.stat.backs += backN;
-      mS = meldLayout(melds, LAYOUT.meldSide, 1, "v", 380);
-      tot = 0;
-      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 1, "v") + (j ? mS.groupGap : 0);
-      y = 400 - tot / 2;
-      for (j = 0; j < melds.length; j++) {
-        res = drawMeldGroup(g, melds[j], 1128, y, mS, "v", false, 1);
-        y += res + mS.groupGap;
+      // 副露：固定位置（上家在手牌下方横排，右家在手牌内侧竖排）
+      if (seat === 2) {
+        m2 = meldLayout(melds, LAYOUT.meldTop, 2, "h", 600);
+        x = 430; y = 118;
+        for (i = 0; i < melds.length; i++) {
+          res = drawMeldGroup(g, melds[i], x, y, m2, "h", false, 2);
+          x += res + m2.groupGap;
+        }
+      } else {
+        // 竖排副露：一列放不下就换第二列（副露多时牌不至于被缩得太小）
+        mS = { tw: LAYOUT.meldSide.tw, th: LAYOUT.meldSide.th, gap: LAYOUT.meldSide.gap, groupGap: LAYOUT.meldSide.groupGap };
+        var availV = 340, col = 0;
+        y = 296;
+        for (i = 0; i < melds.length; i++) {
+          res = meldLen(melds[i], mS, 1, "v");
+          if (y > 296 && y + res > 296 + availV) { col++; y = 296; }
+          drawMeldGroup(g, melds[i], 1032 + col * (mS.tw + 8), y, mS, "v", false, 1);
+          y += res + mS.groupGap;
+        }
       }
     } else {
-      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左墙那侧）*/
       backN = p.hand.length;
-      drawBackRowV(g, 131, 400, backN, true);
+      drawBackRowV(g, 79, 430, backN, true);
       G.stat.backs += backN;
-      mS = meldLayout(melds, LAYOUT.meldSide, 3, "v", 380);
-      tot = 0;
-      for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 3, "v") + (j ? mS.groupGap : 0);
-      y = 400 - tot / 2;
-      for (j = 0; j < melds.length; j++) {
-        res = drawMeldGroup(g, melds[j], 78, y, mS, "v", false, 3);
+      mS = { tw: LAYOUT.meldSide.tw, th: LAYOUT.meldSide.th, gap: LAYOUT.meldSide.gap, groupGap: LAYOUT.meldSide.groupGap };
+      var availV3 = 340, col3 = 0;
+      y = 296;
+      for (i = 0; i < melds.length; i++) {
+        res = meldLen(melds[i], mS, 3, "v");
+        if (y > 296 && y + res > 296 + availV3) { col3++; y = 296; }
+        drawMeldGroup(g, melds[i], 112 + col3 * (mS.tw + 8), y, mS, "v", false, 3);
         y += res + mS.groupGap;
       }
     }
     if (seat !== 0) {
-
       drawSeatPlate(g, seat, p.name + (active ? " ●" : ""), p.hand.length + " 张", active);
     } else {
       drawSeatPlate(g, 0, "你" + (active ? " ● 出牌" : ""), p.hand.length + " 张", active);
@@ -2954,35 +2792,32 @@
     g.fillText("智脑提示：四家手牌已全部亮出（排序：万→条→筒→字）", W / 2, H - 32);
     g.restore();
   }
-  /* ── 中央信息盘（照参考图 2 的圆形指示盘，仍全部用矢量画）── */
+  /* ── 中央信息圈 ── */
   function drawCenter(g) {
-    var c = LAYOUT.center, E = G.E, R = Math.min(c.w, c.h) / 2;
+    var c = LAYOUT.center, E = G.E;
     g.save();
-    /* 圆盘：深绿底 + 金外环 + 内圈细金线 */
-    var grd = g.createRadialGradient(c.x, c.y - R * .32, R * .12, c.x, c.y, R);
-    grd.addColorStop(0, "rgba(26,48,36,.96)"); grd.addColorStop(1, "rgba(4,12,9,.94)");
-    g.beginPath(); g.arc(c.x, c.y, R, 0, Math.PI * 2); g.fillStyle = grd; g.fill();
-    g.strokeStyle = "rgba(255,215,110,.46)"; g.lineWidth = 2; g.stroke();
-    g.beginPath(); g.arc(c.x, c.y, R * .84, 0, Math.PI * 2);
-    g.strokeStyle = "rgba(255,215,110,.16)"; g.lineWidth = 1; g.stroke();
-    /* 四向指示箭头（当前行动方金色），贴在圆盘外的四个方位 */
-    var marks = [[0, 1], [1, 0], [0, -1], [-1, 0]], i, mx, my, act;
-    for (i = 0; i < 4; i++) {
-      mx = c.x + marks[i][0] * (R + 15); my = c.y + marks[i][1] * (R + 13);
-      act = (E.phase === "turn" && E.cur === i) || (E.phase !== "turn" && E.pending && E.pending.seat === i);
+    g.fillStyle = "rgba(5,14,10,.72)";
+    rr(g, c.x - c.w / 2, c.y - c.h / 2, c.w, c.h, 14); g.fill();
+    g.strokeStyle = "rgba(255,215,110,.30)"; g.lineWidth = 1.5;
+    rr(g, c.x - c.w / 2, c.y - c.h / 2, c.w, c.h, 14); g.stroke();
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "#ffd76e"; g.font = "bold 19px " + FONT_CN;
+    g.fillText("余 " + E.wall.length + " 张", c.x, c.y - 13);
+    g.fillStyle = "rgba(223,230,242,.85)"; g.font = "13px 'Microsoft YaHei',sans-serif";
+    g.fillText("第 " + E.turnNo + " 巡", c.x, c.y + 13);
+    // 四家指示箭头（当前行动方金色）
+    var marks = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+    for (var i = 0; i < 4; i++) {
+      var mx = c.x + marks[i][0] * (c.w / 2 + 16), my = c.y + marks[i][1] * (c.h / 2 + 14);
+      var act = (E.phase === "turn" && E.cur === i) || (E.phase !== "turn" && E.pending && E.pending.seat === i);
       g.fillStyle = act ? "#ffd76e" : "rgba(255,255,255,.22)";
       g.beginPath();
       g.moveTo(mx, my - 7); g.lineTo(mx + 7, my + 5); g.lineTo(mx - 7, my + 5); g.closePath(); g.fill();
     }
-    /* 盘心数字 */
-    g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillStyle = "#ffd76e"; g.font = "bold 21px " + FONT_CN;
-    g.fillText("余 " + E.wall.length, c.x, c.y - 12);
-    g.fillStyle = "rgba(223,230,242,.88)"; g.font = "12px 'Microsoft YaHei',sans-serif";
-    g.fillText("张 · 第 " + E.turnNo + " 巡", c.x, c.y + 12);
     g.restore();
   }
 
+  /** 调试用：把全部牌面排成一张大图，行序「万 → 筒 → 条 → 字牌」（与标准参考图分组一致） */
   function faceSheetRows() {
     /* tileGroup: 万=0 / 条=1 / 筒=2 / 字=3（SUITS 顺序）；参考图分组顺序是 万→筒→条→字 */
     var order = [0, 1, 2, 3];   /* 0=万 1=条 2=筒 3=字：KINDS 本身即 万→条→筒→字 */
@@ -3042,7 +2877,7 @@
       g.lineCap = "round"; g.lineJoin = "round";
     } catch (e) {}
     g.clearRect(0, 0, W, H);
-    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, backSolid: 0, resHands: 0, resHandTiles: 0, meldRects: [] };
+    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, resHands: 0, resHandTiles: 0 };
     G.decor = { dice: 0, chips: 0, ruler: 0, ashtray: 0, vecDice: 0, vecChip: 0, skipped: 0 };
     if (G.sheet) { G.sheetTiles = []; drawFaceSheet(g, G.sheet); G.stat.sheetTiles = G.sheetTiles.length; G.stat.frame = (G.stat.frame || 0) + 1; return G.stat; }
     updateHint();                                            // 先算提示 → drawMyHand 用的 G.hintIdx 与金框一致
@@ -3084,7 +2919,7 @@
     host: null, cv: null, ctx: null, dpr: 1,
     E: null, opts: null, timers: [], raf: 0,
     hover: -1, handRects: [], wallSlots: null, noise: null, stat: null, tickTimer: 0, frames: 0,
-    roomBg: false, tileBackTex: 0, tileBackSolid: 0, decor: null,
+    roomBg: false, tileBackTex: 0, decor: null,
     anim: { drawAt: 0 }, win: null, uiLock: 0, logRendered: 0,
     idleTimer: 0, winTimer: 0, result: null, resultShown: false, noiseCv: null, sheet: null, demo: null,
     hintOn: true, hint: null, hintIdx: -1, hintKey: "", hintPane: "", hintCalcN: 0, hintLastMs: 0, hintWorstMs: 0,
@@ -4379,18 +4214,6 @@
       faceSheetRows: function () { return faceSheetRows().map(function (rr) { return { label: rr.label, suit: rr.suit, tiles: rr.tiles.slice() }; }); },
       faceTiles: function () { return (G.sheetTiles || []).map(function (s) { return { tile: s.tile, x: s.x, y: s.y, w: s.w, h: s.h }; }); },
       demoMelds: dbgDemoMelds,
-      /** 副露尺寸取证（本帧真实画出去的每一张）：同组内 (w,h) 只许一种、rot ∈ {0,90}。
-          用户 2025 明确要求「碰了的牌高度大小要统一，横置那张不许更小」→ 这条是可断言的。 */
-      meldRects: function () { return (G.stat && G.stat.meldRects) ? G.stat.meldRects.slice() : []; },
-      /** 牌墙取证：同一侧的牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 × 双层 = 68 块） */
-      wallInfo: function () {
-        var slots = wallSlots(), sizes = {}, i, k, out = { total: slots.length, sizes: [], counts: null, tiles: (G.stat && G.stat.wallTiles) || 0 };
-        for (i = 0; i < slots.length; i++) { k = slots[i].w + "x" + slots[i].h; sizes[k] = (sizes[k] || 0) + 1; }
-        for (k in sizes) if (sizes.hasOwnProperty(k)) out.sizes.push({ size: k, n: sizes[k] });
-        if (G.E && G.E.wall) out.counts = wallCounts(Math.ceil(G.E.wall.length / 4));
-        return out;
-      },
-      layout: function () { return JSON.parse(JSON.stringify(LAYOUT)); },
       dpr: function () { return G.dpr; },
       /** 本批贴图的加载与使用状态（无头 / 浏览器验收都读它）*/
       art: function () {
@@ -4408,9 +4231,7 @@
                  bg: { dir: MJ_BG.dir, name: MJ_BG.name, file: MJ_BG.dir + MJ_BG.name,
                        ready: !!(bnw > 0 && bimg.complete !== false), naturalWidth: bnw,
                        loaded: MJ_BG.loaded, failed: MJ_BG.failed },
-                 roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0, tileBackSolid: G.tileBackSolid || 0,
-      /* tileBackTex 恒为 0：tile_back.png 是「深蓝 + 鱼鳞纹」，与用户「纯色无花纹」要求冲突，
-         按指示改用纯色矢量（drawTileBack）；tileBackSolid 是本帧画出的纯色牌背张数。*/
+                 roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0,
                  decor: decorStat(),
                  fallback: ["tile_back-texture", "procedural-stripe", "procedural-felt",
                             "dice-texture>vector-dice", "chip-texture>vector-chip",

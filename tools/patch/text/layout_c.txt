@@ -1,0 +1,31 @@
+  function drawMeldGroup(g, meld, x, y, cfg, dir, hl, seat) {
+    var tiles = meld.tiles, s = meldSlots(meld, cfg.tw, cfg.th, cfg.gap, seat, dir), i, tx, ty, w, h, sl;
+    var cross = Math.max(cfg.tw, cfg.th);          // 整组统一行高（垂直行长条那个方向）
+    for (i = 0; i < tiles.length; i++) {
+      sl = s.slots[i];
+      w = sl.side ? cfg.th : cfg.tw;               // 行内占位 = 该牌的外接框（横置牌恰好是 th 宽）
+      h = sl.side ? cfg.tw : cfg.th;
+      if (dir === "h") { tx = x + sl.off; ty = y + (cross - h) / 2; }
+      else { tx = x + (cross - w) / 2; ty = y + sl.off; }
+      /* 尺寸取证：同组内所有牌都是 cfg.tw × cfg.th，横置只是 rot=90（绕中心旋转），
+         绝不缩放 —— tools/mj/check-geometry.js 与 e2e 都按这个记帐断言。 */
+      if (G.stat.meldRects) {
+        G.stat.meldRects.push({ seat: seat, type: meld.type + (meld.an ? "-an" : ""), gi: i,
+                                w: cfg.tw, h: cfg.th, rot: sl.side ? 90 : 0, x: tx, y: ty });
+      }
+      if (meld.an && i < 2) {
+        drawTileBack(g, tx, ty, w, h, { light: true });                 // 暗杠：两张盖两张（背牌同尺寸）
+      } else if (sl.side) {
+        /* 横置牌：同一张牌**绕中心旋转 90°** 画（牌面仍是 cfg.tw × cfg.th）—— 只旋转、不缩放 */
+        g.save();
+        g.translate(tx + w / 2, ty + h / 2);
+        g.rotate(Math.PI / 2);
+        drawTileFace(g, tiles[i], -cfg.tw / 2, -cfg.th / 2, cfg.tw, cfg.th, { hl: hl });
+        g.restore();
+      } else {
+        drawTileFace(g, tiles[i], tx, ty, cfg.tw, cfg.th, { hl: hl });
+      }
+    }
+    G.stat.meldTiles += tiles.length;
+    return s.len;
+  }

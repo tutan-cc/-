@@ -1,0 +1,37 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  var DOT_POS = {",
+      "to": "  var TIAO_POS = {",
+      "textFile": "tools/patch/text/faces_a.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var TIAO_POS = {",
+      "to": "  /** 字牌配色：东南西北 黑 / 中 红 / 發 绿 / 白 蓝框 */",
+      "textFile": "tools/patch/text/faces_b.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /**\r\n   * 筒的一个圆点：标准「双圈 + 描边」——彩色外环 → 白圈 → 彩色内环 → 白心；",
+      "to": "  function drawTongFace(g, n, x, y, w, h) {\r\n    var pos = DOT_POS[n], col = DOT_COL[n], i;\r\n    var r = DOT_R[n] * Math.min(w, h * .96);\r\n    for (i = 0; i < pos.length; i++) {\r\n      drawDot(g, x + pos[i][0] * w, y + pos[i][1] * h, r, col[i], n === 1);\r\n    }\r\n  }",
+      "textFile": "tools/patch/text/faces_c.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 条：竹节（两段圆头竖条 + 中间节纹 + 高光），描边 ≥2px */",
+      "to": "    g.fillRect(X + s * .10, Y + s * .33, s * .055, s * .055);\r\n  }",
+      "textFile": "tools/patch/text/faces_d.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  function drawTiaoFace(g, n, x, y, w, h) {",
+      "to": "  /** 字牌：东南西北 黑色大字（占满牌面）/ 中 红 / 發 绿 / 白 蓝色双线空心方框 */",
+      "textFile": "tools/patch/text/faces_e.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  function drawHonorFace(g, t, x, y, w, h) {",
+      "to": "    g.fillText(t, x + w / 2, y + h * .54);\r\n  }",
+      "textFile": "tools/patch/text/faces_f.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var HONOR_COL = { \"东\": C_INK, \"南\": C_INK, \"西\": C_INK, \"北\": C_INK, \"中\": C_RED, \"發\": C_GREEN, \"白\": C_BLUE };",
+      "text": "  var HONOR_COL = { \"东\": C_INK, \"南\": C_INK, \"西\": C_INK, \"北\": C_INK, \"中\": C_RED, \"發\": C_GREEN, \"白\": C_INK };  /* 白板画成墨色双线空框，见 drawHonorFace */" }
+  ]
+}

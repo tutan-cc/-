@@ -1,0 +1,11 @@
+  function drawTiaoFace(g, n, x, y, w, h) {
+    if (n === 1) { drawBird(g, x + w * .5, y + h * .50, Math.min(w, h * .96) * .98); return; }
+    var t = TIAO_POS[n], i, p, col;
+    var sw = t.sw * w, sh = t.sh * h;
+    for (i = 0; i < t.p.length; i++) {
+      p = t.p[i];
+      col = (t.red && t.red.indexOf(i) >= 0) ? C_RED : C_GREEN;
+      drawStick(g, x + p[0] * w, y + p[1] * h, sw, sh, col);
+    }
+  }
+  /** 字牌：东南西北 黑色大字（占满牌面）/ 中 红 / 發 绿 / 白 墨色双线空心框（照参考图 1） */
