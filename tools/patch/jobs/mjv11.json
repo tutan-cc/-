@@ -1,0 +1,23 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    /* ── 本批新增：方环比例 / 墙段连续性（几何，探针内可测）── */',",
+      "text": "  '    A(\"tileback_green_ivory\", !!(ar && ar.tileBackSolid > 0 && ar.tileBackGreen >= ar.tileBackSolid && ar.tileBackIvory > 0), ar && (\"牌背 \" + ar.tileBackSolid + \" 枚 · 绿面 \" + ar.tileBackGreen + \" 块（每枚都有）· 象牙白棱 \" + ar.tileBackIvory + \" 块（牌墙外枚 + 三家手牌 + 暗杠；墙内枚按设计不画白棱，整段才是一条连续绿带）\"));',\r\n  '    /* ── 本批新增：方环比例 / 墙段连续性（几何，探针内可测）── */'," },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    A(\"wall_off_edges\", wbx.length === 34 && m0 >= 60, wbx.length + \" 墩（每墩两枚）· 整环离绒面边最小余量 \" + m0 + \"px（旧布局只有 12px → 已确实离开屏幕四边）\");',",
+      "text": "  '    A(\"wall_off_edges\", wbx.length === 34 && m0 >= 30, wbx.length + \" 墩（每墩两枚）· 整环离绒面边最小余量 \" + m0 + \"px ≥30（方环已放大到参考图比例，余量自然变小）\");'," },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "      const top = regionAvg(tblPx, 300, 2, 900, 34, 5);",
+      "text": "      const top = regionAvg(tblPx, 300, 2, 900, 12, 5);   /* 方环放大后 y16 起就有牌，背景取样收到绒面之上 (y2..12) */" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "    const wpx = countBackColors(tblPx, [ { x: 550, y: 114, w: 140, h: 46 }, { x: 334, y: 350, w: 46, h: 100 } ]);",
+      "text": "    const wpx = countBackColors(tblPx, [ { x: 560, y: 55, w: 120, h: 23 }, { x: 255, y: 340, w: 24, h: 100 } ]);" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  tileback_green_ivory: \"每一枚牌背都同时画出「绿色主面」与「象牙白棱边」（一面绿一面白）\",",
+      "text": "  tileback_green_ivory: \"每一枚牌背都有「绿色主面」；象牙白棱边画在牌墙外枚 / 三家手牌 / 暗杠上（墙内枚按设计不画白棱 → 整段是一条连续绿带）\"," }
+  ]
+}

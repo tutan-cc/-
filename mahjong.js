@@ -1911,14 +1911,16 @@
   /** 手牌 56×78（放大到看得清牌面），牌与牌之间 6px 间隙；对手手牌 / 牌墙按同比例缩放 */
   var LAYOUT = {
     felt: { x: 14, y: 14, w: W - 28, h: H - 28, r: 26 },
-    hand: { y: 752, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },
-    meld0: { x: 1057, y: 690, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },
+    hand: { y: 762, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },
+    meld0: { x: 1057, y: 711, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },
     back: { wide: 26, depth: 30, step: 26 },
     meldSide: { tw: 34, th: 30, gap: 3, groupGap: 12 },
     meldTop: { tw: 34, th: 30, gap: 4, groupGap: 14 },
-    disc: { tw: 30, th: 40, sx: 32, sy: 42 },
-    wall: { tw: 30, th: 22, side: { tw: 22, th: 30 }, step: 30 },
-    center: { x: 620, y: 402, w: 116, h: 116 }
+    disc: { tw: 36, th: 48, sx: 38, sy: 50 },
+    /* 牌墙一墩 = **上下两枚立牌**（照放大参考图）：单枚牌背深 tileDepth，一墩两枚 = stackDepth。
+       stackDepth 46 = 旧的「双层 22 + 缝 2 + 22」→ 方环占位没变，同心几何与装饰安全区都不用重算。*/
+    wall: { tw: 30, tileDepth: 23, stackDepth: 46, side: { tw: 23, th: 30 }, step: 30 },
+    center: { x: 620, y: 380, w: 118, h: 118 }
   };
   /* 尺寸纪律（用户 2025 追加要求）：**同一副露组内所有牌尺寸完全一致**。
        · 正立牌 = meld0/meldTop/meldSide 的 tw × th（本组内统一）
@@ -1926,19 +1928,44 @@
        · 整组统一行高（垂直于行的方向）= max(tw, th)，所有牌按它居中 → 顶边 / 底边齐平
        · 牌墙：同一侧的牌背尺寸一致（横向 30×22 / 纵向 22×30），双层叠放两排同尺寸
      e2e 与 tools/mj/check-geometry.js 会断言「同组内 (w,h) 只有一种、rot ∈ {0,90}」。 */
-  /** 弃牌区：每家一块，照参考图统一**每行 6 张**换行 */
+  /** ── 同心三层布局的骨架常量（照参考图 2 重排）───────────────────────────────
+      由中心向外：① 圆形指示盘（LAYOUT.center）→ ② 牌河（DISC_ZONE）
+      → ③ 牌墙方环（WALL_GEO，内表面到中心恒为 rIn）→ ④ 四家手牌 / 副露 / 座位牌。
+      rIn 由「牌墙外沿 + 余量 ≤ 玩家副露上沿（LAYOUT.meld0.y = 690）」定死：
+        cy + rIn + 22(内层深) + 2(缝) + 22(外层深) = 402 + rIn + 46 ≤ 670  →  rIn ≤ 222。
+      取 rIn = 222（满值），牌河带宽 = 222 − 54(指示盘半径) = 168px → 放得下 4 行（24 张/家）。 */
+  /** ── 同心三层布局的骨架常量（照参考图 2 量出来后重排）─────────────────────────
+      量图结论（2868×1320 → 归一化）：牌墙方环外沿占**桌面宽度的 64.5%**、高度的 81.5%，
+      中央圆盘在画面正中（归一化 0.497 / 0.398）。旧实现方环只占桌面宽 44% → 明显偏小。
+      由中心向外：① 圆形指示盘（LAYOUT.center）→ ② 牌河（DISC_ZONE）
+      → ③ 牌墙方环（WALL_GEO，内表面到中心恒为 rIn）→ ④ 四家手牌 / 副露 / 座位牌。
+      rIn 由「牌墙外沿 + 余量 ≤ 玩家副露上沿（LAYOUT.meld0.y = 694）」定死：
+        cy + rIn + 46(整墩深) + 8(余量) ≤ 694，cy = 400  →  rIn ≤ 240。 */
+  /** ── 同心三层布局骨架（照参考图量测：方环占桌面宽 64.5% / 高 81.5%）──────────────
+      用户验收要求：方环外接框 **宽 ≥0.60 × 桌面宽、高 ≥0.78 × 桌面高**。
+      绒面 1212×832 → 目标外接框 ≥728 × ≥649。方环做成**略微扁的矩形**（728×650），
+      因为画布是 1240×860（1.44:1），正方形方环不可能同时满足两个比例。
+      由中心向外：① 圆形指示盘 → ② 牌河 → ③ 牌墙方环 → ④ 四家手牌 / 副露 / 座位牌。 */
+  var RING = { cx: 620, cy: 380, rInX: 318, rInY: 279, gap: 2, depth: 22 };
+  /** 弃牌区（牌河）：**紧贴指示盘外圈**、朝心排列、每行 6 张、牌牌紧密。
+      牌河带宽：竖 279−58 = 221px（4 行 × 50）· 横 318−58 = 260px（4 列 × 38）。 */
   var DISC_ZONE = {
-    0: { x: 525, y: 590, perRow: 6, dir: "up" },
-    1: { x: 850, y: 275, perRow: 6, dir: "left" },
-    2: { x: 525, y: 176, perRow: 6, dir: "down" },
-    3: { x: 390, y: 275, perRow: 6, dir: "right" }
+    0: { x: 507, y: 609, perRow: 6, dir: "up" },
+    1: { x: 680, y: 231, perRow: 6, dir: "right" },
+    2: { x: 507, y: 103, perRow: 6, dir: "down" },
+    3: { x: 524, y: 231, perRow: 6, dir: "left" }
   };
-  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左) */
+  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左)
+      同心重排后：三家座位牌一律贴在自己**副露的外侧**（朝方环反向），三家对称。 */
+  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左)
+      同心重排后：三家座位牌一律贴在自己**副露的外侧**（朝方环反向），三家对称。 */
+  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左)
+      方环放大后：三家座位牌一律贴在自己**副露的外侧**，三家对称。 */
   var SEAT_POS = {
-    0: { x: 62, y: 752, align: "left" },
-    1: { x: 1052, y: 612, align: "left" },
-    2: { x: 878, y: 84, align: "left" },
-    3: { x: 58, y: 600, align: "left" }
+    0: { x: 62, y: 762, align: "left" },
+    1: { x: 1070, y: 365, align: "left" },
+    2: { x: 810, y: 20, align: "left" },
+    3: { x: 40, y: 365, align: "left" }
   };
 
   /* ── 牌面几何（严格照「麻将零基础教学」标准参考图） ──
@@ -2296,60 +2323,107 @@
     }
     g.restore();
   }
+  /** 3D 立牌牌背的几何 / 配色常量（照放大参考图：一面绿、一面象牙白、右下有厚度暗面）
+      edge  = 象牙白棱边厚 / 牌深（参考图 绿 44 : 白 18 → 白占 0.29，取 0.28）
+      line  = 绿面与白棱之间的细阴影线 / 牌深（也是「两张牌」之间的分界）
+      thick = 右下暗面（牌厚）/ 短边
+      r     = 圆角半径 / 短边 */
+  var BACK3D = {
+    edge: .28, edgeThin: .24, line: .05, thick: .11, r: .20,
+    /* 绿面（上亮下暗，饱满绿）*/
+    greenA: "#4cb87c", greenM: "#3a9d63", greenB: "#2b7d4a",
+    greenDimA: "#3d9765", greenDimM: "#2f8151", greenDimB: "#22663c",
+    /* 象牙白棱边（外亮内暗）*/
+    ivoryA: "#faf6ec", ivoryB: "#d6d0c0",
+    ivoryDimA: "#ded8c9", ivoryDimB: "#b9b3a3",
+    /* 绿面 / 白棱 之间的分界阴影线；右下暗面（牌厚）*/
+    lineC: "#0d3a22",
+    darkA: "#1d5c39", darkB: "#123f26",
+    darkDimA: "#17502f", darkDimB: "#0e3520",
+    rim: "rgba(9,38,24,.55)"
+  };
   /**
-   * 牌背：饱满立体的「一张纯色麻将」（照参考图里那种绿背）。
-   *   · 圆角矩形 + 顶面亮 / 侧面暗的厚度过渡 + 顶左高光边 + 细描边 → 是一张**有厚度的实心牌**
+   * 牌背：**立起来的 3D 麻将牌**（照放大参考图）—— 一面绿、一面象牙白。
+   *   · 绿面主面（朝桌心 / 朝我们）：饱满绿色竖向渐变（上亮下暗），占 (1 − edge − line) 牌深
+   *   · 象牙白棱边：牌体的厚度那一面，紧贴绿面、在牌的**外侧**那一边
+   *     —— 对家手牌 / 上下牌墙在顶（底）边，左右侧牌墙与左右家在侧棱（用户原话「一面绿一面白」）
+   *   · 绿面与白棱之间一条细阴影线；两张牌叠放时它也充当两枚之间的分界
+   *   · 右下留出深绿暗面 = 牌的厚度 + 落影；圆角 + 细描边
    *   · **没有任何斜纹 / 花纹**（用户明确要求：不要斜杠）
-   *   · 同一套画法用在三处：① 剩余牌堆（牌墙）② 三家对家手牌背面 ③ 暗杠盖着的那两张
-   *   · 尺寸只由调用方给的 (w,h) 决定 —— 牌墙 / 对家手牌每张尺寸完全一致
+   *   · 同一套画法用在三处：① 牌墙每一枚（一墩两枚）② 三家对家手牌背面 ③ 暗杠盖着的那两张
+   *   · 尺寸只由调用方给的 (w,h) 与 o.edge 决定 —— 同组内每枚尺寸完全一致（只旋转不缩放）
    * ⚠ art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」的一版素材，与「纯色、无花纹」冲突，
-   *   按用户指示改为纯色矢量画法，该素材**故意不接**（与 tile_white / tile_fa 同理，
-   *   见 art() 的 fallback 声明与 e2e 的 tileback_solid 断言）。
-   * o: { light: 顶面稍亮（牌墙外层用），默认 true }
+   *   按用户指示改为纯色矢量画法，该素材**故意不接**（与 tile_white / tile_fa 同理）。
+   * o: { edge: "top"|"right"|"bottom"|"left"（象牙白棱边所在那一边，默认 top）,
+   *      dim:  true = 整体压暗（下张牌「被上张压住」的层次） }
    */
   function drawTileBack(g, x, y, w, h, o) {
     o = o || {};
+    var B = BACK3D, side = o.edge || "top", dim = !!o.dim;
+    var vert = (side === "left" || side === "right");          // 棱边在左右 → 沿 x 切分
     var m = Math.min(w, h);
-    var r = Math.max(2, m * .22);                      // 圆角
-    var d = Math.max(1.1, m * .17);                    // 厚度（顶面相对底面的内缩）
-    var light = o.light !== false;
+    var r = Math.max(1.6, m * B.r);                            // 圆角
+    var tk = Math.max(1.1, m * B.thick);                       // 右下暗面（牌厚）
+    var fx = x, fy = y, fw = w - tk, fh = h - tk;              // 顶面（其余留给右下暗面）
+    var fr = Math.max(1.2, r * .62);
+    var along = vert ? fw : fh;                                // 顶面沿「切分轴」的长度
+    /* 象牙白棱边厚：牌墙「外枚」用 thin（窄白棱压在本段外沿）；牌墙「内枚」用 noEdge（不画白棱，
+       只靠分界阴影线区分两枚）→ 整段看起来是**一条连续绿带 + 上沿一条白棱**，而不是一圈白条纹。*/
+    var e = o.noEdge ? 0 : Math.max(2, along * (o.thin ? B.edgeThin : B.edge));
+    var ln = Math.max(1, along * B.line);                      // 绿面 / 白棱 之间的细阴影线
+    var gd = Math.max(2, along - e - ln);                      // 绿面厚
+    var gA = g.createLinearGradient(fx, fy, fx, fy + fh);
+    var iA = g.createLinearGradient(fx, fy, fx, fy + fh);
+    /* a / b 是从「棱边反向那一端」起算的坐标 → 同一段代码支持四个朝向 */
+    function seg(a, b, grad, col) {
+      var sx, sy, sw, sh;
+      if (vert) { sx = fx + (side === "left" ? (along - b) : a); sy = fy; sw = b - a; sh = fh; }
+      else { sx = fx; sy = fy + (side === "top" ? (along - b) : a); sw = fw; sh = b - a; }
+      g.fillStyle = grad || col;
+      g.fillRect(sx, sy, sw, sh);
+    }
+    gA.addColorStop(0, dim ? B.greenDimA : B.greenA);
+    gA.addColorStop(.55, dim ? B.greenDimM : B.greenM);
+    gA.addColorStop(1, dim ? B.greenDimB : B.greenB);
+    iA.addColorStop(0, dim ? B.ivoryDimA : B.ivoryA);
+    iA.addColorStop(1, dim ? B.ivoryDimB : B.ivoryB);
     g.save();
-    /* ① 投影：让牌在桌面上「坐得住」（不是厚 3D，只留一点落影） */
+    /* ① 落影 */
     g.save();
-    g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = Math.max(2, m * .20);
-    g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, h * .05);
-    g.fillStyle = "#0e2c1d";
-    rr(g, x, y, w, h, r); g.fill();
+    g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = Math.max(2, m * .19);
+    g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, m * .06);
+    g.fillStyle = "#0e2c1d"; rr(g, x, y, w, h, r); g.fill();
     g.restore();
-    /* ② 侧面 / 厚度：整体深绿底面 */
+    /* ② 厚度暗面：整块先铺深绿，顶面内缩后**右下**露出来就是牌厚 */
     var gs = g.createLinearGradient(x, y, x + w * .30, y + h);
-    gs.addColorStop(0, light ? "#2f8455" : "#287349");
-    gs.addColorStop(1, light ? "#164c2d" : "#123f26");
-    g.fillStyle = gs;
-    rr(g, x, y, w, h, r); g.fill();
-    /* ③ 顶面：向左上偏移内缩（光源在左上）→ 右下露出「侧面」，就是厚度 */
-    var fx = x + d * .40, fy = y + d * .40, fw = w - d * 1.05, fh = h - d * 1.15;
-    var gf = g.createLinearGradient(fx, fy, fx, fy + fh);
-    gf.addColorStop(0, light ? "#4cb87c" : "#43ab72");
-    gf.addColorStop(.55, light ? "#3a9d63" : "#338c58");
-    gf.addColorStop(1, light ? "#2b7d4a" : "#256c40");
-    g.fillStyle = gf;
-    rr(g, fx, fy, fw, fh, Math.max(1.4, r * .70)); g.fill();
-    /* ④ 顶面高光边（上）+ 底面压边（下）→ 立体感；没有花纹 */
-    var inx = Math.max(1.2, fw * .16), iny = Math.max(1, fh * .085);
-    g.strokeStyle = "rgba(226,255,238,.34)"; g.lineWidth = Math.max(1, m * .075);
+    gs.addColorStop(0, dim ? B.darkDimA : B.darkA);
+    gs.addColorStop(1, dim ? B.darkDimB : B.darkB);
+    g.fillStyle = gs; rr(g, x, y, w, h, r); g.fill();
+    /* ③ 顶面 = 绿面 + 细阴影线 + 象牙白棱边（三段切分）*/
+    g.save();
+    rr(g, fx, fy, fw, fh, fr); g.clip();
+    seg(0, gd, gA);
+    seg(gd, gd + ln, null, B.lineC);
+    seg(gd + ln, along, iA);
+    /* 绿面远端高光（光源左上，与棱边相反那一侧）→ 立体感；仍然零花纹 */
+    var hl = Math.max(1, m * .065), hp = Math.max(1.2, along * .10), hx, hy;
+    g.strokeStyle = "rgba(226,255,238,.28)"; g.lineWidth = hl;
     g.beginPath();
-    g.moveTo(fx + inx, fy + iny); g.lineTo(fx + fw - inx, fy + iny);
+    if (vert) { hx = (side === "left" ? fx + fw - hp : fx + hp); g.moveTo(hx, fy + fh * .12); g.lineTo(hx, fy + fh * .88); }
+    else { hy = (side === "top" ? fy + fh - hp : fy + hp); g.moveTo(fx + fw * .12, hy); g.lineTo(fx + fw * .88, hy); }
     g.stroke();
-    g.strokeStyle = "rgba(6,34,20,.35)"; g.lineWidth = Math.max(1, m * .065);
-    g.beginPath();
-    g.moveTo(fx + inx, fy + fh - iny); g.lineTo(fx + fw - inx, fy + fh - iny);
-    g.stroke();
-    /* ⑤ 细描边：小尺寸下也能看出「一张牌」的轮廓 */
-    g.strokeStyle = "rgba(9,38,24,.55)"; g.lineWidth = Math.max(1, m * .05);
-    rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();
     g.restore();
-    if (G.stat) G.stat.backSolid = (G.stat.backSolid || 0) + 1;
+    /* ④ 细描边：整块轮廓 + 顶面轮廓（小尺寸下也看得出「这是一枚牌」）*/
+    g.strokeStyle = B.rim; g.lineWidth = Math.max(1, m * .05);
+    rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();
+    g.strokeStyle = "rgba(9,38,24,.42)"; g.lineWidth = 1;
+    rr(g, fx + .4, fy + .4, fw - .8, fh - .8, fr); g.stroke();
+    g.restore();
+    if (G.stat) {
+      G.stat.backSolid = (G.stat.backSolid || 0) + 1;
+      G.stat.backGreen = (G.stat.backGreen || 0) + 1;        // 绿面块数（取证）
+      G.stat.backIvory = (G.stat.backIvory || 0) + 1;        // 象牙白棱边块数（取证）
+    }
     G.tileBackSolid = (G.tileBackSolid || 0) + 1;
   }
 
@@ -2426,23 +2500,24 @@
      不碰赣麻规则、不碰 AI、不碰智脑提示算法、不碰结算逻辑、不碰点击热区、不碰牌河布局。
 
      位置纪律（每一块都按「会变的东西」的保守外接矩形验算过，零相交；见 decorCheck()）——
-     本轮布局照参考图 2 重排后，各块保守外接框是：
-       · 牌墙四边（双层）：上 x425..815 y26..72 · 下 x485..755 y642..686
-                          左 x26..72 y340..520 · 右 x1168..1214 y340..520
-       · 四家手牌：下 x186..1054 y752..830（14 张最宽）/ 右 x1095..1125 y231..569
-                   上 x451..789 y120..150          / 左 x116..146 y231..569
-       · 副露：下 x437..1057 y690..736 / 右 x1128..1162 y210..590
-               上 x270..970  y82..116  / 左 x78..112   y210..590
-       · 牌河：下 x525..715 y464..630 / 上 x525..715 y176..342
-               右 x754..880 y275..525 / 左 x390..516 y275..525
-       · 中央圆形指示盘 x562..678 y344..460（LAYOUT.center）
-       · 结算亮牌板铺满 18..W-18 × 18..H-18 —— **结算分支根本不画装饰**（见 renderTable），
-         所以结构上不可能被结算面板遮住，也不可能遮住它
-       · DOM 覆盖层：智脑提示在左上（1.2%/1.0%）、HUD 在顶部一条、牌局记录 + 按钮在右下
-     于是剩下两块空地（都在中央深色绒面圈内，且留 8px 以上余量）：
-       A x 920..1060 y 235..560 —— 玩家右手边：两枚骰子（dice.png 素材本身就是两枚）
-                                    + 一摞金筹码 + 红 / 蓝筹码各一枚
-       B x 187..313  y 357..593 —— 桌子左侧窄条（在智脑面板下方）：牌尺 + 烟灰缸
+      本轮**同心三层**重排后，各块保守外接框是：
+        · 牌墙方环（双层）：内层内表面四面全等 = 中心 ±222，外层到中心 ±246
+            上 x485..755 y134..180 · 下 x485..755 y624..670
+            左 x352..398 y267..507 · 右 x842..888 y267..507
+        · 四家手牌：下 x186..1054 y752..830（14 张最宽）/ 右 x896..926 y220..584
+                    上 x438..802 y96..126          / 左 x314..344 y220..584
+        · 副露：下 x437..1057 y690..736 / 右 x932..966  y212..592
+                上 x270..970  y56..90   / 左 x274..308 y212..592
+        · 牌河（全在方环内侧）：下 x525..715 y456..622 / 上 x525..715 y182..348
+                右 x676..802 y277..527 / 左 x438..564 y277..527
+        · 中央圆形指示盘 x566..674 y348..456（LAYOUT.center，半径 54）
+        · 结算亮牌板铺满 18..W-18 × 18..H-18 —— **结算分支根本不画装饰**（见 renderTable），
+          所以结构上不可能被结算面板遮住，也不可能遮住它
+        · DOM 覆盖层：智脑提示在左上（1.2%/1.0%）、HUD 在顶部一条、牌局记录 + 按钮在右下
+      于是剩下两块空地（都在方环**外面**的空档里，且留 8px 以上余量）：
+        A x 1057..1226 y 524..752 —— 玩家右手边：两枚骰子（dice.png 素材本身就是两枚）
+                                     + 一摞金筹码 + 红 / 蓝筹码各一枚
+        B x 77..213   y 527..733 —— 桌子左侧窄条（在左家副露更外侧，智脑面板下方）：牌尺 + 烟灰缸
      ⚠ tile_white / tile_fa 故意**不接**：立着的白板 / 发财与牌河里打出去的牌长得一模一样，
         摆上去就是凭空多两张「假弃牌」，直接破坏牌河与手牌的可读性 —— 明确不做（报告里写明）。
 
@@ -2454,13 +2529,17 @@
      路径仍由 pageDir() + art/icons/mj/ 拼出来 —— 无盘符 / 无协议 / 无 data URI。 */
   var DECOR = {
     /* dice.png 素材本身就是「两枚骰子」一版画 → 只画一次就是桌上两枚，避免四枚的怪画面 */
-    dice:    { x: 990, y: 300, s: 104, rot: -0.10, id: "dice" },
+    /* dice.png 素材本身就是「两枚骰子」一版画 → 只画一次就是桌上两枚，避免四枚的怪画面。
+       同心重排后装饰整体挪到方环**外侧**的空地：右下角（骰子）+ 右侧空档（三枚筹码）。*/
+    /* 同心重排后装饰让到方环**外侧**两条竖条空地：左 x14..178（牌尺 + 烟灰缸）、右 x1062..1226（骰子 + 三枚筹码）。
+       dice.png 素材本身就是「两枚骰子」一版画 → 只画一次就是桌上两枚，避免四枚的怪画面。*/
+    dice:    { x: 1144, y: 300, s: 100, rot: -0.10, id: "dice" },
     /* chip_gold.png 本身就是一摞四片；红 / 蓝是单片 → 三件摆成一小簇 */
-    chips:   [ { x: 960, y: 470, s: 80, id: "chip_gold", color: "#e0a92e", n: 4 },
-               { x: 1035, y: 445, s: 50, id: "chip_red",  color: "#c0392b", n: 1 },
-               { x: 1035, y: 535, s: 50, id: "chip_blue", color: "#2a6bb5", n: 1 } ],
-    ruler:   { x: 250, y: 420, s: 126, id: "ruler" },
-    ashtray: { x: 250, y: 560, s: 66,  id: "ashtray" }
+    chips:   [ { x: 1140, y: 460, s: 72, id: "chip_gold", color: "#e0a92e", n: 4 },
+               { x: 1090, y: 566, s: 46, id: "chip_red",  color: "#c0392b", n: 1 },
+               { x: 1146, y: 566, s: 46, id: "chip_blue", color: "#2a6bb5", n: 1 } ],
+    ruler:   { x: 96, y: 300, s: 126, id: "ruler" },
+    ashtray: { x: 96, y: 560, s: 66,  id: "ashtray" }
   };
 
   /** 贴图装饰：以 (cx,cy) 为中心等比画 s 宽（可按 rot 旋转）→ 返回是否真的画了 */
@@ -2527,22 +2606,24 @@
   function decorReserved() {
     var out = [], i, s, slots = wallSlots(), d = LAYOUT.disc;
     /* 牌墙：满墙 34 墩 × 双层 = 68 块，逐块进保留框（最保守） */
-    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: "wall", x: s.x, y: s.y, w: s.w, h: s.h }); }
-    /* 四家手牌：下 186..1054（14 张最宽）· 右 x1095..1125 · 上 x451..789 · 左 x116..146 */
+    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: "wall", side: s.side, x: s.x, y: s.y, w: s.w, h: s.h }); }
+    /* 四家手牌：下 186..1054（14 张最宽）· 右 x992..1022 · 上 x438..802 · 左 x218..248
+       （三家背面一律贴在方环**外表面之外**，间距只有 5~8px → 方环才放得大）*/
     out.push({ name: "hand0", x: 186, y: LAYOUT.hand.y, w: 868, h: LAYOUT.hand.th });
-    out.push({ name: "hand1", x: 1095, y: 231, w: 30, h: 338 });
-    out.push({ name: "hand2", x: 451, y: 120, w: 338, h: 30 });
-    out.push({ name: "hand3", x: 116, y: 231, w: 30, h: 338 });
-    /* 副露：下（右对齐 x1057）/ 右 x1128..1162 / 上（居中 y82..116）/ 左 x78..112 */
+    out.push({ name: "hand1", x: 992, y: 198, w: 30, h: 364 });
+    out.push({ name: "hand2", x: 438, y: 20, w: 364, h: 30 });
+    out.push({ name: "hand3", x: 218, y: 198, w: 30, h: 364 });
+    /* 副露：下（右对齐 x1057 · y711..757）/ 右 x1028..1062 / 上（移到对家手牌**左侧**）x30..430 / 左 x178..212 */
     out.push({ name: "melds0", x: 437, y: LAYOUT.meld0.y, w: 620, h: LAYOUT.meld0.th });
-    out.push({ name: "melds1", x: 1128, y: 210, w: 34, h: 380 });
-    out.push({ name: "melds2", x: 270, y: 82, w: 700, h: 34 });
-    out.push({ name: "melds3", x: 78, y: 210, w: 34, h: 380 });
-    /* 牌河：四家统一每行 6 张；行 / 列组数按「一轮长局最多 4 组」保守估（大于真实牌局的弃牌数） */
-    out.push({ name: "disc0", x: 525, y: 590 - 3 * d.sy, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
-    out.push({ name: "disc2", x: 525, y: 176, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
-    out.push({ name: "disc1", x: 850 - 3 * d.sx, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
-    out.push({ name: "disc3", x: 390, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
+    out.push({ name: "melds1", x: 1028, y: 190, w: 34, h: 380 });
+    out.push({ name: "melds2", x: 30, y: 16, w: 400, h: 34 });
+    out.push({ name: "melds3", x: 178, y: 190, w: 34, h: 380 });
+    /* 牌河：四家统一每行 6 张，全部落在方环**内表面之内**、紧贴指示盘外圈；
+       行 / 列组数按「一轮长局最多 4 组」保守估（均由 DISC_ZONE 推出，不写死）*/
+    out.push({ name: "disc0", x: DISC_ZONE[0].x, y: DISC_ZONE[0].y - 3 * d.sy, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc2", x: DISC_ZONE[2].x, y: DISC_ZONE[2].y, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc1", x: DISC_ZONE[1].x, y: DISC_ZONE[1].y, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
+    out.push({ name: "disc3", x: DISC_ZONE[3].x - 3 * d.sx, y: DISC_ZONE[3].y, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
 
     out.push({ name: "center", x: LAYOUT.center.x - LAYOUT.center.w / 2, y: LAYOUT.center.y - LAYOUT.center.h / 2,
                w: LAYOUT.center.w, h: LAYOUT.center.h });
@@ -2588,21 +2669,32 @@
     else G.decor.skipped++;
   }
   /**
-   * 牌墙（照参考图 2）：四边整齐的长条墙 —— 对面最长、玩家这面次之、左右两侧最短；
-   * 每边**双层叠放**（外层 / 内层两排牌背，条条对齐），随剩余张数各自从两端同时变短
-   * （缺口留在正中，与真实牌局一致）。同一侧的牌背尺寸完全一致。
-   *   · 横向边：每张 30×22（wall.tw × wall.th），外层 / 内层相差 24px 深
-   *   · 纵向边：每张 22×30（wall.side.tw × wall.side.th）
-   * 34 墩（136 张）的分配：上 13 / 下 9 / 左 6 / 右 6 —— 合计 34。
+   * 牌墙（照参考图 2 的**同心三层**结构重排）：四面牌墙紧密围成一个方环「□」，
+   * 贴住中央指示盘外侧，**再也不是贴在屏幕四边**。
+   *   · 方环内表面到中心的距离四面**全等**（RING.rIn = 222）→「四段成环」可断言
+   *   · 每边**一墩两枚、上下叠放**（照放大参考图）：外枚垫在下面、内枚盖在上面，
+   *     每枚都是「绿面 + 象牙白棱边」的 3D 立牌，棱边一律朝**外**（背离桌心）。
+   *   · 随剩余张数各自从两端同时变短（缺口留在正中）；**余牌不足时外枚先消失** → 只剩单层。
+   *   · 横向边：每枚 30×23（wall.tw × wall.tileDepth）· 纵向边：每枚 23×30
+   *   · 整墩占位 = stackDepth 46 = 2 × tileDepth 23（与旧「双层 22 + 缝 2 + 22」同占位）
+   * 34 墩（136 张）的分配照方环均分：上 9 / 右 8 / 下 9 / 左 8 —— 合计 34。
+   *   （照参考图：方环四角本来就留缺口，四段不必首尾相接；每段各自从中点向两端生长。）
    */
   var WALL_SHARE = [
-    { side: "top", n: 13 }, { side: "right", n: 6 }, { side: "bottom", n: 9 }, { side: "left", n: 6 }
+    { side: "top", n: 9 }, { side: "right", n: 8 }, { side: "bottom", n: 9 }, { side: "left", n: 8 }
   ];
+  /* 每边只给「内表面」坐标（朝桌心那一面）—— 一墩沿**背离桌心**方向长出 stackDepth。
+     内表面到中心的距离四面都等于 RING.rIn = 222（「四段成环」就靠这条断言）。*/
+  /* 每边只给「内表面」坐标（朝桌心那一面）—— 一墩沿**背离桌心**方向长出 stackDepth。
+     内表面到中心的距离四面都等于 RING.rIn = 240（「四段成环」就靠这条断言）。*/
+  /* 每边只给「内表面」坐标（朝桌心那一面）—— 一墩沿**背离桌心**方向长出 stackDepth。
+     内表面到中心的距离：上/下 = RING.rInY = 279，左/右 = RING.rInX = 318
+     → 方环外接框 x 256..984（728 = 桌面宽 60.1%）· y 55..705（650 = 桌面高 78.1%）。*/
   var WALL_GEO = {
-    top: { horiz: true, cx: 620, outer: 26, inner: 50 },
-    bottom: { horiz: true, cx: 620, outer: 664, inner: 642 },
-    left: { horiz: false, cy: 430, outer: 26, inner: 50 },
-    right: { horiz: false, cy: 430, outer: 1192, inner: 1168 }
+    top: { horiz: true, cx: 620, inner: 101 },
+    bottom: { horiz: true, cx: 620, inner: 659 },
+    left: { horiz: false, cy: 380, inner: 302 },
+    right: { horiz: false, cy: 380, inner: 938 }
   };
   /** 牌墙墩数分配：按各边上限等比缩小，最后一边吃掉余数，保证总数恰好 = stacks */
   function wallCounts(stacks) {
@@ -2617,55 +2709,188 @@
     }
     return out;
   }
-  /** 牌墙的所有可能位置（满墙 34 墩 × 双层 = 68 块）——装饰安全区按它取保守外接框。
-      同一侧的牌从各自中心向两端交替编号：画前 n 块 = 以中心为轴的对称长条。 */
-  function wallSlots() {
-    if (G.wallSlots) return G.wallSlots;
-    var out = [], s, k, layer, side, geo, maxN, tw, th, off;
+  /** 一墩 = 上下两枚立牌（照放大参考图）。整墩占位 = stackDepth（沿「背离桌心」方向），
+      两枚都是**同一尺寸**的单枚牌背（tileDepth），象牙白棱边一律朝**外**（背离桌心）。
+      tiles[0] = 外枚（先画、垫在下面、整体压暗）；tiles[1] = 内枚（后画、盖在上面）。
+      余牌不足时**外枚先消失** → 只剩内枚单层，与「余 N 张」对得上。 */
+  function makeStack(side, geo, off, tw) {
+    var D = LAYOUT.wall.tileDepth, SD = LAYOUT.wall.stackDepth;
+    var out = { side: side, x: 0, y: 0, w: 0, h: 0, tiles: [] }, oy, iy, ox, ix;
+    if (side === "top" || side === "bottom") {
+      out.x = geo.cx + off - tw / 2; out.w = tw; out.h = SD;
+      out.y = (side === "top") ? (geo.inner - SD) : geo.inner;
+      oy = (side === "top") ? out.y : (out.y + SD - D);                  // 外枚贴「外」那一端
+      iy = (side === "top") ? (out.y + SD - D) : out.y;                  // 内枚贴「内表面」那一端
+      out.tiles.push({ x: out.x, y: oy, w: tw, h: D, edge: side, dim: true, thin: true });
+      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false, noEdge: true });
+    } else {
+      out.y = geo.cy + off - tw / 2; out.h = tw; out.w = SD;
+      out.x = (side === "left") ? (geo.inner - SD) : geo.inner;
+      ox = (side === "left") ? out.x : (out.x + SD - D);
+      ix = (side === "left") ? (out.x + SD - D) : out.x;
+      out.tiles.push({ x: ox, y: out.y, w: D, h: tw, edge: side, dim: true, thin: true });
+      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false, noEdge: true });
+    }
+    return out;
+  }
+  /** 牌墙的落点。
+      ① 不给 counts（满墙 34 墩 = 68 枚）→ 装饰安全区 / ringInfo / wallClear 按它取**保守外接框**；
+      ② 给了 counts → 按当前墩数摆：每边以**本侧中点**为中心对称排布，
+         缺口自动留在正中（偶数墩也不会偏半块 —— 旧写法 0,+1,-1,+2,-2… 在 n 为偶数时整段偏 15px）。
+      任意「居中子段」都含在「居中满段」里 → ① 仍是 ② 的保守超集，安全区纪律不破。 */
+  function wallSlots(counts) {
+    if (!counts && G.wallSlots) return G.wallSlots;
+    var out = [], s, k, side, geo, maxN, n, tw, off;
     for (s = 0; s < WALL_SHARE.length; s++) {
       side = WALL_SHARE[s].side; geo = WALL_GEO[side]; maxN = WALL_SHARE[s].n;
-      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;        // 沿长条的尺寸
-      th = geo.horiz ? LAYOUT.wall.th : LAYOUT.wall.side.tw;        // 沿深度的尺寸
-      for (k = 0; k < maxN; k++) {
-        off = (k % 2 ? Math.ceil(k / 2) : -k / 2) * tw;
-        for (layer = 0; layer < 2; layer++) {                       // layer 0 = 内层（靠桌心）
-          if (geo.horiz) {
-            out.push({ side: side, k: k, layer: layer, x: geo.cx + off - tw / 2,
-                       y: layer === 0 ? geo.inner : geo.outer, w: tw, h: th });
-          } else {
-            out.push({ side: side, k: k, layer: layer, x: layer === 0 ? geo.inner : geo.outer,
-                       y: geo.cy + off - tw / 2, w: th, h: tw });
-          }
+      n = counts ? Math.max(0, Math.min(maxN, counts[side] || 0)) : maxN;
+      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;   // 墩与墩之间的步距（沿墙长条）
+      for (k = 0; k < n; k++) {
+        off = (k - (n - 1) / 2) * tw;                          // 以本侧中点为中心对称
+        out.push(makeStack(side, geo, off, tw));
+      }
+    }
+    if (!counts) G.wallSlots = out;
+    return out;
+  }
+  /** 一组牌墙墩的四面跨度（lo / hi / mid / want / n = 墩数）——「缺口留在正中」可断言：
+      本侧已画段的中点 mid 必须落回本侧中点 want（上/下看 x，左/右看 y）。 */
+  function wallSpan(stacks) {
+    var out = {}, i, s, k;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i]; k = s.side;
+      if (!out[k]) out[k] = { lo: Infinity, hi: -Infinity, mid: 0, n: 0,
+                              want: (k === "top" || k === "bottom") ? RING.cx : RING.cy };
+      if (k === "top" || k === "bottom") {
+        out[k].lo = Math.min(out[k].lo, s.x); out[k].hi = Math.max(out[k].hi, s.x + s.w);
+      } else {
+        out[k].lo = Math.min(out[k].lo, s.y); out[k].hi = Math.max(out[k].hi, s.y + s.h);
+      }
+      out[k].n++;                                              // n = 本侧已画墩数
+    }
+    for (k in out) if (out.hasOwnProperty(k)) out[k].mid = (out[k].lo + out[k].hi) / 2;
+    return out;
+  }
+  /** 画牌墙：**一墩两枚**；余牌不足时**外枚先消失**（只剩内枚单层）→ 画出枚数与「余 N 张」对得上。 */
+  function drawWall(g, remaining) {
+    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots;
+    var vis = Math.ceil(remaining / 2);             // 可见枚数：每枚代表 2 张（一墩两枚 = 4 张）
+    var i, s, t, drawn = 0, want, drawnStacks = [];
+    G.stat.wallStacks = stacks;
+    slots = wallSlots(need);                        // 按当前墩数摆（不是「满墙取前缀」）
+    for (i = 0; i < slots.length && drawn < vis; i++) {
+      s = slots[i];
+      want = Math.min(2, vis - drawn);
+      if (want === 2) {                             // 外枚：垫在下面、压暗
+        t = s.tiles[0]; drawTileBack(g, t.x, t.y, t.w, t.h, t); drawn++;
+      }
+      t = s.tiles[1]; drawTileBack(g, t.x, t.y, t.w, t.h, t); drawn++;   // 内枚：盖在上面
+      drawnStacks.push(s);
+    }
+    G.stat.wallTiles = drawn;                       // 画出枚数（应 = ceil(余牌 / 2)）
+    G.stat.wallDrawnStacks = drawnStacks.length;    // 画出墩数（每墩 1~2 枚）
+    G.wallSpan = wallSpan(drawnStacks);             // 本帧真实画出去的四段跨度（取证用）
+  }
+  /** ①「四段成环」取证（纯几何）：四面牌墙的**内表面到中心的距离**是否四面全等、
+      四段是否各自落在自己那一侧、每段是否都有牌。用户 2025 明确要求
+      「牌墙要紧密围成一个方环、不能再放在屏幕四边」→ 这条可断言。
+      dIn = 一墩内表面（朝桌心那一面）到中心的距离，恒等于 RING.rIn；
+      dOut = 整墩外沿到中心的距离，恒等于 rIn + stackDepth。 */
+  function ringInfo() {
+    var c = LAYOUT.center, r = RING, slots = wallSlots(), keys = ["top", "right", "bottom", "left"];
+    var want = { top: r.rInY, bottom: r.rInY, left: r.rInX, right: r.rInX };
+    var SD = LAYOUT.wall.stackDepth, f = LAYOUT.felt;
+    var out = { cx: c.x, cy: c.y, rIn: r.rInY, rInX: r.rInX, rInY: r.rInY,
+                rOutX: r.rInX + SD, rOutY: r.rInY + SD, want: want,
+                n: {}, dIn: {}, dOut: {}, span: {}, sameSide: true, equal: true, ok: false };
+    var i, k, s, d, d2;
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      out.n[k] = 0; out.dIn[k] = null; out.dOut[k] = null;
+      out.span[k] = { lo: Infinity, hi: -Infinity };
+    }
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i]; k = s.side;
+      if (k === "top") {
+        d = c.y - (s.y + s.h); d2 = c.y - s.y;
+        if (s.y + s.h > c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "bottom") {
+        d = s.y - c.y; d2 = (s.y + s.h) - c.y;
+        if (s.y < c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "left") {
+        d = c.x - (s.x + s.w); d2 = c.x - s.x;
+        if (s.x + s.w > c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      } else {
+        d = s.x - c.x; d2 = (s.x + s.w) - c.x;
+        if (s.x < c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      }
+      out.n[k]++;                                   // n = 本侧墩数
+      if (out.dIn[k] === null || d < out.dIn[k]) out.dIn[k] = d;
+      if (out.dOut[k] === null || d2 > out.dOut[k]) out.dOut[k] = d2;
+    }
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      if (out.n[k] <= 0 || out.dIn[k] !== want[k]) out.equal = false;
+    }
+    out.ok = out.equal && out.sameSide;
+    /* 方环占桌面比例（用户验收：宽 ≥0.60 · 高 ≥0.78）*/
+    out.box = { x: c.x - out.rOutX, y: c.y - out.rOutY, w: out.rOutX * 2, h: out.rOutY * 2 };
+    out.ratio = { w: out.box.w / f.w, h: out.box.h / f.h };
+    out.ratioOK = out.ratio.w >= 0.60 && out.ratio.h >= 0.78;
+    /* ③ 同心顺序取证（用 decorReserved() 同一份口径，两处不打架）：
+          ① 指示盘 × 四家牌河零相交  ② 四家牌河整体落在方环内表面之内
+          ③ 三家手牌背面整体落在方环外表面之外 */
+    var disc = { x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h };
+    var inn = { x: c.x - r.rInX, y: c.y - r.rInY, w: r.rInX * 2, h: r.rInY * 2 };
+    var out2 = out.box;
+    var rv = decorReserved(), hits = [], b, o = { disc: true, riverInside: true, backOutside: true };
+    for (i = 0; i < rv.length; i++) {
+      b = rv[i];
+      if (b.name.indexOf("disc") === 0) {
+        if (decorOverlap(b, disc)) { o.disc = false; hits.push(b.name + "×center"); }
+        if (!(b.x >= inn.x && b.y >= inn.y && b.x + b.w <= inn.x + inn.w && b.y + b.h <= inn.y + inn.h)) {
+          o.riverInside = false; hits.push(b.name + "⊄方环内表面");
+        }
+      } else if (b.name.indexOf("hand") === 0 && b.name !== "hand0") {
+        if (decorOverlap(b, out2)) { o.backOutside = false; hits.push(b.name + "∩方环外表面"); }
+      }
+    }
+    o.ok = o.disc && o.riverInside && o.backOutside;
+    o.hits = hits;
+    out.order = o;
+    return out;
+  }
+  /** ② 牌墙 × 其它保留框（牌河 / 手牌 / 副露 / 中央盘）的零相交取证 ——
+      保留框与 decorCheck() 走同一份 decorReserved()，不会两处口径打架。 */
+  function wallClear() {
+    var slots = wallSlots(), rv = decorReserved(), hits = [], seen = {}, i, j, k;
+    for (i = 0; i < slots.length; i++) {
+      for (j = 0; j < rv.length; j++) {
+        if (rv[j].name === "wall") continue;
+        if (decorOverlap(slots[i], rv[j])) {
+          k = slots[i].side + "×" + rv[j].name;
+          if (!seen[k]) { seen[k] = 1; hits.push(k); }
         }
       }
     }
-    G.wallSlots = out;
-    return out;
-  }
-  function drawWall(g, remaining) {
-    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots = wallSlots();
-    var i, s, drawn = 0;
-    G.stat.wallStacks = stacks;
-    for (i = 0; i < slots.length; i++) {
-      s = slots[i];
-      if (s.k >= (need[s.side] || 0)) continue;     // 这一边已经变短
-      drawTileBack(g, s.x, s.y, s.w, s.h, { light: s.layer === 0 });
-      drawn++;
-    }
-    G.stat.wallTiles = drawn;
+    return { ok: hits.length === 0, hits: hits, wall: slots.length, others: rv.length - slots.length };
   }
 
 
   /* ── 各家手牌 / 副露 / 弃牌 ── */
   function playerHandCount(p) { return p.isHuman ? p.hand.length : Math.max(0, p.hand.length); }
-  /* ── 三家对家手牌：背面朝上、整齐一横排（或按方位一竖排），紧贴牌墙内侧 ──
+  /* ── 三家对家手牌：背面朝上、整齐一横排（或按方位一竖排），紧贴方环**外表面之外**（同心外圈）──
      尺寸统一：横向每张 back.wide × back.depth = 26×30、步距 26；纵向 30×26、步距 26。
      全部同尺寸同色调（不再给「刚摸的那张」单独提亮，避免一排里出现大小/明暗不一）。*/
-  function drawBackRowV(g, cx, cy, n, vertical) {
+  function drawBackRowV(g, cx, cy, n, vertical, edge) {
     var b = LAYOUT.back, i, x, y, total = (n - 1) * b.step + b.wide;
     for (i = 0; i < n; i++) {
-      if (vertical) { x = cx - b.depth / 2; y = cy - total / 2 + i * b.step; drawTileBack(g, x, y, b.depth, b.wide, {}); }
-      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, {}); }
+      if (vertical) { x = cx - b.depth / 2; y = cy - total / 2 + i * b.step; drawTileBack(g, x, y, b.depth, b.wide, { edge: edge || "right" }); }
+      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, { edge: edge || "top" }); }
     }
   }
 
@@ -2729,7 +2954,7 @@
                                 w: cfg.tw, h: cfg.th, rot: sl.side ? 90 : 0, x: tx, y: ty });
       }
       if (meld.an && i < 2) {
-        drawTileBack(g, tx, ty, w, h, { light: true });                 // 暗杠：两张盖两张（背牌同尺寸）
+        drawTileBack(g, tx, ty, w, h, { edge: (dir === "h" ? "top" : (seat === 1 ? "right" : "left")), dim: true });                 // 暗杠：两张盖两张（背牌同尺寸）
       } else if (sl.side) {
         /* 横置牌：同一张牌**绕中心旋转 90°** 画（牌面仍是 cfg.tw × cfg.th）—— 只旋转、不缩放 */
         g.save();
@@ -2798,43 +3023,43 @@
         x += res + m0.groupGap;
       }
     } else if (seat === 2) {
-      /* 对家（上）：手牌背面整齐一横排，紧贴牌墙内侧；副露横排在手牌**外侧**（更靠牌墙那侧）*/
+      /* 对家（上）：手牌背面整齐一横排，紧贴方环**外表面之外**；副露横排在手牌更外侧 */
       backN = p.hand.length;
-      drawBackRowV(g, 620, 135, backN, false);
+      drawBackRowV(g, 620, 35, backN, false, "top");
       G.stat.backs += backN;
       m2 = meldLayout(melds, LAYOUT.meldTop, 2, "h", 700);
       tot = 0;
       for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], m2, 2, "h") + (j ? m2.groupGap : 0);
-      x = 620 - tot / 2;
-      y = 82;
+      x = 230 - tot / 2;
+      y = 16;
       for (j = 0; j < melds.length; j++) {
         res = drawMeldGroup(g, melds[j], x, y, m2, "h", false, 2);
         x += res + m2.groupGap;
       }
     } else if (seat === 1) {
-      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右墙那侧）*/
+      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右边）*/
       backN = p.hand.length;
-      drawBackRowV(g, 1110, 400, backN, true);
+      drawBackRowV(g, 1007, 380, backN, true, "right");
       G.stat.backs += backN;
       mS = meldLayout(melds, LAYOUT.meldSide, 1, "v", 380);
       tot = 0;
       for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 1, "v") + (j ? mS.groupGap : 0);
-      y = 400 - tot / 2;
+      y = 380 - tot / 2;
       for (j = 0; j < melds.length; j++) {
-        res = drawMeldGroup(g, melds[j], 1128, y, mS, "v", false, 1);
+        res = drawMeldGroup(g, melds[j], 1028, y, mS, "v", false, 1);
         y += res + mS.groupGap;
       }
     } else {
-      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左墙那侧）*/
+      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左边）*/
       backN = p.hand.length;
-      drawBackRowV(g, 131, 400, backN, true);
+      drawBackRowV(g, 233, 380, backN, true, "left");
       G.stat.backs += backN;
       mS = meldLayout(melds, LAYOUT.meldSide, 3, "v", 380);
       tot = 0;
       for (j = 0; j < melds.length; j++) tot += meldLen(melds[j], mS, 3, "v") + (j ? mS.groupGap : 0);
-      y = 400 - tot / 2;
+      y = 380 - tot / 2;
       for (j = 0; j < melds.length; j++) {
-        res = drawMeldGroup(g, melds[j], 78, y, mS, "v", false, 3);
+        res = drawMeldGroup(g, melds[j], 178, y, mS, "v", false, 3);
         y += res + mS.groupGap;
       }
     }
@@ -3042,7 +3267,7 @@
       g.lineCap = "round"; g.lineJoin = "round";
     } catch (e) {}
     g.clearRect(0, 0, W, H);
-    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, backSolid: 0, resHands: 0, resHandTiles: 0, meldRects: [] };
+    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, wallDrawnStacks: 0, backSolid: 0, backGreen: 0, backIvory: 0, resHands: 0, resHandTiles: 0, meldRects: [] };
     G.decor = { dice: 0, chips: 0, ruler: 0, ashtray: 0, vecDice: 0, vecChip: 0, skipped: 0 };
     if (G.sheet) { G.sheetTiles = []; drawFaceSheet(g, G.sheet); G.stat.sheetTiles = G.sheetTiles.length; G.stat.frame = (G.stat.frame || 0) + 1; return G.stat; }
     updateHint();                                            // 先算提示 → drawMyHand 用的 G.hintIdx 与金框一致
@@ -3930,7 +4155,7 @@
     if (!cv || typeof cv.getContext !== "function") return false;
 
     G.on = true; G.busy = true; G.finished = false; G.resultShown = false; G.result = null;
-    G.opts = opts; G.host = hostEl; G.hover = -1; G.handRects = []; G.wallSlots = null; G.noise = null;
+    G.opts = opts; G.host = hostEl; G.hover = -1; G.handRects = []; G.wallSlots = null; G.wallSpan = null; G.noise = null;
     G.logRendered = 0; G.sfxN = 0; G.uiLock = 0; G.anim.drawAt = 0; G.stat = null; G.overAt = 0; G.lastErr = ""; G.sheet = null; G.demo = null;
     G.hint = null; G.hintIdx = -1; G.hintKey = ""; G.hintCalcN = 0; G.hintLastMs = 0; G.hintWorstMs = 0; G.view = null;
     /* 赌注 / 打法：放水 → 智脑提示本局关闭且不可开启；stake 默认 10（不传即旧行为） */
@@ -4382,10 +4607,27 @@
       /** 副露尺寸取证（本帧真实画出去的每一张）：同组内 (w,h) 只许一种、rot ∈ {0,90}。
           用户 2025 明确要求「碰了的牌高度大小要统一，横置那张不许更小」→ 这条是可断言的。 */
       meldRects: function () { return (G.stat && G.stat.meldRects) ? G.stat.meldRects.slice() : []; },
-      /** 牌墙取证：同一侧的牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 × 双层 = 68 块） */
+      /** 本帧四面牌墙的实际跨度（lo / hi / mid / want）——「缺口留在正中」取证 */
+      wallSpan: function () { return G.wallSpan || null; },
+      /** 同心方环取证（①四段成环 ③牌河在内 / 手牌在外的同心顺序）*/
+      ring: ringInfo,
+      /** 牌墙满墙 68 块 与 牌河 / 手牌 / 副露 / 中央盘 的零相交取证（②）*/
+      wallClear: wallClear,
+      /** 保留框清单（decorCheck / wallClear / ringInfo.order 共用同一份口径）*/
+      reserved: decorReserved,
+      /** 牌墙取证：**一墩两枚**、同一侧牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 = 68 枚）*/
       wallInfo: function () {
-        var slots = wallSlots(), sizes = {}, i, k, out = { total: slots.length, sizes: [], counts: null, tiles: (G.stat && G.stat.wallTiles) || 0 };
-        for (i = 0; i < slots.length; i++) { k = slots[i].w + "x" + slots[i].h; sizes[k] = (sizes[k] || 0) + 1; }
+        var slots = wallSlots(), sizes = {}, i, k, t, key;
+        var out = { total: 0, stacks: slots.length, perStack: 2, sizes: [], counts: null,
+                    tileDepth: LAYOUT.wall.tileDepth, stackDepth: LAYOUT.wall.stackDepth,
+                    tiles: (G.stat && G.stat.wallTiles) || 0,
+                    drawnStacks: (G.stat && G.stat.wallDrawnStacks) || 0 };
+        for (i = 0; i < slots.length; i++) {
+          for (k = 0; k < slots[i].tiles.length; k++) {
+            t = slots[i].tiles[k]; key = t.w + "x" + t.h;
+            sizes[key] = (sizes[key] || 0) + 1; out.total++;
+          }
+        }
         for (k in sizes) if (sizes.hasOwnProperty(k)) out.sizes.push({ size: k, n: sizes[k] });
         if (G.E && G.E.wall) out.counts = wallCounts(Math.ceil(G.E.wall.length / 4));
         return out;
@@ -4409,6 +4651,8 @@
                        ready: !!(bnw > 0 && bimg.complete !== false), naturalWidth: bnw,
                        loaded: MJ_BG.loaded, failed: MJ_BG.failed },
                  roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0, tileBackSolid: G.tileBackSolid || 0,
+                 tileBackGreen: (G.stat && G.stat.backGreen) || 0,
+                 tileBackIvory: (G.stat && G.stat.backIvory) || 0,
       /* tileBackTex 恒为 0：tile_back.png 是「深蓝 + 鱼鳞纹」，与用户「纯色无花纹」要求冲突，
          按指示改用纯色矢量（drawTileBack）；tileBackSolid 是本帧画出的纯色牌背张数。*/
                  decor: decorStat(),

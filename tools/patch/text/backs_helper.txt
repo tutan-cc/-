@@ -1,0 +1,13 @@
+/* 牌墙 / 手牌取样区里数「绿面」与「象牙白棱边」两种像素 —— 直接验光栅化真图，不靠源码字符串。 */
+function countBackColors(cv, zones) {
+  const buf = cv._buf, w = cv._w, h = cv._h;
+  const out = { green: 0, ivory: 0 };
+  for (const z of zones) for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) {
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+    if (G >= 90 && G >= R + 30 && G >= B + 25) out.green++;
+    else if (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25) out.ivory++;
+  }
+  return out;
+}
+function blit(src, sx, sy, sw, sh, dst, dx, dy, dw, dh) {

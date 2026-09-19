@@ -1,0 +1,19 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "/** 区域平均色 */",
+      "textFile": "tools/patch/text/e2e_pxfn.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "    if (!tri.png2) console.log(\"[提示] 结算面板截图缺失（不影响断言）\");",
+      "textFile": "tools/patch/text/e2e_pxchk.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    A(\"wall_off_edges\", wbx.length === 68 && m0 >= 60, wbx.length + \" 块 · 整环离绒面边最小余量 \" + m0 + \"px（旧布局只有 12px → 已确实离开屏幕四边）\");',",
+      "textFile": "tools/patch/text/e2e_probe2.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  /* 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 */",
+      "textFile": "tools/patch/text/e2e_zh2.txt" }
+  ]
+}

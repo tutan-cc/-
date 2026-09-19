@@ -1,0 +1,8 @@
+  /* 每边只给「内表面」坐标（朝桌心那一面）—— 一墩沿**背离桌心**方向长出 stackDepth。
+     内表面到中心的距离四面都等于 RING.rIn = 240（「四段成环」就靠这条断言）。*/
+  var WALL_GEO = {
+    top: { horiz: true, cx: 620, inner: 160 },
+    bottom: { horiz: true, cx: 620, inner: 640 },
+    left: { horiz: false, cy: 400, inner: 380 },
+    right: { horiz: false, cy: 400, inner: 860 }
+  };

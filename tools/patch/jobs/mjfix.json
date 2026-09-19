@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    /* ── 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 ── */',",
+      "textFile": "tools/patch/text/ring_fix_a.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  /* 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 */",
+      "textFile": "tools/patch/text/ring_fix_b.txt" }
+  ]
+}

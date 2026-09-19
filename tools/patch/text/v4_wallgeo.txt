@@ -1,0 +1,9 @@
+  /* 每边只给「内表面」坐标（朝桌心那一面）—— 一墩沿**背离桌心**方向长出 stackDepth。
+     内表面到中心的距离：上/下 = RING.rInY = 279，左/右 = RING.rInX = 318
+     → 方环外接框 x 256..984（728 = 桌面宽 60.1%）· y 55..705（650 = 桌面高 78.1%）。*/
+  var WALL_GEO = {
+    top: { horiz: true, cx: 620, inner: 101 },
+    bottom: { horiz: true, cx: 620, inner: 659 },
+    left: { horiz: false, cy: 380, inner: 302 },
+    right: { horiz: false, cy: 380, inner: 938 }
+  };

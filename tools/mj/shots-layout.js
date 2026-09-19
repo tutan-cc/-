@@ -140,11 +140,79 @@ function runTable(opts) {
      而文字数组已经取过快照 → 出图会变成「牌没了、字还在」。进程马上退出，不需要还原。 */
   return { canvas, texts: texts.slice(), MJ, started, st: MJ.debug.state(), seats: MJ.debug.seats(),
            stat: MJ.debug.renderStats(), meldRects: MJ.debug.meldRects(),
+           ring: MJ.debug.ring ? MJ.debug.ring() : null,
+           wallClear: MJ.debug.wallClear ? MJ.debug.wallClear() : null,
+           wallSpan: MJ.debug.wallSpan ? MJ.debug.wallSpan() : null,
+           reserved: MJ.debug.reserved ? MJ.debug.reserved() : null,
+           wallInfo: MJ.debug.wallInfo(), layout: MJ.debug.layout(),
            wallInfo: MJ.debug.wallInfo(), layout: MJ.debug.layout(),
            decor: MJ.debug.decor(), art: MJ.debug.art ? MJ.debug.art() : null,
            clock: clock, ticks: ticks };
 }
 
+/* 墙段连续性：把保留框里的牌墙墩按「边」分组，检查同段内相邻墩的间隙 ≤ 1px（紧贴，不是一格格排开）。 */
+function wallContinuity(reserved) {
+  const wb = (reserved || []).filter(b => b.name === "wall");
+  const out = { ok: wb.length > 0, txt: "", maxGap: 0 };
+  const sides = ["top", "bottom", "left", "right"];
+  const parts = [];
+  for (const sd of sides) {
+    const g = wb.filter(b => b.side === sd);
+    if (!g.length) continue;
+    const horiz = (sd === "top" || sd === "bottom");
+    g.sort((a, b) => (horiz ? a.x - b.x : a.y - b.y));
+    let mg = 0;
+    for (let i = 1; i < g.length; i++) {
+      const gap = horiz ? (g[i].x - (g[i - 1].x + g[i - 1].w)) : (g[i].y - (g[i - 1].y + g[i - 1].h));
+      mg = Math.max(mg, gap);
+    }
+    out.maxGap = Math.max(out.maxGap, mg);
+    if (!(mg <= 1)) out.ok = false;
+    parts.push(sd + ":" + g.length + "墩 最大缝 " + mg + "px");
+  }
+  out.txt = parts.join(" · ");
+  return out;
+}
+/* 牌墙像素实测：在「顶墙 / 左墙」两块取样区里数「绿」与「象牙白」像素 —— 不靠源码字符串。
+   取样区取得很宽（3~6 墩都能盖住），余牌 40~90 都稳定命中。
+   v4 起方环放大：顶墙带 y55..101（外沿白棱 ~55..58、绿面 ~58..78），左墙带 x256..302。 */
+function rasterProbe(cv) {
+  const buf = cv && cv._buf, w = cv && cv._w, h = cv && cv._h;
+  const out = { green: 0, ivory: 0, w: w || 0, h: h || 0 };
+  if (!buf || !w || !h) return out;
+  /* 取样区覆盖「外沿白棱 + 绿面」整条带：顶墙带 y55..101、左墙带 x256..302 */
+  const zones = [ { x: 560, y: 55, w: 120, h: 23 }, { x: 255, y: 340, w: 24, h: 100 } ];
+  for (const z of zones) for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) {
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+    if (G >= 90 && G >= R + 30 && G >= B + 25) out.green++;
+    else if (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25) out.ivory++;
+  }
+  return out;
+}
+/* 绿面朝外取证：顶墙「外沿窄带」应为象牙白、「紧挨的内侧带」应为绿面。
+   顶墙带 y55..101：外枚白棱在最外（y55..58），绿面紧随（y58..78）。 */
+function rasterStrips(cv) {
+  const buf = cv && cv._buf, w = cv && cv._w, h = cv && cv._h;
+  const out = { white: 0, green: 0, nw: 0, ng: 0 };
+  if (!buf || !w || !h) return out;
+  function frac(z, kind) {
+    let hit = 0, tot = 0;
+    for (let y = z.y; y < Math.min(h, z.y + z.h); y++) for (let x = z.x; x < Math.min(w, z.x + z.w); x++) {
+      if (x < 0 || y < 0) continue;
+      const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+      tot++;
+      const isWhite = (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25);
+      const isGreen = (G >= 90 && G >= R + 30 && G >= B + 25);
+      if (kind === "white" ? isWhite : isGreen) hit++;
+    }
+    return tot ? hit / tot : 0;
+  }
+  /* 白棱取样避开 1px 描边：取 y57..60（白棱 55..59.9 的内侧 3px）*/ 
+  out.white = frac({ x: 566, y: 57, w: 108, h: 3 }, "white");
+  out.green = frac({ x: 566, y: 60, w: 108, h: 16 }, "green");
+  return out;
+}
 /* ── 几何自检（纯几何，可重复复现）── */
 function geomChecks(r) {
   const out = { ok: true, lines: [], fails: [] };
@@ -167,8 +235,8 @@ function geomChecks(r) {
     JSON.stringify([...new Set(mr.map(m => m.rot))].sort()) + "）");
   /* ② 牌墙：同一侧尺寸一致 */
   const ws = (r.wallInfo && r.wallInfo.sizes) || [];
-  add(ws.length > 0 && ws.length <= 2, "牌墙牌背尺寸一致（" + ws.map(s => s.size + "×" + s.n + "块").join(" · ") +
-    "）—— 横向边 30×22 / 纵向边 22×30，共 " + (r.wallInfo ? r.wallInfo.total : 0) + " 块（满墙 34 墩 × 双层）");
+  add(ws.length > 0 && ws.length <= 2, "牌墙牌背尺寸一致（" + ws.map(s => s.size + "×" + s.n + "枚").join(" · ") +
+    "）—— 横向边 30×23 / 纵向边 23×30，共 " + (r.wallInfo ? r.wallInfo.total : 0) + " 枚（满墙 34 墩 × 每墩两枚）");
   /* ③ 装饰安全区 */
   const dk = r.decor || {};
   add(!!dk.ok, "装饰安全区自检 decorCheck()：" + (dk.frames ? dk.frames.length : 0) + " 个装饰框 / " +
@@ -176,7 +244,66 @@ function geomChecks(r) {
   /* ④ 手牌 / 牌河几何 */
   const L = r.layout || {};
   add(!!(L.hand && L.hand.tw === 56 && L.hand.th === 78), "玩家手牌仍 56×78（排序 + 刚摸的牌单独靠右 + 金边规则不变）");
-  add(!!(L.disc && L.disc.tw === 30 && L.disc.th === 40), "牌河牌面 30×40，四家统一每行 6 张换行");
+  add(!!(L.disc && L.disc.tw === 36 && L.disc.th === 48), "牌河牌面 36×48（照参考图放大、贴近指示盘外圈），四家统一每行 6 张换行");
+  /* ⑤ 牌墙四段围成同心方环：内表面到中心**四面全等** + 四段各在自己那一侧 */
+  const rg = r.ring || {}, k4 = ["top", "right", "bottom", "left"];
+  add(!!rg.ok, "牌墙四面围成方环：内表面到中心 " +
+    k4.map(k => k + "=" + (rg.dIn || {})[k]).join(" · ") + "（上下 " + rg.rInY + "px / 左右 " + rg.rInX + "px）· 外沿 " +
+    rg.rOutX + "×" + rg.rOutY + "px · 四段各在自己那一侧=" + rg.sameSide + " · 各段墩数 " +
+    k4.map(k => k + ":" + (rg.n || {})[k]).join("/"));
+  /* ⑥ 牌墙 × 牌河 / 手牌 / 副露 / 中央盘：零相交（保留框与 decorCheck 同一份口径）*/
+  const wc = r.wallClear || {};
+  add(!!wc.ok, "牌墙 " + wc.wall + " 块 × 其它保留框 " + wc.others + " 个零相交" +
+    (wc.ok ? " ✔" : " → " + JSON.stringify(wc.hits)));
+  /* ⑦ 同心三层顺序：指示盘 × 牌河零相交 ⊂ 牌河全在方环内表面之内 ⊂ 手牌全在方环外表面之外 */
+  const ro = rg.order || {};
+  add(!!ro.ok, "同心三层顺序：指示盘×牌河零相交=" + ro.disc + " · 牌河全在方环内=" + ro.riverInside +
+    " · 手牌全在方环外=" + ro.backOutside + (ro.ok ? " ✔" : " → " + JSON.stringify(ro.hits)));
+  /* ⑧ 牌墙不再贴屏幕四边（同心重排的核心诉求；旧布局上边只剩 12px 余量 → 这条当时必红）*/
+  const wb = (r.reserved || []).filter(b => b.name === "wall");
+  let wx = Infinity, wy = Infinity, wx2 = -Infinity, wy2 = -Infinity;
+  wb.forEach(b => { wx = Math.min(wx, b.x); wy = Math.min(wy, b.y);
+                    wx2 = Math.max(wx2, b.x + b.w); wy2 = Math.max(wy2, b.y + b.h); });
+  const wMargin = Math.min(wx - 14, wy - 14, 1226 - wx2, 846 - wy2);
+  add(wb.length === 34 && wMargin >= 30, "牌墙整环外接框 x" + wx + ".." + wx2 + " y" + wy + ".." + wy2 +
+    "（34 墩 × 每墩两枚 = 68 枚），离绒面边（14/14/1226/846）最小余量 " + wMargin + "px ≥ 30（方环已放大到参考图比例，余量自然变小）");
+  /* ⑭ 方环占桌面比例（用户验收：宽 ≥0.60 · 高 ≥0.78）*/
+  const rr2 = rg.ratio || {}, rbk = rg.box || {};
+  add(!!(rr2.w >= 0.60 && rr2.h >= 0.78), "方环占桌面比例：宽 " + (rr2.w || 0).toFixed(3) + " ≥ 0.60 · 高 " +
+    (rr2.h || 0).toFixed(3) + " ≥ 0.78（参考图 0.645 / 0.815）· 外接框 " + rbk.w + "×" + rbk.h);
+  /* ⑮ 墙段连续性：同一段内相邻墩**紧贴**（间距 ≤ 1px），不是一格格排开 */
+  const cont = wallContinuity(r.reserved);
+  add(!!cont.ok, "墙段连续性（同段相邻墩间距 ≤1px）：" + cont.txt);
+  /* ⑯ 绿面朝外：顶墙外沿那条窄带必须是**象牙白**（白棱压在上沿），紧挨着的带必须是**绿面** */
+  const st2 = rasterStrips(r.canvas);
+  add(st2.white >= 0.55 && st2.green >= 0.60, "绿面朝外（顶墙像素实测）：外沿窄带象牙白占比 " +
+    st2.white.toFixed(2) + "（≥0.55）· 内侧带绿面占比 " + st2.green.toFixed(2) + "（≥0.60）→ 白棱在外沿、绿面朝外");
+  /* ⑩ 一墩两枚：满墙 34 墩 × 2 枚 = 68 枚；整墩总高 = 2 × 单枚牌厚 */
+  const wi = r.wallInfo || {}, rs3 = r.stat || {};
+  add(wi.total === 68 && wi.stacks === 34 && wi.perStack === 2 && wi.stackDepth === 2 * wi.tileDepth,
+    "牌墙一墩两枚：满墙 " + wi.stacks + " 墩 × " + wi.perStack + " 枚 = " + wi.total + " 枚；单枚牌背深 " +
+    wi.tileDepth + "px，整墩 " + wi.stackDepth + "px = 2 × " + wi.tileDepth + " ✔");
+  /* ⑪ 画出枚数 = ceil(余牌 / 2)（每枚代表 2 张）；余牌不足时**外枚先消失** → 只剩内枚单层 */
+  const remain = (r.st && r.st.wall) || 0, wantVis = Math.ceil(remain / 2);
+  add(wi.tiles === wantVis && wi.drawnStacks === Math.ceil(wantVis / 2),
+    "余牌 " + remain + " 张 → 画出 " + wi.tiles + " 枚（= ceil(" + remain + "/2)）/ " + wi.drawnStacks +
+    " 墩 · 每枚代表 2 张 · 余牌不足时外枚先消失（只剩内枚单层）");
+  /* ⑫ 每一枚牌背都同时画了「绿色主面」与「象牙白棱边」两块 */
+  add(wi.tiles > 0 && rs3.backGreen >= wi.tiles && rs3.backIvory >= wi.tiles,
+    "牌背颜色分层（绘制指令计数）：本帧牌背 " + rs3.backSolid + " 枚 → 绿面 " + rs3.backGreen +
+    " 块 + 象牙白棱 " + rs3.backIvory + " 块（每一枚两样都有）");
+  /* ⑬ 光栅化实测：牌墙区域里同时取到「绿」与「象牙白」像素（不靠源码字符串）*/
+  const px = rasterProbe(r.canvas);
+  add(px.green > 200 && px.ivory > 60, "牌墙像素实测（软件光栅化真图取样）：绿 " + px.green + " px / 象牙白 " +
+    px.ivory + " px（顶墙 x560..680 y55..78 + 左墙 x255..279 y340..440 两块取样区，含外沿白棱）");
+  /* ⑨ 缺口留在正中：本帧四面「已画那一段」的中点必须落回本侧中点（偶数墩也不许偏半块）*/
+  const wsp = r.wallSpan || {};
+  let centered = true;
+  const off4 = k4.map(k => { const o = wsp[k];
+    if (!o) { centered = false; return k + ":无"; }
+    const dd = Math.abs(o.mid - o.want); if (dd > 0.01) centered = false;
+    return k + " " + o.n + "墩 mid=" + o.mid + " want=" + o.want; });
+  add(centered, "牌墙四面各自以本侧中点为中心（缺口留正中）：" + off4.join(" · "));
   return out;
 }
 
@@ -217,8 +344,12 @@ const cap = NOFX ? [
     " / 矢量 " + (dc.vecChip || 0) + " · 牌尺 " + (dc.ruler || 0) + " · 烟灰缸 " + (dc.ashtray || 0), f: "13px system-ui", c: "#8ef2c0" },
   { t: "布局骨架不受影响：牌墙四边 / 三家背面 / 副露外侧 / 牌河每行 6 张 / 中央指示盘", f: "13px system-ui", c: "#d8c7a8" }
 ] : [
-  { t: "照参考图 2 重排：四边整齐长条牌墙（双层 · 对面最长）· 三家手牌背面整齐一横/竖排 · 副露在手牌外侧 · 牌河每行 6 张 · 中央圆形指示盘",
+  { t: "同心三层（照参考图量测后重排）：最中央圆形指示盘 → 内圈牌墙方环（双层 · 四面内表面到中心等距 240px）→ 方环内侧牌河（每行 6 张 · 朝心）→ 外圈四家手牌 + 副露 + 座位牌",
     f: "bold 14px system-ui", c: "#ffe9b8" },
+  { t: "牌墙方环：上9/右8/下9/左8 墩 · 内层到中心 240px / 外层 286px · 四段各在自己那侧 " +
+    ((r.ring && r.ring.ok) ? "✔" : "✗") + " · 与牌河 / 手牌 / 副露 / 中央盘零相交 " +
+    ((r.wallClear && r.wallClear.ok) ? "✔" : "✗"),
+    f: "13px system-ui", c: ((r.ring && r.ring.ok) && (r.wallClear && r.wallClear.ok)) ? "#8ef2c0" : "#ff7d9c" },
   { t: "本帧：余 " + (r.st && r.st.wall) + " 张 · 第 " + (r.st && r.st.turnNo) + " 巡 · 四家弃牌 " +
     (r.seats || []).map(s => s.discards.length).join("/") + " · 牌墙画出 " + (r.stat && r.stat.wallTiles) + " 块（双层）",
     f: "13px system-ui", c: "#8ef2c0" },
@@ -240,6 +371,11 @@ fs.writeFileSync(PNG, out.toPNG());
 const TR = path.join(OUT, "dist", "test-results");
 if (!fs.existsSync(TR)) fs.mkdirSync(TR, { recursive: true });
 const MANIFEST = path.join(TR, "_mj_layout_text.json");
+/* 供 tools/mj/shots-vs-ref.js 做「与参考图并排对照」：把未合成的 1240×860 桌面原图另存一份 raw RGB */
+fs.writeFileSync(path.join(TR, "mj_layout_raw.bin"), Buffer.from(r.canvas._buf));
+fs.writeFileSync(path.join(TR, "mj_layout_raw.json"),
+  JSON.stringify({ w: r.canvas._w, h: r.canvas._h, wall: (r.st && r.st.wall), turn: (r.st && r.st.turnNo),
+                   discCx: 620, discCy: 380, at: new Date().toISOString() }), "utf8");
 fs.writeFileSync(MANIFEST, JSON.stringify({ at: new Date().toISOString(), shots: [{ png: PNG, texts: texts }] }), "utf8");
 try {
   execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File",

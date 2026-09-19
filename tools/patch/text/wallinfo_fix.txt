@@ -1,0 +1,4 @@
+        if (G.E && G.E.wall) out.counts = wallCounts(Math.ceil(G.E.wall.length / 4));
+        return out;
+      },
+      layout: function () { return JSON.parse(JSON.stringify(LAYOUT)); },

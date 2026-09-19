@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "   *   · 每边**双层叠放**（外层 / 内层两排牌背，条条对齐），随剩余张数各自从两端同时变短",
+      "to": "   *   · 内层到中心 222 / 外层到中心 246（两排相差 gap + depth = 24px 深）",
+      "textFile": "tools/patch/text/wallcmt.txt" }
+  ]
+}

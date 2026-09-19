@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  /** 牌墙的所有可能位置（满墙 34 墩 × 双层 = 68 块）——装饰安全区按它取保守外接框。",
+      "to": "    G.stat.wallTiles = drawn;\r\n  }",
+      "textFile": "tools/patch/text/ring_wallsym.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    G.opts = opts; G.host = hostEl; G.hover = -1; G.handRects = []; G.wallSlots = null; G.noise = null;",
+      "text": "    G.opts = opts; G.host = hostEl; G.hover = -1; G.handRects = []; G.wallSlots = null; G.wallSpan = null; G.noise = null;" },
+
+    { "file": "mahjong.js",
+      "from": "      /** 同心方环取证（①四段成环 ③牌河在内 / 手牌在外的同心顺序）*/",
+      "text": "      /** 本帧四面牌墙的实际跨度（lo / hi / mid / want）——「缺口留在正中」取证 */\r\n      wallSpan: function () { return G.wallSpan || null; },\r\n      /** 同心方环取证（①四段成环 ③牌河在内 / 手牌在外的同心顺序）*/" }
+  ]
+}

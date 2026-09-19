@@ -1,11 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   tools/mj/shots-backs.js — 测试截图/mj_backs.png：牌背特写（纯色饱满立体 · 无斜纹）
+   tools/mj/shots-backs.js — 测试截图/mj_backs.png：3D 立牌牌背特写（一面绿 · 一面象牙白 · 两枚叠放）
 
-   三个机位（全部从**真跑出来的那一帧**上裁，不是另画的示意图）：
-     ① 牌墙一角：对面那条长墙（双层叠放、条条对齐）+ 右墙一段
-     ② 对家手牌一排：背面横排、尺寸完全一致
-     ③ 暗杠盖着的两张：明暗一致的纯色牌背
-   画面上标注每处的实测像素尺寸，人眼可直接确认「纯色 · 有厚度 · 尺寸一致 · 无斜纹」。
+   四个机位（全部从**真跑出来的那一帧**上裁，不是另画的示意图）：
+     ① 顶墙特写：**一墩两枚上下叠放**，每枚 = 绿色牌背主面 + 顶部象牙白棱边
+     ② 左墙特写：左右侧墙的棱边在**侧棱**（象牙白竖条），同样是两枚叠放
+     ③ 对家手牌一排：单层立牌（不是两枚叠），一面绿一面白，尺寸完全一致
+     ④ 暗杠盖着的两张：平放盖牌，共用同一套 3D 牌背画法
+   并在牌墙取样区做**像素实测**：同时数出「绿」与「象牙白」两种像素（不靠源码字符串）。
 
    运行（仓库根）：node tools/mj/shots-backs.js
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -115,6 +116,18 @@ function runTable() {
   return { canvas, texts: texts.slice(), MJ, wall: MJ.debug.wallInfo(), melds: MJ.debug.meldRects(),
            art: MJ.debug.art ? MJ.debug.art() : null, stat: MJ.debug.renderStats() };
 }
+/* 牌墙 / 手牌取样区里数「绿面」与「象牙白棱边」两种像素 —— 直接验光栅化真图，不靠源码字符串。 */
+function countBackColors(cv, zones) {
+  const buf = cv._buf, w = cv._w, h = cv._h;
+  const out = { green: 0, ivory: 0 };
+  for (const z of zones) for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) {
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+    if (G >= 90 && G >= R + 30 && G >= B + 25) out.green++;
+    else if (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25) out.ivory++;
+  }
+  return out;
+}
 function blit(src, sx, sy, sw, sh, dst, dx, dy, dw, dh) {
   const sb = src._buf, sbw = src._w, db = dst._buf, dbw = dst._w, dbh = dst._h;
   for (let y = 0; y < dh; y++) {
@@ -132,20 +145,32 @@ function blit(src, sx, sy, sw, sh, dst, dx, dy, dw, dh) {
 const t0 = Date.now();
 const r = runTable();
 const anGang = (r.melds || []).filter(m => m.seat === 0 && m.type === "gang-an").slice(0, 2);
-const wallTile = (r.wall && r.wall.sizes && r.wall.sizes[0]) ? r.wall.sizes[0].size : "-";
-console.log("[真跑] 牌墙 " + (r.wall ? r.wall.total : 0) + " 块 / 尺寸 " +
-  ((r.wall && r.wall.sizes) || []).map(s => s.size + "×" + s.n).join(" · ") +
-  " · 纯色牌背画出 " + ((r.stat && r.stat.backSolid) || 0) + " 张 · tile_back 贴图命中 " +
-  ((r.art && r.art.tileBackTex) || 0) + " 次");
+const wi = r.wall || {};
+console.log("[真跑] 牌墙 " + (wi.total || 0) + " 枚 / " + (wi.stacks || 0) + " 墩（每墩 " + (wi.perStack || 0) +
+  " 枚）· 单枚尺寸 " + (((wi.sizes || []).map(s => s.size + "×" + s.n).join(" · ")) || "-") +
+  " · 单枚牌背深 " + wi.tileDepth + "px / 整墩 " + wi.stackDepth + "px（= 2 × " + wi.tileDepth + "）" +
+  " · 纯色牌背画出 " + ((r.stat && r.stat.backSolid) || 0) + " 枚（绿面 " +
+  ((r.stat && r.stat.backGreen) || 0) + " 块 + 象牙白棱 " + ((r.stat && r.stat.backIvory) || 0) + " 块）" +
+  " · tile_back 贴图命中 " + ((r.art && r.art.tileBackTex) || 0) + " 次");
+const PROBE = [ { x: 550, y: 110, w: 148, h: 58 }, { x: 330, y: 344, w: 64, h: 112 } ];
+const pxc = countBackColors(r.canvas, PROBE);
+console.log("[牌背像素实测] 绿 " + pxc.green + " px / 象牙白 " + pxc.ivory +
+  " px（顶墙 + 左墙取样区，软件光栅化真图）");
+if (!(pxc.green > 400 && pxc.ivory > 150)) {
+  console.error("✗ 牌背取样没有同时取到「绿色主面」与「象牙白棱边」→ 一面绿一面白这条没做到");
+  process.exitCode = 3;
+}
 
-/* 三个机位（源坐标，全部取自真实帧） */
-const Z = 4;
+/* 四个机位（源坐标，全部取自真实帧） */
 const panels = [
-  { t: "① 牌墙一角（对面长墙双层 + 右墙一段）· 每张 " + wallTile + " · 条条对齐、纯色无花纹",
-    sx: 486, sy: 22, sw: 268, sh: 56, z: Z },
-  { t: "② 对家手牌背面一排（13 张，每张 26×30，尺寸完全一致）",
-    sx: 448, sy: 114, sw: 344, sh: 42, z: Z },
-  { t: "③ 暗杠盖着的两张（纯色牌背，与明牌同尺寸：只会转/盖，不缩放）",
+  { t: "① 顶墙特写：**一墩两枚上下叠放** —— 每枚 = 绿色牌背主面 + 顶部象牙白棱边（" + wi.tileDepth +
+       "px 单枚 / " + wi.stackDepth + "px 整墩）",
+    sx: 550, sy: 110, sw: 148, sh: 58, z: 5 },
+  { t: "② 左墙特写：左右侧墙的棱边在**侧棱**（象牙白竖条）· 同样两枚叠放 · 纯色无花纹",
+    sx: 330, sy: 344, sw: 64, sh: 112, z: 4 },
+  { t: "③ 对家手牌背面一排（**单层立牌**，不是两枚叠）· 一面绿一面白 · 每张尺寸完全一致",
+    sx: 518, sy: 74, sw: 204, sh: 42, z: 5 },
+  { t: "④ 暗杠盖着的两张（平放盖牌：只旋转 / 只覆盖，不缩放；与明牌同尺寸）",
     sx: (anGang[0] ? anGang[0].x : 437) - 6, sy: 682, z: 5,
     sw: (anGang.length === 2 ? (anGang[1].x + anGang[1].w - anGang[0].x) : 80) + 12, sh: 62 }
 ];
@@ -160,9 +185,9 @@ out.__textHook = t => texts.push(t);
 out.textAlign = "center"; out.textBaseline = "middle";
 out.fillStyle = "#0b0a10"; out.fillRect(0, 0, W2, totalH);
 out.fillStyle = "#ffe9b8"; out.font = "bold 26px system-ui";
-out.fillText("牌背特写 · 饱满立体的纯色麻将（无斜纹 / 无花纹）· 三处共用同一套画法", W2 / 2, 40);
+out.fillText("牌背特写 · 3D 立牌：一面绿、一面象牙白 · 牌墙一墩两枚叠放（无斜纹 / 无花纹）", W2 / 2, 40);
 out.fillStyle = "#8ef2c0"; out.font = "15px system-ui";
-out.fillText("圆角矩形 + 顶面亮/侧面暗的厚度过渡 + 顶左高光边 + 细描边；四家颜色一致，尺寸由牌位决定（牌墙每张完全一致）", W2 / 2, 72);
+out.fillText("牌背几何：绿面（竖向渐变，上亮下暗）+ 象牙白棱边（朝「外」）+ 一条分界阴影线 + 右下深绿厚度暗面 + 圆角 + 细描边", W2 / 2, 72);
 let y = 100;
 panels.forEach(p => {
   blit(r.canvas, p.sx, p.sy, p.sw, p.sh, out, PAD + 60, y, p.dw, p.dh);
@@ -176,7 +201,8 @@ panels.forEach(p => {
   y += p.dh + LH + 18;
 });
 out.fillStyle = "#cbb894"; out.font = "13px system-ui";
-out.fillText("art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」素材，与「纯色无花纹」冲突 → 按用户指示改用纯色矢量（该素材故意不接，本帧命中 0 次）", W2 / 2, totalH - 52);
+out.fillText("牌墙每墩两枚 = 「余 N 张 / 2」枚，余牌不足时**外枚先消失**（只剩内枚单层）→ 画出的枚数与计数一致；棱边一律朝外（背离桌心）", W2 / 2, totalH - 52);
+out.fillText("art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」素材，与「纯色无花纹」冲突 → 按用户指示改用纯色矢量（该素材故意不接，本帧命中 0 次）", W2 / 2, totalH - 78);
 out.fillText("证据链：无头 vm 真跑生产代码 mahjong.js → Canvas2D 真光栅化（tools/lib/raster.js）→ 中文由 System.Drawing 合成", W2 / 2, totalH - 26);
 fs.writeFileSync(PNG, out.toPNG());
 

@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "        if (G.E && G.E.wall) out.counts = wallCounts(Math.ceil(G.E.wall.length / 4));\r\n        return out;\r\n      },",
+      "textFile": "tools/patch/text/wallinfo_fix.txt" }
+  ]
+}

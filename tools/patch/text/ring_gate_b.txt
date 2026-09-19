@@ -1,0 +1,23 @@
+  add(!!(L.disc && L.disc.tw === 30 && L.disc.th === 40), "牌河牌面 30×40，四家统一每行 6 张换行");
+  /* ⑤ 牌墙四段围成同心方环：内表面到中心**四面全等** + 四段各在自己那一侧 */
+  const rg = r.ring || {}, k4 = ["top", "right", "bottom", "left"];
+  add(!!rg.ok, "牌墙四面围成方环：内表面到中心 " +
+    k4.map(k => k + "=" + (rg.dIn || {})[k]).join(" · ") + "（四面全等 " + rg.rIn + "px）· 外层 " +
+    rg.rOut + "px · 四段各在自己那一侧=" + rg.sameSide + " · 各段墩数 " +
+    k4.map(k => k + ":" + (rg.n || {})[k]).join("/"));
+  /* ⑥ 牌墙 × 牌河 / 手牌 / 副露 / 中央盘：零相交（保留框与 decorCheck 同一份口径）*/
+  const wc = r.wallClear || {};
+  add(!!wc.ok, "牌墙 " + wc.wall + " 块 × 其它保留框 " + wc.others + " 个零相交" +
+    (wc.ok ? " ✔" : " → " + JSON.stringify(wc.hits)));
+  /* ⑦ 同心三层顺序：指示盘 × 牌河零相交 ⊂ 牌河全在方环内表面之内 ⊂ 手牌全在方环外表面之外 */
+  const ro = rg.order || {};
+  add(!!ro.ok, "同心三层顺序：指示盘×牌河零相交=" + ro.disc + " · 牌河全在方环内=" + ro.riverInside +
+    " · 手牌全在方环外=" + ro.backOutside + (ro.ok ? " ✔" : " → " + JSON.stringify(ro.hits)));
+  /* ⑧ 牌墙不再贴屏幕四边（同心重排的核心诉求；旧布局上边只剩 12px 余量 → 这条当时必红）*/
+  const wb = (r.reserved || []).filter(b => b.name === "wall");
+  let wx = Infinity, wy = Infinity, wx2 = -Infinity, wy2 = -Infinity;
+  wb.forEach(b => { wx = Math.min(wx, b.x); wy = Math.min(wy, b.y);
+                    wx2 = Math.max(wx2, b.x + b.w); wy2 = Math.max(wy2, b.y + b.h); });
+  const wMargin = Math.min(wx - 14, wy - 14, 1226 - wx2, 846 - wy2);
+  add(wb.length === 68 && wMargin >= 60, "牌墙整环外接框 x" + wx + ".." + wx2 + " y" + wy + ".." + wy2 +
+    "，离绒面边（14/14/1226/846）最小余量 " + wMargin + "px ≥ 60（证明已离开屏幕四边）");

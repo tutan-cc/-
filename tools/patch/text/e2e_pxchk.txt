@@ -1,0 +1,11 @@
+    /* ── 牌背像素级取证：牌墙区域里必须同时有「绿色主面」与「象牙白棱边」（一面绿一面白）── */
+    const wpx = countBackColors(tblPx, [ { x: 550, y: 134, w: 140, h: 46 }, { x: 352, y: 350, w: 46, h: 104 } ]);
+    info.tileBackPx = wpx;
+    if (wpx.green > 200 && wpx.ivory > 60) {
+      checks.push("牌背像素取证（牌墙取样 " + wpx.n + " px：绿 " + wpx.green + " px / 象牙白 " + wpx.ivory +
+                  " px）→ 一面绿、一面象牙白 ✔");
+    } else {
+      errors.push("牌背像素取证失败（绿 " + wpx.green + " / 象牙白 " + wpx.ivory +
+                  "）→ 牌墙区域没同时画出「绿色主面」与「象牙白棱边」");
+    }
+    if (!tri.png2) console.log("[提示] 结算面板截图缺失（不影响断言）");

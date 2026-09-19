@@ -1,0 +1,42 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    wall: { tw: 30, th: 22, side: { tw: 22, th: 30 }, step: 30 },",
+      "text": "    /* 牌墙一墩 = **上下两枚立牌**（照放大参考图）：单枚牌背深 tileDepth，一墩两枚 = stackDepth。\r\n       stackDepth 46 = 旧的「双层 22 + 缝 2 + 22」→ 方环占位没变，同心几何与装饰安全区都不用重算。*/\r\n    wall: { tw: 30, tileDepth: 23, stackDepth: 46, side: { tw: 23, th: 30 }, step: 30 }," },
+
+    { "file": "mahjong.js",
+      "from": "  var WALL_GEO = {\r\n    top: { horiz: true, cx: 620, outer: 134, inner: 158 },\r\n    bottom: { horiz: true, cx: 620, outer: 648, inner: 624 },\r\n    left: { horiz: false, cy: 402, outer: 352, inner: 376 },\r\n    right: { horiz: false, cy: 402, outer: 866, inner: 842 }\r\n  };",
+      "textFile": "tools/patch/text/wallgeo.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 牌墙的落点。",
+      "to": "    G.wallSpan = wallSpan(slots);                   // 本帧真实画出去的四段跨度（取证用）\r\n  }",
+      "textFile": "tools/patch/text/wallslots.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    var i, k, s, d;",
+      "text": "    var i, k, s, d, d2;" },
+
+    { "file": "mahjong.js",
+      "from": "      dIn = 内层(靠心那一层)内表面到中心的距离，恒等于 RING.rIn；dOut = 外层，恒等于 rIn+24。 */",
+      "text": "      dIn = 一墩内表面（朝桌心那一面）到中心的距离，恒等于 RING.rIn；\r\n      dOut = 整墩外沿到中心的距离，恒等于 rIn + stackDepth。 */" },
+
+    { "file": "mahjong.js",
+      "from": "    var out = { cx: c.x, cy: c.y, rIn: r.rIn, rOut: r.rIn + r.depth + r.gap,",
+      "text": "    var out = { cx: c.x, cy: c.y, rIn: r.rIn, rOut: r.rIn + LAYOUT.wall.stackDepth," },
+
+    { "file": "mahjong.js",
+      "from": "    for (i = 0; i < slots.length; i++) {\r\n      s = slots[i]; k = s.side;\r\n      if (k === \"top\") {\r\n        d = c.y - (s.y + s.h); if (s.y + s.h > c.y) out.sameSide = false;",
+      "to": "      if (s.layer === 0) { if (out.dIn[k] === null || d < out.dIn[k]) out.dIn[k] = d; }\r\n      else { if (out.dOut[k] === null || d < out.dOut[k]) out.dOut[k] = d; }\r\n    }",
+      "textFile": "tools/patch/text/ringloop.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    var ext = r.rIn + r.depth + r.gap;",
+      "text": "    var ext = r.rIn + LAYOUT.wall.stackDepth;" },
+
+    { "file": "mahjong.js",
+      "from": "      /** 牌墙取证：同一侧的牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 × 双层 = 68 块） */",
+      "to": "        return out;\r\n      },\r\n      layout: function () { return JSON.parse(JSON.stringify(LAYOUT)); },",
+      "textFile": "tools/patch/text/wallinfo.txt" }
+  ]
+}

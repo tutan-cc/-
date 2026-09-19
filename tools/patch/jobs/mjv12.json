@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    A(\"tileback_green_ivory\", !!(ar && ar.tileBackSolid > 0 && ar.tileBackGreen >= ar.tileBackSolid && ar.tileBackIvory > 0), ar && (\"牌背 \" + ar.tileBackSolid + \" 枚 · 绿面 \" + ar.tileBackGreen + \" 块（每枚都有）· 象牙白棱 \" + ar.tileBackIvory + \" 块（牌墙外枚 + 三家手牌 + 暗杠；墙内枚按设计不画白棱，整段才是一条连续绿带）\"));',",
+      "text": "  '    var bSolid = (Mahjong.debug.renderStats() || {}).backSolid || 0;   /* 必须用**本帧**计数：tileBackSolid 是累计值 */',\r\n  '    A(\"tileback_green_ivory\", !!(bSolid > 0 && ar && ar.tileBackGreen >= bSolid && ar.tileBackIvory > 0), \"本帧牌背 \" + bSolid + \" 枚 · 绿面 \" + ((ar && ar.tileBackGreen) || 0) + \" 块（每枚都有）· 象牙白棱 \" + ((ar && ar.tileBackIvory) || 0) + \" 块（牌墙外枚 + 三家手牌 + 暗杠；墙内枚按设计不画白棱，整段才是一条连续绿带）\");'," }
+  ]
+}

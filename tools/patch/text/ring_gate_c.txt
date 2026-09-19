@@ -1,0 +1,7 @@
+  { t: "同心三层（照参考图重排）：最中央圆形指示盘 → 内圈牌墙方环（双层 · 四面内表面到中心等距 222px）→ 方环内侧牌河（每行 6 张 · 朝心）→ 外圈四家手牌 + 副露 + 座位牌",
+    f: "bold 14px system-ui", c: "#ffe9b8" },
+  { t: "牌墙方环：上9/右8/下9/左8 墩 · 内层到中心 222px / 外层 246px · 四段各在自己那侧 " +
+    ((r.ring && r.ring.ok) ? "✔" : "✗") + " · 与牌河 / 手牌 / 副露 / 中央盘零相交 " +
+    ((r.wallClear && r.wallClear.ok) ? "✔" : "✗"),
+    f: "13px system-ui", c: ((r.ring && r.ring.ok) && (r.wallClear && r.wallClear.ok)) ? "#8ef2c0" : "#ff7d9c" },
+  { t: "本帧：余 " + (r.st && r.st.wall) + " 张 · 第 " + (r.st && r.st.turnNo) + " 巡 · 四家弃牌 " +

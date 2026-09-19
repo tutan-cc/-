@@ -1,0 +1,67 @@
+    var c = LAYOUT.center, r = RING, slots = wallSlots(), keys = ["top", "right", "bottom", "left"];
+    var want = { top: r.rInY, bottom: r.rInY, left: r.rInX, right: r.rInX };
+    var SD = LAYOUT.wall.stackDepth, f = LAYOUT.felt;
+    var out = { cx: c.x, cy: c.y, rIn: r.rInY, rInX: r.rInX, rInY: r.rInY,
+                rOutX: r.rInX + SD, rOutY: r.rInY + SD, want: want,
+                n: {}, dIn: {}, dOut: {}, span: {}, sameSide: true, equal: true, ok: false };
+    var i, k, s, d, d2;
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      out.n[k] = 0; out.dIn[k] = null; out.dOut[k] = null;
+      out.span[k] = { lo: Infinity, hi: -Infinity };
+    }
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i]; k = s.side;
+      if (k === "top") {
+        d = c.y - (s.y + s.h); d2 = c.y - s.y;
+        if (s.y + s.h > c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "bottom") {
+        d = s.y - c.y; d2 = (s.y + s.h) - c.y;
+        if (s.y < c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "left") {
+        d = c.x - (s.x + s.w); d2 = c.x - s.x;
+        if (s.x + s.w > c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      } else {
+        d = s.x - c.x; d2 = (s.x + s.w) - c.x;
+        if (s.x < c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      }
+      out.n[k]++;                                   // n = 本侧墩数
+      if (out.dIn[k] === null || d < out.dIn[k]) out.dIn[k] = d;
+      if (out.dOut[k] === null || d2 > out.dOut[k]) out.dOut[k] = d2;
+    }
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      if (out.n[k] <= 0 || out.dIn[k] !== want[k]) out.equal = false;
+    }
+    out.ok = out.equal && out.sameSide;
+    /* 方环占桌面比例（用户验收：宽 ≥0.60 · 高 ≥0.78）*/
+    out.box = { x: c.x - out.rOutX, y: c.y - out.rOutY, w: out.rOutX * 2, h: out.rOutY * 2 };
+    out.ratio = { w: out.box.w / f.w, h: out.box.h / f.h };
+    out.ratioOK = out.ratio.w >= 0.60 && out.ratio.h >= 0.78;
+    /* ③ 同心顺序取证（用 decorReserved() 同一份口径，两处不打架）：
+          ① 指示盘 × 四家牌河零相交  ② 四家牌河整体落在方环内表面之内
+          ③ 三家手牌背面整体落在方环外表面之外 */
+    var disc = { x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h };
+    var inn = { x: c.x - r.rInX, y: c.y - r.rInY, w: r.rInX * 2, h: r.rInY * 2 };
+    var out2 = out.box;
+    var rv = decorReserved(), hits = [], b, o = { disc: true, riverInside: true, backOutside: true };
+    for (i = 0; i < rv.length; i++) {
+      b = rv[i];
+      if (b.name.indexOf("disc") === 0) {
+        if (decorOverlap(b, disc)) { o.disc = false; hits.push(b.name + "×center"); }
+        if (!(b.x >= inn.x && b.y >= inn.y && b.x + b.w <= inn.x + inn.w && b.y + b.h <= inn.y + inn.h)) {
+          o.riverInside = false; hits.push(b.name + "⊄方环内表面");
+        }
+      } else if (b.name.indexOf("hand") === 0 && b.name !== "hand0") {
+        if (decorOverlap(b, out2)) { o.backOutside = false; hits.push(b.name + "∩方环外表面"); }
+      }
+    }
+    o.ok = o.disc && o.riverInside && o.backOutside;
+    o.hits = hits;
+    out.order = o;
+    return out;
+  }

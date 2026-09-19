@@ -1,0 +1,10 @@
+  add(wb.length === 68 && wMargin >= 60, "牌墙整环外接框 x" + wx + ".." + wx2 + " y" + wy + ".." + wy2 +
+    "，离绒面边（14/14/1226/846）最小余量 " + wMargin + "px ≥ 60（证明已离开屏幕四边）");
+  /* ⑨ 缺口留在正中：本帧四面「已画那一段」的中点必须落回本侧中点（偶数墩也不许偏半块）*/
+  const wsp = r.wallSpan || {};
+  let centered = true;
+  const off4 = k4.map(k => { const o = wsp[k];
+    if (!o) { centered = false; return k + ":无"; }
+    const dd = Math.abs(o.mid - o.want); if (dd > 0.01) centered = false;
+    return k + " " + o.n + "墩 mid=" + o.mid + " want=" + o.want; });
+  add(centered, "牌墙四面各自以本侧中点为中心（缺口留正中）：" + off4.join(" · "));

@@ -1,0 +1,5 @@
+const MANIFEST = path.join(TR, "_mj_layout_text.json");
+/* 供 tools/mj/shots-vs-ref.js 做「与参考图并排对照」：把未合成的 1240×860 桌面原图另存一份 raw RGB */
+fs.writeFileSync(path.join(TR, "mj_layout_raw.bin"), Buffer.from(r.canvas._buf));
+fs.writeFileSync(path.join(TR, "mj_layout_raw.json"),
+  JSON.stringify({ w: r.canvas._w, h: r.canvas._h, at: new Date().toISOString() }), "utf8");

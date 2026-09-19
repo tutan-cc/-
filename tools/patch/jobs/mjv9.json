@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    A(\"tileback_green_ivory\", !!(ar && ar.tileBackGreen > 0 && ar.tileBackIvory > 0 && ar.tileBackGreen === ar.tileBackIvory), ar && (\"每枚牌背 = 绿面 + 象牙白棱：绿面 \" + ar.tileBackGreen + \" 块 / 白棱 \" + ar.tileBackIvory + \" 块（本帧牌背 \" + ar.tileBackSolid + \" 枚）\"));',",
+      "textFile": "tools/patch/text/v8_probe.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  /* 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 */",
+      "textFile": "tools/patch/text/v8_zh.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "    if (!tri.png2) console.log(\"[提示] 结算面板截图缺失（不影响断言）\");",
+      "textFile": "tools/patch/text/v8_px.txt" }
+  ]
+}

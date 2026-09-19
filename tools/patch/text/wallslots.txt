@@ -1,0 +1,82 @@
+  /** 一墩 = 上下两枚立牌（照放大参考图）。整墩占位 = stackDepth（沿「背离桌心」方向），
+      两枚都是**同一尺寸**的单枚牌背（tileDepth），象牙白棱边一律朝**外**（背离桌心）。
+      tiles[0] = 外枚（先画、垫在下面、整体压暗）；tiles[1] = 内枚（后画、盖在上面）。
+      余牌不足时**外枚先消失** → 只剩内枚单层，与「余 N 张」对得上。 */
+  function makeStack(side, geo, off, tw) {
+    var D = LAYOUT.wall.tileDepth, SD = LAYOUT.wall.stackDepth;
+    var out = { side: side, x: 0, y: 0, w: 0, h: 0, tiles: [] }, oy, iy, ox, ix;
+    if (side === "top" || side === "bottom") {
+      out.x = geo.cx + off - tw / 2; out.w = tw; out.h = SD;
+      out.y = (side === "top") ? (geo.inner - SD) : geo.inner;
+      oy = (side === "top") ? out.y : (out.y + SD - D);                  // 外枚贴「外」那一端
+      iy = (side === "top") ? (out.y + SD - D) : out.y;                  // 内枚贴「内表面」那一端
+      out.tiles.push({ x: out.x, y: oy, w: tw, h: D, edge: side, dim: true });
+      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false });
+    } else {
+      out.y = geo.cy + off - tw / 2; out.h = tw; out.w = SD;
+      out.x = (side === "left") ? (geo.inner - SD) : geo.inner;
+      ox = (side === "left") ? out.x : (out.x + SD - D);
+      ix = (side === "left") ? (out.x + SD - D) : out.x;
+      out.tiles.push({ x: ox, y: out.y, w: D, h: tw, edge: side, dim: true });
+      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false });
+    }
+    return out;
+  }
+  /** 牌墙的落点。
+      ① 不给 counts（满墙 34 墩 = 68 枚）→ 装饰安全区 / ringInfo / wallClear 按它取**保守外接框**；
+      ② 给了 counts → 按当前墩数摆：每边以**本侧中点**为中心对称排布，
+         缺口自动留在正中（偶数墩也不会偏半块 —— 旧写法 0,+1,-1,+2,-2… 在 n 为偶数时整段偏 15px）。
+      任意「居中子段」都含在「居中满段」里 → ① 仍是 ② 的保守超集，安全区纪律不破。 */
+  function wallSlots(counts) {
+    if (!counts && G.wallSlots) return G.wallSlots;
+    var out = [], s, k, side, geo, maxN, n, tw, off;
+    for (s = 0; s < WALL_SHARE.length; s++) {
+      side = WALL_SHARE[s].side; geo = WALL_GEO[side]; maxN = WALL_SHARE[s].n;
+      n = counts ? Math.max(0, Math.min(maxN, counts[side] || 0)) : maxN;
+      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;   // 墩与墩之间的步距（沿墙长条）
+      for (k = 0; k < n; k++) {
+        off = (k - (n - 1) / 2) * tw;                          // 以本侧中点为中心对称
+        out.push(makeStack(side, geo, off, tw));
+      }
+    }
+    if (!counts) G.wallSlots = out;
+    return out;
+  }
+  /** 一组牌墙墩的四面跨度（lo / hi / mid / want / n = 墩数）——「缺口留在正中」可断言：
+      本侧已画段的中点 mid 必须落回本侧中点 want（上/下看 x，左/右看 y）。 */
+  function wallSpan(stacks) {
+    var out = {}, i, s, k;
+    for (i = 0; i < stacks.length; i++) {
+      s = stacks[i]; k = s.side;
+      if (!out[k]) out[k] = { lo: Infinity, hi: -Infinity, mid: 0, n: 0,
+                              want: (k === "top" || k === "bottom") ? RING.cx : RING.cy };
+      if (k === "top" || k === "bottom") {
+        out[k].lo = Math.min(out[k].lo, s.x); out[k].hi = Math.max(out[k].hi, s.x + s.w);
+      } else {
+        out[k].lo = Math.min(out[k].lo, s.y); out[k].hi = Math.max(out[k].hi, s.y + s.h);
+      }
+      out[k].n++;                                              // n = 本侧已画墩数
+    }
+    for (k in out) if (out.hasOwnProperty(k)) out[k].mid = (out[k].lo + out[k].hi) / 2;
+    return out;
+  }
+  /** 画牌墙：**一墩两枚**；余牌不足时**外枚先消失**（只剩内枚单层）→ 画出枚数与「余 N 张」对得上。 */
+  function drawWall(g, remaining) {
+    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots;
+    var vis = Math.ceil(remaining / 2);             // 可见枚数：每枚代表 2 张（一墩两枚 = 4 张）
+    var i, s, t, drawn = 0, want, drawnStacks = [];
+    G.stat.wallStacks = stacks;
+    slots = wallSlots(need);                        // 按当前墩数摆（不是「满墙取前缀」）
+    for (i = 0; i < slots.length && drawn < vis; i++) {
+      s = slots[i];
+      want = Math.min(2, vis - drawn);
+      if (want === 2) {                             // 外枚：垫在下面、压暗
+        t = s.tiles[0]; drawTileBack(g, t.x, t.y, t.w, t.h, t); drawn++;
+      }
+      t = s.tiles[1]; drawTileBack(g, t.x, t.y, t.w, t.h, t); drawn++;   // 内枚：盖在上面
+      drawnStacks.push(s);
+    }
+    G.stat.wallTiles = drawn;                       // 画出枚数（应 = ceil(余牌 / 2)）
+    G.stat.wallDrawnStacks = drawnStacks.length;    // 画出墩数（每墩 1~2 枚）
+    G.wallSpan = wallSpan(drawnStacks);             // 本帧真实画出去的四段跨度（取证用）
+  }

@@ -1,0 +1,16 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "           wallInfo: MJ.debug.wallInfo(), layout: MJ.debug.layout(),",
+      "textFile": "tools/patch/text/ring_gate_a.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(!!(L.disc && L.disc.tw === 30 && L.disc.th === 40), \"牌河牌面 30×40，四家统一每行 6 张换行\");",
+      "textFile": "tools/patch/text/ring_gate_b.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  { t: \"照参考图 2 重排：四边整齐长条牌墙（双层 · 对面最长）· 三家手牌背面整齐一横/竖排 · 副露在手牌外侧 · 牌河每行 6 张 · 中央圆形指示盘\",",
+      "to": "  { t: \"本帧：余 \" + (r.st && r.st.wall) + \" 张 · 第 \" + (r.st && r.st.turnNo) + \" 巡 · 四家弃牌 \" +",
+      "textFile": "tools/patch/text/ring_gate_c.txt" }
+  ]
+}

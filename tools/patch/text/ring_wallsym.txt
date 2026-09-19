@@ -1,0 +1,60 @@
+  /** 牌墙的落点。
+      ① 不给 counts（满墙 34 墩 × 双层 = 68 块）→ 装饰安全区 / ringInfo / wallClear 按它取**保守外接框**；
+      ② 给了 counts → 按当前剩余墩数摆：每边以**本侧中点**为中心对称排布，
+         缺口自动留在正中（偶数墩也不会偏半块 —— 旧写法 0,+1,-1,+2,-2… 在 n 为偶数时整段偏 15px）。
+      任意「居中子段」都含在「居中满段」里 → ① 仍是 ② 的保守超集，安全区纪律不破。 */
+  function wallSlots(counts) {
+    if (!counts && G.wallSlots) return G.wallSlots;
+    var out = [], s, k, layer, side, geo, maxN, n, tw, th, off;
+    for (s = 0; s < WALL_SHARE.length; s++) {
+      side = WALL_SHARE[s].side; geo = WALL_GEO[side]; maxN = WALL_SHARE[s].n;
+      n = counts ? Math.max(0, Math.min(maxN, counts[side] || 0)) : maxN;
+      tw = geo.horiz ? LAYOUT.wall.tw : LAYOUT.wall.side.th;        // 沿长条的尺寸
+      th = geo.horiz ? LAYOUT.wall.th : LAYOUT.wall.side.tw;        // 沿深度的尺寸
+      for (k = 0; k < n; k++) {
+        off = (k - (n - 1) / 2) * tw;                               // 以本侧中点为中心对称
+        for (layer = 0; layer < 2; layer++) {                       // layer 0 = 内层（靠桌心）
+          if (geo.horiz) {
+            out.push({ side: side, k: k, layer: layer, x: geo.cx + off - tw / 2,
+                       y: layer === 0 ? geo.inner : geo.outer, w: tw, h: th });
+          } else {
+            out.push({ side: side, k: k, layer: layer, x: layer === 0 ? geo.inner : geo.outer,
+                       y: geo.cy + off - tw / 2, w: th, h: tw });
+          }
+        }
+      }
+    }
+    if (!counts) G.wallSlots = out;
+    return out;
+  }
+  /** 一组牌墙块的四面跨度（lo / hi / mid / want）——「缺口留在正中」可断言：
+      本侧已画段的中点 mid 必须落回本侧中点 want（上/下看 x，左/右看 y）。 */
+  function wallSpan(slots) {
+    var out = {}, i, s, k;
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i]; k = s.side;
+      if (!out[k]) out[k] = { lo: Infinity, hi: -Infinity, mid: 0, n: 0,
+                              want: (k === "top" || k === "bottom") ? RING.cx : RING.cy };
+      if (k === "top" || k === "bottom") {
+        out[k].lo = Math.min(out[k].lo, s.x); out[k].hi = Math.max(out[k].hi, s.x + s.w);
+      } else {
+        out[k].lo = Math.min(out[k].lo, s.y); out[k].hi = Math.max(out[k].hi, s.y + s.h);
+      }
+      if (s.layer === 0) out[k].n++;
+    }
+    for (k in out) if (out.hasOwnProperty(k)) out[k].mid = (out[k].lo + out[k].hi) / 2;
+    return out;
+  }
+  function drawWall(g, remaining) {
+    var stacks = Math.ceil(remaining / 4), need = wallCounts(stacks), slots;
+    var i, s, drawn = 0;
+    G.stat.wallStacks = stacks;
+    slots = wallSlots(need);                        // 按当前墩数摆（不是「满墙取前缀」）
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i];
+      drawTileBack(g, s.x, s.y, s.w, s.h, { light: s.layer === 0 });
+      drawn++;
+    }
+    G.stat.wallTiles = drawn;
+    G.wallSpan = wallSpan(slots);                   // 本帧真实画出去的四段跨度（取证用）
+  }

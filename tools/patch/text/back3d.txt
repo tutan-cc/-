@@ -1,0 +1,101 @@
+  /** 3D 立牌牌背的几何 / 配色常量（照放大参考图：一面绿、一面象牙白、右下有厚度暗面）
+      edge  = 象牙白棱边厚 / 牌深（参考图 绿 44 : 白 18 → 白占 0.29，取 0.28）
+      line  = 绿面与白棱之间的细阴影线 / 牌深（也是「两张牌」之间的分界）
+      thick = 右下暗面（牌厚）/ 短边
+      r     = 圆角半径 / 短边 */
+  var BACK3D = {
+    edge: .28, line: .05, thick: .11, r: .20,
+    /* 绿面（上亮下暗，饱满绿）*/
+    greenA: "#4cb87c", greenM: "#3a9d63", greenB: "#2b7d4a",
+    greenDimA: "#3d9765", greenDimM: "#2f8151", greenDimB: "#22663c",
+    /* 象牙白棱边（外亮内暗）*/
+    ivoryA: "#faf6ec", ivoryB: "#d6d0c0",
+    ivoryDimA: "#ded8c9", ivoryDimB: "#b9b3a3",
+    /* 绿面 / 白棱 之间的分界阴影线；右下暗面（牌厚）*/
+    lineC: "#0d3a22",
+    darkA: "#1d5c39", darkB: "#123f26",
+    darkDimA: "#17502f", darkDimB: "#0e3520",
+    rim: "rgba(9,38,24,.55)"
+  };
+  /**
+   * 牌背：**立起来的 3D 麻将牌**（照放大参考图）—— 一面绿、一面象牙白。
+   *   · 绿面主面（朝桌心 / 朝我们）：饱满绿色竖向渐变（上亮下暗），占 (1 − edge − line) 牌深
+   *   · 象牙白棱边：牌体的厚度那一面，紧贴绿面、在牌的**外侧**那一边
+   *     —— 对家手牌 / 上下牌墙在顶（底）边，左右侧牌墙与左右家在侧棱（用户原话「一面绿一面白」）
+   *   · 绿面与白棱之间一条细阴影线；两张牌叠放时它也充当两枚之间的分界
+   *   · 右下留出深绿暗面 = 牌的厚度 + 落影；圆角 + 细描边
+   *   · **没有任何斜纹 / 花纹**（用户明确要求：不要斜杠）
+   *   · 同一套画法用在三处：① 牌墙每一枚（一墩两枚）② 三家对家手牌背面 ③ 暗杠盖着的那两张
+   *   · 尺寸只由调用方给的 (w,h) 与 o.edge 决定 —— 同组内每枚尺寸完全一致（只旋转不缩放）
+   * ⚠ art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」的一版素材，与「纯色、无花纹」冲突，
+   *   按用户指示改为纯色矢量画法，该素材**故意不接**（与 tile_white / tile_fa 同理）。
+   * o: { edge: "top"|"right"|"bottom"|"left"（象牙白棱边所在那一边，默认 top）,
+   *      dim:  true = 整体压暗（下张牌「被上张压住」的层次） }
+   */
+  function drawTileBack(g, x, y, w, h, o) {
+    o = o || {};
+    var B = BACK3D, side = o.edge || "top", dim = !!o.dim;
+    var vert = (side === "left" || side === "right");          // 棱边在左右 → 沿 x 切分
+    var m = Math.min(w, h);
+    var r = Math.max(1.6, m * B.r);                            // 圆角
+    var tk = Math.max(1.1, m * B.thick);                       // 右下暗面（牌厚）
+    var fx = x, fy = y, fw = w - tk, fh = h - tk;              // 顶面（其余留给右下暗面）
+    var fr = Math.max(1.2, r * .62);
+    var along = vert ? fw : fh;                                // 顶面沿「切分轴」的长度
+    var e = Math.max(2, along * B.edge);                       // 象牙白棱边厚
+    var ln = Math.max(1, along * B.line);                      // 绿面 / 白棱 之间的细阴影线
+    var gd = Math.max(2, along - e - ln);                      // 绿面厚
+    var gA = g.createLinearGradient(fx, fy, fx, fy + fh);
+    var iA = g.createLinearGradient(fx, fy, fx, fy + fh);
+    /* a / b 是从「棱边反向那一端」起算的坐标 → 同一段代码支持四个朝向 */
+    function seg(a, b, grad, col) {
+      var sx, sy, sw, sh;
+      if (vert) { sx = fx + (side === "left" ? (along - b) : a); sy = fy; sw = b - a; sh = fh; }
+      else { sx = fx; sy = fy + (side === "top" ? (along - b) : a); sw = fw; sh = b - a; }
+      g.fillStyle = grad || col;
+      g.fillRect(sx, sy, sw, sh);
+    }
+    gA.addColorStop(0, dim ? B.greenDimA : B.greenA);
+    gA.addColorStop(.55, dim ? B.greenDimM : B.greenM);
+    gA.addColorStop(1, dim ? B.greenDimB : B.greenB);
+    iA.addColorStop(0, dim ? B.ivoryDimA : B.ivoryA);
+    iA.addColorStop(1, dim ? B.ivoryDimB : B.ivoryB);
+    g.save();
+    /* ① 落影 */
+    g.save();
+    g.shadowColor = "rgba(0,0,0,.45)"; g.shadowBlur = Math.max(2, m * .19);
+    g.shadowOffsetX = 0; g.shadowOffsetY = Math.max(1, m * .06);
+    g.fillStyle = "#0e2c1d"; rr(g, x, y, w, h, r); g.fill();
+    g.restore();
+    /* ② 厚度暗面：整块先铺深绿，顶面内缩后**右下**露出来就是牌厚 */
+    var gs = g.createLinearGradient(x, y, x + w * .30, y + h);
+    gs.addColorStop(0, dim ? B.darkDimA : B.darkA);
+    gs.addColorStop(1, dim ? B.darkDimB : B.darkB);
+    g.fillStyle = gs; rr(g, x, y, w, h, r); g.fill();
+    /* ③ 顶面 = 绿面 + 细阴影线 + 象牙白棱边（三段切分）*/
+    g.save();
+    rr(g, fx, fy, fw, fh, fr); g.clip();
+    seg(0, gd, gA);
+    seg(gd, gd + ln, null, B.lineC);
+    seg(gd + ln, along, iA);
+    /* 绿面远端高光（光源左上，与棱边相反那一侧）→ 立体感；仍然零花纹 */
+    var hl = Math.max(1, m * .065), hp = Math.max(1.2, along * .10), hx, hy;
+    g.strokeStyle = "rgba(226,255,238,.28)"; g.lineWidth = hl;
+    g.beginPath();
+    if (vert) { hx = (side === "left" ? fx + fw - hp : fx + hp); g.moveTo(hx, fy + fh * .12); g.lineTo(hx, fy + fh * .88); }
+    else { hy = (side === "top" ? fy + fh - hp : fy + hp); g.moveTo(fx + fw * .12, hy); g.lineTo(fx + fw * .88, hy); }
+    g.stroke();
+    g.restore();
+    /* ④ 细描边：整块轮廓 + 顶面轮廓（小尺寸下也看得出「这是一枚牌」）*/
+    g.strokeStyle = B.rim; g.lineWidth = Math.max(1, m * .05);
+    rr(g, x + .6, y + .6, w - 1.2, h - 1.2, r); g.stroke();
+    g.strokeStyle = "rgba(9,38,24,.42)"; g.lineWidth = 1;
+    rr(g, fx + .4, fy + .4, fw - .8, fh - .8, fr); g.stroke();
+    g.restore();
+    if (G.stat) {
+      G.stat.backSolid = (G.stat.backSolid || 0) + 1;
+      G.stat.backGreen = (G.stat.backGreen || 0) + 1;        // 绿面块数（取证）
+      G.stat.backIvory = (G.stat.backIvory || 0) + 1;        // 象牙白棱边块数（取证）
+    }
+    G.tileBackSolid = (G.tileBackSolid || 0) + 1;
+  }

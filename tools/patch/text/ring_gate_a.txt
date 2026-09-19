@@ -1,0 +1,5 @@
+           ring: MJ.debug.ring ? MJ.debug.ring() : null,
+           wallClear: MJ.debug.wallClear ? MJ.debug.wallClear() : null,
+           wallSpan: MJ.debug.wallSpan ? MJ.debug.wallSpan() : null,
+           reserved: MJ.debug.reserved ? MJ.debug.reserved() : null,
+           wallInfo: MJ.debug.wallInfo(), layout: MJ.debug.layout(),

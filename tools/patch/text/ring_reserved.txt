@@ -1,0 +1,17 @@
+    /* 四家手牌：下 186..1054（14 张最宽）· 右 x896..926 · 上 x438..802 · 左 x314..344
+       （三家背面一律贴在方环**外表面之外**：上沿 y96 / 右沿 x896 / 左沿 x314）*/
+    out.push({ name: "hand0", x: 186, y: LAYOUT.hand.y, w: 868, h: LAYOUT.hand.th });
+    out.push({ name: "hand1", x: 896, y: 220, w: 30, h: 364 });
+    out.push({ name: "hand2", x: 438, y: 96, w: 364, h: 30 });
+    out.push({ name: "hand3", x: 314, y: 220, w: 30, h: 364 });
+    /* 副露：下（右对齐 x1057）/ 右 x932..966 / 上（居中 y56..90）/ 左 x274..308 */
+    out.push({ name: "melds0", x: 437, y: LAYOUT.meld0.y, w: 620, h: LAYOUT.meld0.th });
+    out.push({ name: "melds1", x: 932, y: 212, w: 34, h: 380 });
+    out.push({ name: "melds2", x: 270, y: 56, w: 700, h: 34 });
+    out.push({ name: "melds3", x: 274, y: 212, w: 34, h: 380 });
+    /* 牌河：四家统一每行 6 张，全部落在方环**内表面之内**；行 / 列组数按「一轮长局最多 4 组」
+       保守估（大于真实牌局的弃牌数）→ 上下各 4 行 / 左右各 4 列（均由 DISC_ZONE 推出，不写死）*/
+    out.push({ name: "disc0", x: 525, y: DISC_ZONE[0].y - 3 * d.sy, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc2", x: 525, y: DISC_ZONE[2].y, w: 5 * d.sx + d.tw, h: 3 * d.sy + d.th });
+    out.push({ name: "disc1", x: DISC_ZONE[1].x, y: DISC_ZONE[1].y, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });
+    out.push({ name: "disc3", x: DISC_ZONE[3].x - 3 * d.sx, y: DISC_ZONE[3].y, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });

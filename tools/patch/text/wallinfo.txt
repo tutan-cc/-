@@ -1,0 +1,17 @@
+      /** 牌墙取证：**一墩两枚**、同一侧牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 = 68 枚）*/
+      wallInfo: function () {
+        var slots = wallSlots(), sizes = {}, i, k, t, key;
+        var out = { total: 0, stacks: slots.length, perStack: 2, sizes: [], counts: null,
+                    tileDepth: LAYOUT.wall.tileDepth, stackDepth: LAYOUT.wall.stackDepth,
+                    tiles: (G.stat && G.stat.wallTiles) || 0,
+                    drawnStacks: (G.stat && G.stat.wallDrawnStacks) || 0 };
+        for (i = 0; i < slots.length; i++) {
+          for (k = 0; k < slots[i].tiles.length; k++) {
+            t = slots[i].tiles[k]; key = t.w + "x" + t.h;
+            sizes[key] = (sizes[key] || 0) + 1; out.total++;
+          }
+        }
+        for (k in sizes) if (sizes.hasOwnProperty(k)) out.sizes.push({ size: k, n: sizes[k] });
+        if (G.E && G.E.wall) out.counts = wallCounts(Math.ceil(G.E.wall.length / 4));
+        return out;
+      },

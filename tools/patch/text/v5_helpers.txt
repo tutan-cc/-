@@ -1,0 +1,62 @@
+/* 墙段连续性：把保留框里的牌墙墩按「边」分组，检查同段内相邻墩的间隙 ≤ 1px（紧贴，不是一格格排开）。 */
+function wallContinuity(reserved) {
+  const wb = (reserved || []).filter(b => b.name === "wall");
+  const out = { ok: wb.length > 0, txt: "", maxGap: 0 };
+  const sides = ["top", "bottom", "left", "right"];
+  const parts = [];
+  for (const sd of sides) {
+    const g = wb.filter(b => b.side === sd);
+    if (!g.length) continue;
+    const horiz = (sd === "top" || sd === "bottom");
+    g.sort((a, b) => (horiz ? a.x - b.x : a.y - b.y));
+    let mg = 0;
+    for (let i = 1; i < g.length; i++) {
+      const gap = horiz ? (g[i].x - (g[i - 1].x + g[i - 1].w)) : (g[i].y - (g[i - 1].y + g[i - 1].h));
+      mg = Math.max(mg, gap);
+    }
+    out.maxGap = Math.max(out.maxGap, mg);
+    if (!(mg <= 1)) out.ok = false;
+    parts.push(sd + ":" + g.length + "墩 最大缝 " + mg + "px");
+  }
+  out.txt = parts.join(" · ");
+  return out;
+}
+/* 牌墙像素实测：在「顶墙 / 左墙」两块取样区里数「绿」与「象牙白」像素 —— 不靠源码字符串。
+   取样区取得很宽（3~6 墩都能盖住），余牌 40~90 都稳定命中。
+   v4 起方环放大：顶墙带 y55..101（外沿白棱 ~55..58、绿面 ~58..78），左墙带 x256..302。 */
+function rasterProbe(cv) {
+  const buf = cv && cv._buf, w = cv && cv._w, h = cv && cv._h;
+  const out = { green: 0, ivory: 0, w: w || 0, h: h || 0 };
+  if (!buf || !w || !h) return out;
+  const zones = [ { x: 560, y: 60, w: 120, h: 16 }, { x: 262, y: 340, w: 16, h: 100 } ];
+  for (const z of zones) for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) {
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+    if (G >= 90 && G >= R + 30 && G >= B + 25) out.green++;
+    else if (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25) out.ivory++;
+  }
+  return out;
+}
+/* 绿面朝外取证：顶墙「外沿窄带」应为象牙白、「紧挨的内侧带」应为绿面。
+   顶墙带 y55..101：外枚白棱在最外（y55..58），绿面紧随（y58..78）。 */
+function rasterStrips(cv) {
+  const buf = cv && cv._buf, w = cv && cv._w, h = cv && cv._h;
+  const out = { white: 0, green: 0, nw: 0, ng: 0 };
+  if (!buf || !w || !h) return out;
+  function frac(z, kind) {
+    let hit = 0, tot = 0;
+    for (let y = z.y; y < Math.min(h, z.y + z.h); y++) for (let x = z.x; x < Math.min(w, z.x + z.w); x++) {
+      if (x < 0 || y < 0) continue;
+      const i = (y * w + x) * 3, R = buf[i], G = buf[i + 1], B = buf[i + 2];
+      tot++;
+      const isWhite = (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25);
+      const isGreen = (G >= 90 && G >= R + 30 && G >= B + 25);
+      if (kind === "white" ? isWhite : isGreen) hit++;
+    }
+    return tot ? hit / tot : 0;
+  }
+  out.white = frac({ x: 566, y: 55, w: 108, h: 4 }, "white");
+  out.green = frac({ x: 566, y: 60, w: 108, h: 16 }, "green");
+  return out;
+}
+/* ── 几何自检（纯几何，可重复复现）── */

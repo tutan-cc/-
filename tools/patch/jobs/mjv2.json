@@ -1,0 +1,56 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    center: { x: 620, y: 402, w: 108, h: 108 }",
+      "textFile": "tools/patch/text/v2_center.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    meld0: { x: 1057, y: 690, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },",
+      "text": "    meld0: { x: 1057, y: 694, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 }," },
+
+    { "file": "mahjong.js",
+      "from": "  var RING = { cx: 620, cy: 402, rIn: 222, gap: 2, depth: 22 };",
+      "to": "    3: { x: 534, y: 277, perRow: 6, dir: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/v2_disc.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var SEAT_POS = {\r\n    0: { x: 62, y: 752, align: \"left\" },\r\n    1: { x: 974, y: 387, align: \"left\" },\r\n    2: { x: 138, y: 56, align: \"left\" },\r\n    3: { x: 142, y: 387, align: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/v2_seatpos.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var WALL_GEO = {\r\n    top: { horiz: true, cx: 620, inner: 180 },\r\n    bottom: { horiz: true, cx: 620, inner: 624 },\r\n    left: { horiz: false, cy: 402, inner: 398 },\r\n    right: { horiz: false, cy: 402, inner: 842 }\r\n  };",
+      "textFile": "tools/patch/text/v2_wallgeo.txt" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 620, 111, backN, false, \"top\");",
+      "text": "      drawBackRowV(g, 620, 95, backN, false, \"top\");" },
+
+    { "file": "mahjong.js",
+      "from": "      x = 620 - tot / 2;\r\n      y = 56;",
+      "text": "      x = 620 - tot / 2;\r\n      y = 43;" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 911, 402, backN, true, \"right\");",
+      "text": "      drawBackRowV(g, 925, 400, backN, true, \"right\");" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 402 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 932, y, mS, \"v\", false, 1);",
+      "text": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 943, y, mS, \"v\", false, 1);" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 329, 402, backN, true, \"left\");",
+      "text": "      drawBackRowV(g, 315, 400, backN, true, \"left\");" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 402 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 274, y, mS, \"v\", false, 3);",
+      "text": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 263, y, mS, \"v\", false, 3);" },
+
+    { "file": "mahjong.js",
+      "from": "    out.push({ name: \"hand1\", x: 896, y: 220, w: 30, h: 364 });\r\n    out.push({ name: \"hand2\", x: 438, y: 96, w: 364, h: 30 });\r\n    out.push({ name: \"hand3\", x: 314, y: 220, w: 30, h: 364 });",
+      "text": "    out.push({ name: \"hand1\", x: 910, y: 218, w: 30, h: 364 });\r\n    out.push({ name: \"hand2\", x: 438, y: 80, w: 364, h: 30 });\r\n    out.push({ name: \"hand3\", x: 300, y: 218, w: 30, h: 364 });" },
+
+    { "file": "mahjong.js",
+      "from": "    out.push({ name: \"melds1\", x: 932, y: 212, w: 34, h: 380 });\r\n    out.push({ name: \"melds2\", x: 270, y: 56, w: 700, h: 34 });\r\n    out.push({ name: \"melds3\", x: 274, y: 212, w: 34, h: 380 });",
+      "text": "    out.push({ name: \"melds1\", x: 943, y: 210, w: 34, h: 380 });\r\n    out.push({ name: \"melds2\", x: 270, y: 43, w: 700, h: 34 });\r\n    out.push({ name: \"melds3\", x: 263, y: 210, w: 34, h: 380 });" }
+  ]
+}

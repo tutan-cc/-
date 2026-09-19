@@ -1,0 +1,2 @@
+  add(ws.length > 0 && ws.length <= 2, "牌墙牌背尺寸一致（" + ws.map(s => s.size + "×" + s.n + "枚").join(" · ") +
+    "）—— 横向边 30×23 / 纵向边 23×30，共 " + (r.wallInfo ? r.wallInfo.total : 0) + " 枚（满墙 34 墩 × 每墩两枚）");

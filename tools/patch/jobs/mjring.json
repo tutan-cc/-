@@ -1,0 +1,85 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    center: { x: 620, y: 402, w: 116, h: 116 }",
+      "textFile": "tools/patch/text/ring_center.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 弃牌区：每家一块，照参考图统一**每行 6 张**换行 */",
+      "to": "    3: { x: 390, y: 275, perRow: 6, dir: \"right\" }\r\n  };",
+      "textFile": "tools/patch/text/ring_disc.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /** 门风：你(下) / 金老板(右) / 红姐(上) / 顾曼(左) */",
+      "to": "    3: { x: 58, y: 600, align: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/ring_seatpos.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /**\r\n   * 牌墙（照参考图 2）：四边整齐的长条墙 —— 对面最长、玩家这面次之、左右两侧最短；",
+      "to": "    right: { horiz: false, cy: 430, outer: 1192, inner: 1168 }\r\n  };",
+      "textFile": "tools/patch/text/ring_wall.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  /* ── 三家对家手牌：背面朝上、整齐一横排（或按方位一竖排），紧贴牌墙内侧 ──",
+      "textFile": "tools/patch/text/ring_backrow.txt" },
+
+    { "file": "mahjong.js",
+      "from": "      /* 对家（上）：手牌背面整齐一横排，紧贴牌墙内侧；副露横排在手牌**外侧**（更靠牌墙那侧）*/",
+      "text": "      /* 对家（上）：手牌背面整齐一横排，紧贴方环**外表面之外**；副露横排在手牌更外侧 */" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 620, 135, backN, false);",
+      "text": "      drawBackRowV(g, 620, 111, backN, false);" },
+
+    { "file": "mahjong.js",
+      "from": "      x = 620 - tot / 2;\r\n      y = 82;",
+      "text": "      x = 620 - tot / 2;\r\n      y = 56;" },
+
+    { "file": "mahjong.js",
+      "from": "      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右墙那侧）*/",
+      "text": "      /* 右家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠右边）*/" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 1110, 400, backN, true);",
+      "text": "      drawBackRowV(g, 911, 402, backN, true);" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 1128, y, mS, \"v\", false, 1);",
+      "text": "      y = 402 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 932, y, mS, \"v\", false, 1);" },
+
+    { "file": "mahjong.js",
+      "from": "      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左墙那侧）*/",
+      "text": "      /* 左家：手牌背面一竖排，副露竖排在手牌**外侧**（更靠左边）*/" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 131, 400, backN, true);",
+      "text": "      drawBackRowV(g, 329, 402, backN, true);" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 78, y, mS, \"v\", false, 3);",
+      "text": "      y = 402 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 274, y, mS, \"v\", false, 3);" },
+
+    { "file": "mahjong.js",
+      "from": "    G.stat.wallTiles = drawn;\r\n  }",
+      "textFile": "tools/patch/text/ring_fns.txt" },
+
+    { "file": "mahjong.js",
+      "from": "     位置纪律（每一块都按「会变的东西」的保守外接矩形验算过，零相交；见 decorCheck()）——",
+      "to": "       B x 187..313  y 357..593 —— 桌子左侧窄条（在智脑面板下方）：牌尺 + 烟灰缸",
+      "textFile": "tools/patch/text/ring_comment.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    dice:    { x: 990, y: 300, s: 104, rot: -0.10, id: \"dice\" },",
+      "to": "    ashtray: { x: 250, y: 560, s: 66,  id: \"ashtray\" }",
+      "textFile": "tools/patch/text/ring_decor.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    /* 四家手牌：下 186..1054（14 张最宽）· 右 x1095..1125 · 上 x451..789 · 左 x116..146 */",
+      "to": "    out.push({ name: \"disc3\", x: 390, y: 275, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });",
+      "textFile": "tools/patch/text/ring_reserved.txt" },
+
+    { "file": "mahjong.js",
+      "from": "      /** 牌墙取证：同一侧的牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 × 双层 = 68 块） */",
+      "textFile": "tools/patch/text/ring_debug.txt" }
+  ]
+}

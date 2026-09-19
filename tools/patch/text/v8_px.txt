@@ -1,0 +1,25 @@
+    /* ── 绿面朝外（截图像素实测）：顶墙带外沿那条窄带必须是象牙白、紧挨着的内侧带必须是绿面 ── */
+    const stOut = countBackColors(tblPx, [ { x: 566, y: 57, w: 108, h: 3 } ]);
+    const stIn = countBackColors(tblPx, [ { x: 566, y: 62, w: 108, h: 14 } ]);
+    const fOut = stOut.n ? stOut.ivory / stOut.n : 0, fIn = stIn.n ? stIn.green / stIn.n : 0;
+    if (fOut >= 0.55 && fIn >= 0.60) {
+      checks.push("绿面朝外（截图像素实测）：顶墙外沿窄带象牙白占比 " + fOut.toFixed(2) + " ≥0.55 · 内侧带绿面占比 " +
+                  fIn.toFixed(2) + " ≥0.60 → 白棱压在外沿、绿面朝外 ✔");
+    } else {
+      errors.push("绿面朝外失败：外沿白 " + fOut.toFixed(2) + "（需 ≥0.55）/ 内侧绿 " + fIn.toFixed(2) + "（需 ≥0.60）");
+    }
+    /* ── 圆盘文字可见：文字区里非深色像素占比达标（证明「余 N 张 · 第 N 巡」真的合成上去了）── */
+    let dBright = 0, dTot = 0;
+    if (tblPx) for (let yy = 358; yy < 402; yy++) for (let xx = 582; xx < 658; xx++) {
+      const ii = (yy * tblPx.w + xx) * tblPx.ch;
+      dTot++;
+      if (tblPx.data[ii] + tblPx.data[ii + 1] + tblPx.data[ii + 2] > 330) dBright++;
+    }
+    const dRat = dTot ? dBright / dTot : 0;
+    if (dRat >= 0.03) {
+      checks.push("圆盘文字可见：文字区 " + dTot + " px 里非深色 " + dBright + " px（占比 " + dRat.toFixed(3) +
+                  " ≥0.03）→「余 N 张 · 第 N 巡」已合成回圆盘 ✔");
+    } else {
+      errors.push("圆盘文字不可读：文字区非深色占比只有 " + dRat.toFixed(3) + "（需 ≥0.03）");
+    }
+    if (!tri.png2) console.log("[提示] 结算面板截图缺失（不影响断言）");

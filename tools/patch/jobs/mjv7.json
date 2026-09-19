@@ -1,0 +1,19 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    edge: .28, edgeThin: .20, line: .05, thick: .11, r: .20,",
+      "text": "    edge: .28, edgeThin: .24, line: .05, thick: .11, r: .20," },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  const zones = [ { x: 560, y: 60, w: 120, h: 14 }, { x: 264, y: 340, w: 14, h: 100 } ];",
+      "text": "  /* 取样区覆盖「外沿白棱 + 绿面」整条带：顶墙带 y55..101、左墙带 x256..302 */\r\n  const zones = [ { x: 560, y: 55, w: 120, h: 23 }, { x: 255, y: 340, w: 24, h: 100 } ];" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "    px.ivory + \" px（顶墙 x560..680 y60..74 + 左墙 x264..278 y340..440 两块取样区）\");",
+      "text": "    px.ivory + \" px（顶墙 x560..680 y55..78 + 左墙 x255..279 y340..440 两块取样区，含外沿白棱）\");" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  out.white = frac({ x: 566, y: 55, w: 108, h: 5 }, \"white\");",
+      "text": "  /* 白棱取样避开 1px 描边：取 y57..60（白棱 55..59.9 的内侧 3px）*/ \r\n  out.white = frac({ x: 566, y: 57, w: 108, h: 3 }, \"white\");" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  JSON.stringify({ w: r.canvas._w, h: r.canvas._h, at: new Date().toISOString() }), \"utf8\");",
+      "text": "  JSON.stringify({ w: r.canvas._w, h: r.canvas._h, wall: (r.st && r.st.wall), turn: (r.st && r.st.turnNo),\r\n                   discCx: 620, discCy: 380, at: new Date().toISOString() }), \"utf8\");" },
+
+    { "file": "tools/mj/shots-vs-ref.js",
+      "from": "fs.writeFileSync(PNG, cv.toPNG());",
+      "text": "/* ── 3b. 圆盘文字：软件光栅化器不画汉字，所以下半（我们的桌面）要**用 GDI+ 把中文补回圆盘**，\r\n      否则对照图上圆盘是一团深色（用户与上级都点过这条）。数值取自 mj_layout_raw.json。── */\r\nconst dCx = om.discCx || 620, dCy = om.discCy || 380;\r\ncv.textAlign = \"center\"; cv.textBaseline = \"middle\";\r\ncv.fillStyle = \"#ffd76e\"; cv.font = \"bold 22px system-ui\";\r\ncv.fillText(\"余 \" + (om.wall === undefined ? \"?\" : om.wall), dCx, oy0 + dCy - 12);\r\ncv.fillStyle = \"#dfe6f2\"; cv.font = \"13px system-ui\";\r\ncv.fillText(\"张 · 第 \" + (om.turn === undefined ? \"?\" : om.turn) + \" 巡\", dCx, oy0 + dCy + 13);\r\ncv.fillStyle = \"#ffd76e\"; cv.font = \"bold 13px system-ui\";\r\ncv.fillText(\"南\", dCx, oy0 + dCy - 74); cv.fillText(\"北\", dCx, oy0 + dCy + 74);\r\ncv.fillText(\"西\", dCx - 74, oy0 + dCy); cv.fillText(\"东\", dCx + 74, oy0 + dCy);\r\n\r\nfs.writeFileSync(PNG, cv.toPNG());" }
+  ]
+}

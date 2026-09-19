@@ -1,0 +1,20 @@
+  add(wb.length === 34 && wMargin >= 60, "牌墙整环外接框 x" + wx + ".." + wx2 + " y" + wy + ".." + wy2 +
+    "（34 墩 × 每墩两枚 = 68 枚），离绒面边（14/14/1226/846）最小余量 " + wMargin + "px ≥ 60（证明已离开屏幕四边）");
+  /* ⑩ 一墩两枚：满墙 34 墩 × 2 枚 = 68 枚；整墩总高 = 2 × 单枚牌厚 */
+  const wi = r.wallInfo || {}, rs3 = r.stat || {};
+  add(wi.total === 68 && wi.stacks === 34 && wi.perStack === 2 && wi.stackDepth === 2 * wi.tileDepth,
+    "牌墙一墩两枚：满墙 " + wi.stacks + " 墩 × " + wi.perStack + " 枚 = " + wi.total + " 枚；单枚牌背深 " +
+    wi.tileDepth + "px，整墩 " + wi.stackDepth + "px = 2 × " + wi.tileDepth + " ✔");
+  /* ⑪ 画出枚数 = ceil(余牌 / 2)（每枚代表 2 张）；余牌不足时**外枚先消失** → 只剩内枚单层 */
+  const remain = (r.st && r.st.wall) || 0, wantVis = Math.ceil(remain / 2);
+  add(wi.tiles === wantVis && wi.drawnStacks === Math.ceil(wantVis / 2),
+    "余牌 " + remain + " 张 → 画出 " + wi.tiles + " 枚（= ceil(" + remain + "/2)）/ " + wi.drawnStacks +
+    " 墩 · 每枚代表 2 张 · 余牌不足时外枚先消失（只剩内枚单层）");
+  /* ⑫ 每一枚牌背都同时画了「绿色主面」与「象牙白棱边」两块 */
+  add(wi.tiles > 0 && rs3.backGreen >= wi.tiles && rs3.backIvory >= wi.tiles,
+    "牌背颜色分层（绘制指令计数）：本帧牌背 " + rs3.backSolid + " 枚 → 绿面 " + rs3.backGreen +
+    " 块 + 象牙白棱 " + rs3.backIvory + " 块（每一枚两样都有）");
+  /* ⑬ 光栅化实测：牌墙区域里同时取到「绿」与「象牙白」像素（不靠源码字符串）*/
+  const px = rasterProbe(r.canvas);
+  add(px.green > 200 && px.ivory > 60, "牌墙像素实测（软件光栅化真图取样）：绿 " + px.green + " px / 象牙白 " +
+    px.ivory + " px（顶墙 x550..690 y134..180 + 左墙 x352..398 y350..454 两块取样区）");

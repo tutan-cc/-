@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "/* ── 几何自检（纯几何，可重复复现）── */",
+      "textFile": "tools/patch/text/gate_probe.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(ws.length > 0 && ws.length <= 2, \"牌墙牌背尺寸一致（\" + ws.map(s => s.size + \"×\" + s.n + \"块\").join(\" · \") +\r\n    \"）—— 横向边 30×22 / 纵向边 22×30，共 \" + (r.wallInfo ? r.wallInfo.total : 0) + \" 块（满墙 34 墩 × 双层）\");",
+      "textFile": "tools/patch/text/gate_sizeunif.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(wb.length === 68 && wMargin >= 60, \"牌墙整环外接框 x\" + wx + \"..\" + wx2 + \" y\" + wy + \"..\" + wy2 +\r\n    \"，离绒面边（14/14/1226/846）最小余量 \" + wMargin + \"px ≥ 60（证明已离开屏幕四边）\");",
+      "textFile": "tools/patch/text/gate_checks.txt" }
+  ]
+}

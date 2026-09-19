@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  '    A(\"wall_share_total\", !!(wf2 && wf2.counts && (wf2.counts.top + wf2.counts.right + wf2.counts.bottom + wf2.counts.left) === Math.ceil(Mahjong.debug.wall().count / 4)), wf2 && wf2.counts && (\"上\" + wf2.counts.top + \"/右\" + wf2.counts.right + \"/下\" + wf2.counts.bottom + \"/左\" + wf2.counts.left));',",
+      "textFile": "tools/patch/text/ring_e2e_a.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  wall_share_total: \"牌墙四边墩数分配之和 = 剩余墩数（上/右/下/左 等比缩短）\",",
+      "textFile": "tools/patch/text/ring_e2e_b.txt" }
+  ]
+}

@@ -1,0 +1,29 @@
+const wi = r.wall || {};
+console.log("[真跑] 牌墙 " + (wi.total || 0) + " 枚 / " + (wi.stacks || 0) + " 墩（每墩 " + (wi.perStack || 0) +
+  " 枚）· 单枚尺寸 " + (((wi.sizes || []).map(s => s.size + "×" + s.n).join(" · ")) || "-") +
+  " · 单枚牌背深 " + wi.tileDepth + "px / 整墩 " + wi.stackDepth + "px（= 2 × " + wi.tileDepth + "）" +
+  " · 纯色牌背画出 " + ((r.stat && r.stat.backSolid) || 0) + " 枚（绿面 " +
+  ((r.stat && r.stat.backGreen) || 0) + " 块 + 象牙白棱 " + ((r.stat && r.stat.backIvory) || 0) + " 块）" +
+  " · tile_back 贴图命中 " + ((r.art && r.art.tileBackTex) || 0) + " 次");
+const PROBE = [ { x: 552, y: 126, w: 148, h: 60 }, { x: 344, y: 346, w: 64, h: 112 } ];
+const pxc = countBackColors(r.canvas, PROBE);
+console.log("[牌背像素实测] 绿 " + pxc.green + " px / 象牙白 " + pxc.ivory +
+  " px（顶墙 + 左墙取样区，软件光栅化真图）");
+if (!(pxc.green > 400 && pxc.ivory > 150)) {
+  console.error("✗ 牌背取样没有同时取到「绿色主面」与「象牙白棱边」→ 一面绿一面白这条没做到");
+  process.exitCode = 3;
+}
+
+/* 四个机位（源坐标，全部取自真实帧） */
+const panels = [
+  { t: "① 顶墙特写：**一墩两枚上下叠放** —— 每枚 = 绿色牌背主面 + 顶部象牙白棱边（" + wi.tileDepth +
+       "px 单枚 / " + wi.stackDepth + "px 整墩）",
+    sx: 552, sy: 126, sw: 148, sh: 60, z: 5 },
+  { t: "② 左墙特写：左右侧墙的棱边在**侧棱**（象牙白竖条）· 同样两枚叠放 · 纯色无花纹",
+    sx: 344, sy: 346, sw: 64, sh: 112, z: 4 },
+  { t: "③ 对家手牌背面一排（**单层立牌**，不是两枚叠）· 一面绿一面白 · 每张尺寸完全一致",
+    sx: 518, sy: 90, sw: 204, sh: 42, z: 5 },
+  { t: "④ 暗杠盖着的两张（平放盖牌：只旋转 / 只覆盖，不缩放；与明牌同尺寸）",
+    sx: (anGang[0] ? anGang[0].x : 437) - 6, sy: 682, z: 5,
+    sw: (anGang.length === 2 ? (anGang[1].x + anGang[1].w - anGang[0].x) : 80) + 12, sh: 62 }
+];

@@ -1,0 +1,79 @@
+    G.stat.wallTiles = drawn;
+  }
+  /** ①「四段成环」取证（纯几何）：四面牌墙的**内表面到中心的距离**是否四面全等、
+      四段是否各自落在自己那一侧、每段是否都有牌。用户 2025 明确要求
+      「牌墙要紧密围成一个方环、不能再放在屏幕四边」→ 这条可断言。
+      dIn = 内层(靠心那一层)内表面到中心的距离，恒等于 RING.rIn；dOut = 外层，恒等于 rIn+24。 */
+  function ringInfo() {
+    var c = LAYOUT.center, r = RING, slots = wallSlots(), keys = ["top", "right", "bottom", "left"];
+    var out = { cx: c.x, cy: c.y, rIn: r.rIn, rOut: r.rIn + r.depth + r.gap,
+                n: {}, dIn: {}, dOut: {}, span: {}, sameSide: true, equal: true, ok: false };
+    var i, k, s, d;
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      out.n[k] = 0; out.dIn[k] = null; out.dOut[k] = null;
+      out.span[k] = { lo: Infinity, hi: -Infinity };
+    }
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i]; k = s.side;
+      if (k === "top") {
+        d = c.y - (s.y + s.h); if (s.y + s.h > c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "bottom") {
+        d = s.y - c.y; if (s.y < c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "left") {
+        d = c.x - (s.x + s.w); if (s.x + s.w > c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      } else {
+        d = s.x - c.x; if (s.x < c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      }
+      out.n[k]++;
+      if (s.layer === 0) { if (out.dIn[k] === null || d < out.dIn[k]) out.dIn[k] = d; }
+      else { if (out.dOut[k] === null || d < out.dOut[k]) out.dOut[k] = d; }
+    }
+    for (i = 0; i < keys.length; i++) {
+      k = keys[i];
+      if (out.n[k] <= 0 || out.dIn[k] !== r.rIn || out.dOut[k] !== out.rOut) out.equal = false;
+    }
+    out.ok = out.equal && out.sameSide;
+    /* ③ 同心顺序取证（用 decorReserved() 同一份口径，两处不打架）：
+          ① 指示盘 × 四家牌河零相交  ② 四家牌河整体落在方环内表面之内
+          ③ 三家手牌背面整体落在方环外表面之外 */
+    var disc = { x: c.x - c.w / 2, y: c.y - c.h / 2, w: c.w, h: c.h };
+    var inn = { x: c.x - r.rIn, y: c.y - r.rIn, w: r.rIn * 2, h: r.rIn * 2 };
+    var ext = r.rIn + r.depth + r.gap;
+    var out2 = { x: c.x - ext, y: c.y - ext, w: ext * 2, h: ext * 2 };
+    var rv = decorReserved(), hits = [], b, o = { disc: true, riverInside: true, backOutside: true };
+    for (i = 0; i < rv.length; i++) {
+      b = rv[i];
+      if (b.name.indexOf("disc") === 0) {
+        if (decorOverlap(b, disc)) { o.disc = false; hits.push(b.name + "×center"); }
+        if (!(b.x >= inn.x && b.y >= inn.y && b.x + b.w <= inn.x + inn.w && b.y + b.h <= inn.y + inn.h)) {
+          o.riverInside = false; hits.push(b.name + "⊄方环内表面");
+        }
+      } else if (b.name.indexOf("hand") === 0 && b.name !== "hand0") {
+        if (decorOverlap(b, out2)) { o.backOutside = false; hits.push(b.name + "∩方环外表面"); }
+      }
+    }
+    o.ok = o.disc && o.riverInside && o.backOutside;
+    o.hits = hits;
+    out.order = o;
+    return out;
+  }
+  /** ② 牌墙 × 其它保留框（牌河 / 手牌 / 副露 / 中央盘）的零相交取证 ——
+      保留框与 decorCheck() 走同一份 decorReserved()，不会两处口径打架。 */
+  function wallClear() {
+    var slots = wallSlots(), rv = decorReserved(), hits = [], seen = {}, i, j, k;
+    for (i = 0; i < slots.length; i++) {
+      for (j = 0; j < rv.length; j++) {
+        if (rv[j].name === "wall") continue;
+        if (decorOverlap(slots[i], rv[j])) {
+          k = slots[i].side + "×" + rv[j].name;
+          if (!seen[k]) { seen[k] = 1; hits.push(k); }
+        }
+      }
+    }
+    return { ok: hits.length === 0, hits: hits, wall: slots.length, others: rv.length - slots.length };
+  }

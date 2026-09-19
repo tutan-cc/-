@@ -1,0 +1,31 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  const zones = [ { x: 550, y: 134, w: 140, h: 46 }, { x: 352, y: 350, w: 46, h: 104 } ];",
+      "textFile": "tools/patch/text/v2_gatezone.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "const MANIFEST = path.join(TR, \"_mj_layout_text.json\");",
+      "textFile": "tools/patch/text/v2_rawexport.txt" },
+
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "    const wpx = countBackColors(tblPx, [ { x: 550, y: 134, w: 140, h: 46 }, { x: 352, y: 350, w: 46, h: 104 } ]);",
+      "text": "    const wpx = countBackColors(tblPx, [ { x: 550, y: 114, w: 140, h: 46 }, { x: 334, y: 350, w: 46, h: 100 } ]);" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "const PROBE = [ { x: 552, y: 126, w: 148, h: 60 }, { x: 344, y: 346, w: 64, h: 112 } ];",
+      "text": "const PROBE = [ { x: 550, y: 110, w: 148, h: 58 }, { x: 330, y: 344, w: 64, h: 112 } ];" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "    sx: 552, sy: 126, sw: 148, sh: 60, z: 5 },",
+      "text": "    sx: 550, sy: 110, sw: 148, sh: 58, z: 5 }," },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "    sx: 344, sy: 346, sw: 64, sh: 112, z: 4 },",
+      "text": "    sx: 330, sy: 344, sw: 64, sh: 112, z: 4 }," },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "    sx: 518, sy: 90, sw: 204, sh: 42, z: 5 },",
+      "text": "    sx: 518, sy: 74, sw: 204, sh: 42, z: 5 }," }
+  ]
+}

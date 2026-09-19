@@ -138,6 +138,21 @@ function decPng(buf) {
   }
   return { w, h, ch, data: px };
 }
+/** 牌背取样：数「绿色主面」与「象牙白棱边」两种像素 —— 验光栅化真图，不靠源码字符串。
+    取样区：顶墙 x550..690 y134..180 + 左墙 x352..398 y350..454（余牌 40~83 都盖得住）。*/
+function countBackColors(img, zones) {
+  const out = { green: 0, ivory: 0, n: 0 };
+  if (!img) return out;
+  for (const z of zones) for (let y = z.y; y < Math.min(img.h, z.y + z.h); y++)
+    for (let x = z.x; x < Math.min(img.w, z.x + z.w); x++) {
+      if (x < 0 || y < 0) continue;
+      const i = (y * img.w + x) * img.ch, R = img.data[i], G = img.data[i + 1], B = img.data[i + 2];
+      out.n++;
+      if (G >= 90 && G >= R + 30 && G >= B + 25) out.green++;
+      else if (R >= 170 && G >= 165 && B >= 150 && R >= B + 8 && Math.abs(R - G) <= 25) out.ivory++;
+    }
+  return out;
+}
 /** 区域平均色 */
 function regionAvg(img, x0, y0, x1, y1, step) {
   let r = 0, g = 0, b = 0, n = 0;
@@ -245,6 +260,42 @@ const HTA = [
   '    A("wall_info_api", !!wf2, wf2 ? (wf2.total + " 块 / " + wf2.sizes.map(function (x) { return x.size + "×" + x.n; }).join(" · ")) : "no-api");',
   '    A("wall_size_uniform", !!(wf2 && wf2.sizes.length <= 2 && wf2.total === 68), wf2 && (wf2.sizes.length + " 种尺寸 / 共 " + wf2.total + " 块（满墙 34 墩 × 双层）"));',
   '    A("wall_share_total", !!(wf2 && wf2.counts && (wf2.counts.top + wf2.counts.right + wf2.counts.bottom + wf2.counts.left) === Math.ceil(Mahjong.debug.wall().count / 4)), wf2 && wf2.counts && ("上" + wf2.counts.top + "/右" + wf2.counts.right + "/下" + wf2.counts.bottom + "/左" + wf2.counts.left));',
+  '    /* ── 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 ── */',
+  '    var K4 = ["top", "right", "bottom", "left"];',
+  '    var rgi = (Mahjong.debug.ring ? Mahjong.debug.ring() : null);',
+  '    A("ring_api", !!rgi, rgi ? ("方环内表面到中心 " + JSON.stringify(rgi.dIn)) : "no-api");',
+  '    A("ring_equal", !!(rgi && rgi.equal), rgi ? (K4.map(function (k) { return k + "=" + rgi.dIn[k]; }).join(" · ") + "（四面全等 " + rgi.rIn + "px · 外层 " + rgi.rOut + "px）") : "no-api");',
+  '    A("ring_sides", !!(rgi && rgi.sameSide && K4.every(function (k) { return rgi.n[k] > 0; })), rgi ? ("四段各在自己那一侧=" + rgi.sameSide + " · 各段墩数 " + K4.map(function (k) { return k + ":" + rgi.n[k]; }).join("/")) : "no-api");',
+  '    var wcl = (Mahjong.debug.wallClear ? Mahjong.debug.wallClear() : null);',
+  '    A("wall_clear", !!(wcl && wcl.ok), wcl ? ("牌墙 " + wcl.wall + " 块 × 其它保留框 " + wcl.others + " 个零相交" + (wcl.ok ? " ✔" : " → " + JSON.stringify(wcl.hits))) : "no-api");',
+  '    A("ring_order", !!(rgi && rgi.order && rgi.order.ok), (rgi && rgi.order) ? ("指示盘×牌河零相交=" + rgi.order.disc + " · 牌河全在方环内=" + rgi.order.riverInside + " · 手牌全在方环外=" + rgi.order.backOutside) : "no-api");',
+  '    var wsp = (Mahjong.debug.wallSpan ? Mahjong.debug.wallSpan() : null);',
+  '    A("wall_gap_centered", !!(wsp && K4.every(function (k) { return wsp[k] && Math.abs(wsp[k].mid - wsp[k].want) <= 0.01; })), wsp ? (K4.map(function (k) { return k + ":" + (wsp[k] ? wsp[k].n : "-") + "墩 mid=" + (wsp[k] ? wsp[k].mid : "-") + "/want=" + (wsp[k] ? wsp[k].want : "-"); }).join(" · ")) : "no-api");',
+  '    var rsv = (Mahjong.debug.reserved ? Mahjong.debug.reserved() : null);',
+  '    var wbx = rsv ? rsv.filter(function (b) { return b.name === "wall"; }) : [];',
+  '    var m0 = 1e9; wbx.forEach(function (b) { m0 = Math.min(m0, b.x - 14, b.y - 14, 1226 - (b.x + b.w), 846 - (b.y + b.h)); });',
+  '    A("wall_off_edges", wbx.length === 34 && m0 >= 30, wbx.length + " 墩（每墩两枚）· 整环离绒面边最小余量 " + m0 + "px ≥30（方环已放大到参考图比例，余量自然变小）");',
+  '    /* ── 本批新增：牌墙一墩两枚（照放大参考图）+ 3D 牌背一面绿一面白 ── */',
+  '    var wi2 = (Mahjong.debug.wallInfo ? Mahjong.debug.wallInfo() : null);',
+  '    A("wall_stack_two", !!(wi2 && wi2.total === 68 && wi2.stacks === 34 && wi2.perStack === 2 && wi2.stackDepth === 2 * wi2.tileDepth), wi2 ? ("满墙 " + wi2.stacks + " 墩 × " + wi2.perStack + " 枚 = " + wi2.total + " 枚 · 单枚牌背深 " + wi2.tileDepth + "px / 整墩 " + wi2.stackDepth + "px = 2 × " + wi2.tileDepth) : "no-api");',
+  '    var remain2 = Mahjong.debug.wall().count, wantVis2 = Math.ceil(remain2 / 2);',
+  '    A("wall_draw_count", !!(wi2 && wi2.tiles === wantVis2 && wi2.drawnStacks === Math.ceil(wantVis2 / 2)), wi2 ? ("余 " + remain2 + " 张 → 画出 " + wi2.tiles + " 枚（= ceil(" + remain2 + "/2)）/ " + wi2.drawnStacks + " 墩 · 余牌不足时外枚先消失") : "no-api");',
+  '    var bSolid = (Mahjong.debug.renderStats() || {}).backSolid || 0;   /* 必须用**本帧**计数：tileBackSolid 是累计值 */',
+  '    A("tileback_green_ivory", !!(bSolid > 0 && ar && ar.tileBackGreen >= bSolid && ar.tileBackIvory > 0), "本帧牌背 " + bSolid + " 枚 · 绿面 " + ((ar && ar.tileBackGreen) || 0) + " 块（每枚都有）· 象牙白棱 " + ((ar && ar.tileBackIvory) || 0) + " 块（牌墙外枚 + 三家手牌 + 暗杠；墙内枚按设计不画白棱，整段才是一条连续绿带）");',
+  '    /* ── 本批新增：方环比例 / 墙段连续性（几何，探针内可测）── */',
+  '    A("ring_ratio", !!(rgi && rgi.ratioOK), rgi ? ("方环占桌面 宽 " + rgi.ratio.w.toFixed(3) + " ≥0.60 · 高 " + rgi.ratio.h.toFixed(3) + " ≥0.78（参考图 0.645 / 0.815）· 外接框 " + rgi.box.w + "×" + rgi.box.h) : "no-api");',
+  '    var rsv2 = (Mahjong.debug.reserved ? Mahjong.debug.reserved() : null) || [];',
+  '    var wbs = rsv2.filter(function (b) { return b.name === "wall"; }), mg2 = 0;',
+  '    ["top", "bottom", "left", "right"].forEach(function (sd) {',
+  '      var gg = wbs.filter(function (b) { return b.side === sd; }); if (!gg.length) return;',
+  '      var hz = (sd === "top" || sd === "bottom");',
+  '      gg.sort(function (a, b) { return hz ? a.x - b.x : a.y - b.y; });',
+  '      for (var i2 = 1; i2 < gg.length; i2++) {',
+  '        var gp = hz ? (gg[i2].x - (gg[i2 - 1].x + gg[i2 - 1].w)) : (gg[i2].y - (gg[i2 - 1].y + gg[i2 - 1].h));',
+  '        if (gp > mg2) mg2 = gp;',
+  '      }',
+  '    });',
+  '    A("wall_continuous", wbs.length > 0 && mg2 <= 1, "同段相邻墩最大缝 " + mg2 + "px ≤ 1（紧贴成一条连续绿带，不是一格格排开）");',
   '    A("render_wallStacks", rs && rs.wallStacks > 0, rs && rs.wallStacks);',
   '    /* ── 手牌排序 / 摸牌位置 / 牌面尺寸 ── */',
   '    A("hand_sorted", st.handSorted === true, (st.hand || []).join(","));',
@@ -759,6 +810,21 @@ const CHECK_ZH = {
   wall_info_api: "牌墙几何出口（Mahjong.debug.wallInfo）可读",
   wall_size_uniform: "牌墙牌背尺寸一致：只有横向 30×22 / 纵向 22×30 两种，满墙 68 块（34 墩双层）",
   wall_share_total: "牌墙四边墩数分配之和 = 剩余墩数（上/右/下/左 等比缩短）",
+  /* 本批新增：牌墙一墩两枚 + 3D 牌背（一面绿一面白）*/
+  wall_stack_two: "牌墙一墩两枚：满墙 34 墩 × 2 枚 = 68 枚；整墩 46px = 2 × 单枚 23px（照放大参考图）",
+  wall_draw_count: "牌墙画出枚数 = ceil(余牌 / 2)；余牌不足时外枚先消失 → 只剩内枚单层",
+  tileback_green_ivory: "每一枚牌背都有「绿色主面」；象牙白棱边画在牌墙外枚 / 三家手牌 / 暗杠上（墙内枚按设计不画白棱 → 整段是一条连续绿带）",
+  /* 本批新增：方环比例 / 墙段连续性（几何，探针内可测）*/
+  ring_ratio: "方环占桌面比例：宽 ≥0.60 · 高 ≥0.78（参考图 0.645 / 0.815）",
+  wall_continuous: "墙段连续性：同段相邻墩间距 ≤1px（紧贴成一条连续绿带）",
+  /* 本批新增：同心三层（照参考图重排）—— 牌墙方环 / 牌河在内 / 手牌在外 */
+  ring_api: "同心方环出口（Mahjong.debug.ring）可读（四面内表面到中心的距离）",
+  ring_equal: "牌墙四段内表面到中心**四面全等** = RING.rIn（240px），外层 286px",
+  ring_sides: "牌墙四段各在自己那一侧（上/右/下/左），每段都有牌",
+  wall_clear: "牌墙满墙 68 块 × 牌河 / 手牌 / 副露 / 中央盘保留框零相交（用户验收项②）",
+  ring_order: "同心三层顺序：指示盘×牌河零相交 · 牌河全在方环内 · 手牌全在方环外",
+  wall_gap_centered: "牌墙四面各自以本侧中点为中心（缺口留在正中，偶数墩也不偏半块）",
+  wall_off_edges: "牌墙不再贴屏幕四边：整环外接框离绒面边 ≥60px（旧布局上边只剩 12px）",
   domLen: "牌桌 DOM 已生成", px_ratio: "牌桌铺满（不透明像素占比）", px_colors: "画面颜色数（牌面/绒面/牌背）",
   px_handColors: "手牌区颜色数（旧版 253~260 色，越高越清晰）", render_faces: "绘制手牌牌面张数 ≥13",
   mj_art_api: "麻将贴图状态出口（Mahjong.debug.art）可读",
@@ -879,7 +945,9 @@ async function runTrident() {
   fs.writeFileSync(htaPath, HTA.replace("__DIR__", JSON.stringify(OUT + "\\")), "utf8");
   const p = spawn(MSHTA, [htaPath], { stdio: "ignore", cwd: OUT });
   let out = null;
-  for (let i = 0; i < 150; i++) {
+  /* 150×500ms = 75s 原本够用；3D 立牌 + 一墩两枚后每帧绘制指令变多，
+     探针整体耗时上去了 → 放宽到 400×500ms = 200s（只放宽等待，断言一条没动）。*/
+  for (let i = 0; i < 400; i++) {
     await sleep(500);
     if (fs.existsSync(OUT + "\\_mj_render_out.txt")) {
       const raw = fs.readFileSync(OUT + "\\_mj_render_out.txt", "utf8");
@@ -1200,7 +1268,7 @@ async function runChrome() {
     else {
       const ctr = regionAvg(tblPx, 560, 380, 680, 480, 3);
       const left = regionAvg(tblPx, 2, 260, 46, 600, 3);
-      const top = regionAvg(tblPx, 300, 2, 900, 34, 5);
+      const top = regionAvg(tblPx, 300, 2, 900, 12, 5);   /* 方环放大后 y16 起就有牌，背景取样收到绒面之上 (y2..12) */
       const rgb = c => [Math.round(c.r), Math.round(c.g), Math.round(c.b)];
       info.bg_px = { center: rgb(ctr), left: rgb(left), top: rgb(top) };
       /* 判据：① 画面四边是暖木（R > G）→ 照片背景真的铺上了（旧程序化底只有绿绒 + 黑边）；
@@ -1214,6 +1282,40 @@ async function runChrome() {
         errors.push("包间背景像素取证失败（中心 " + rgb(ctr).join(",") + " / 左 " + rgb(left).join(",") +
                     " / 顶 " + rgb(top).join(",") + "，中心绿超出 " + greenExcess + "）");
       }
+    }
+    /* ── 牌背像素级取证：牌墙区域里必须同时有「绿色主面」与「象牙白棱边」（一面绿一面白）── */
+    const wpx = countBackColors(tblPx, [ { x: 560, y: 55, w: 120, h: 23 }, { x: 255, y: 340, w: 24, h: 100 } ]);
+    info.tileBackPx = wpx;
+    if (wpx.green > 200 && wpx.ivory > 60) {
+      checks.push("牌背像素取证（牌墙取样 " + wpx.n + " px：绿 " + wpx.green + " px / 象牙白 " + wpx.ivory +
+                  " px）→ 一面绿、一面象牙白 ✔");
+    } else {
+      errors.push("牌背像素取证失败（绿 " + wpx.green + " / 象牙白 " + wpx.ivory +
+                  "）→ 牌墙区域没同时画出「绿色主面」与「象牙白棱边」");
+    }
+    /* ── 绿面朝外（截图像素实测）：顶墙带外沿那条窄带必须是象牙白、紧挨着的内侧带必须是绿面 ── */
+    const stOut = countBackColors(tblPx, [ { x: 566, y: 57, w: 108, h: 3 } ]);
+    const stIn = countBackColors(tblPx, [ { x: 566, y: 62, w: 108, h: 14 } ]);
+    const fOut = stOut.n ? stOut.ivory / stOut.n : 0, fIn = stIn.n ? stIn.green / stIn.n : 0;
+    if (fOut >= 0.55 && fIn >= 0.60) {
+      checks.push("绿面朝外（截图像素实测）：顶墙外沿窄带象牙白占比 " + fOut.toFixed(2) + " ≥0.55 · 内侧带绿面占比 " +
+                  fIn.toFixed(2) + " ≥0.60 → 白棱压在外沿、绿面朝外 ✔");
+    } else {
+      errors.push("绿面朝外失败：外沿白 " + fOut.toFixed(2) + "（需 ≥0.55）/ 内侧绿 " + fIn.toFixed(2) + "（需 ≥0.60）");
+    }
+    /* ── 圆盘文字可见：文字区里非深色像素占比达标（证明「余 N 张 · 第 N 巡」真的合成上去了）── */
+    let dBright = 0, dTot = 0;
+    if (tblPx) for (let yy = 358; yy < 402; yy++) for (let xx = 582; xx < 658; xx++) {
+      const ii = (yy * tblPx.w + xx) * tblPx.ch;
+      dTot++;
+      if (tblPx.data[ii] + tblPx.data[ii + 1] + tblPx.data[ii + 2] > 330) dBright++;
+    }
+    const dRat = dTot ? dBright / dTot : 0;
+    if (dRat >= 0.03) {
+      checks.push("圆盘文字可见：文字区 " + dTot + " px 里非深色 " + dBright + " px（占比 " + dRat.toFixed(3) +
+                  " ≥0.03）→「余 N 张 · 第 N 巡」已合成回圆盘 ✔");
+    } else {
+      errors.push("圆盘文字不可读：文字区非深色占比只有 " + dRat.toFixed(3) + "（需 ≥0.03）");
     }
     if (!tri.png2) console.log("[提示] 结算面板截图缺失（不影响断言）");
   }

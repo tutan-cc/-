@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  /**\r\n   * 牌背：饱满立体的「一张纯色麻将」（照参考图里那种绿背）。",
+      "to": "    G.tileBackSolid = (G.tileBackSolid || 0) + 1;\r\n  }",
+      "textFile": "tools/patch/text/back3d.txt" }
+  ]
+}

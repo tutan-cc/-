@@ -1,0 +1,26 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-backs.js",
+      "from": "   tools/mj/shots-backs.js — 测试截图/mj_backs.png：牌背特写（纯色饱满立体 · 无斜纹）",
+      "to": "   运行（仓库根）：node tools/mj/shots-backs.js",
+      "textFile": "tools/patch/text/backs_hdr.txt" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "function blit(src, sx, sy, sw, sh, dst, dx, dy, dw, dh) {",
+      "textFile": "tools/patch/text/backs_helper.txt" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "const wallTile = (r.wall && r.wall.sizes && r.wall.sizes[0]) ? r.wall.sizes[0].size : \"-\";",
+      "to": "    sw: (anGang.length === 2 ? (anGang[1].x + anGang[1].w - anGang[0].x) : 80) + 12, sh: 62 }\r\n];",
+      "textFile": "tools/patch/text/backs_panels.txt" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "out.fillText(\"牌背特写 · 饱满立体的纯色麻将（无斜纹 / 无花纹）· 三处共用同一套画法\", W2 / 2, 40);",
+      "to": "out.fillText(\"圆角矩形 + 顶面亮/侧面暗的厚度过渡 + 顶左高光边 + 细描边；四家颜色一致，尺寸由牌位决定（牌墙每张完全一致）\", W2 / 2, 72);",
+      "textFile": "tools/patch/text/backs_cap1.txt" },
+
+    { "file": "tools/mj/shots-backs.js",
+      "from": "out.fillText(\"art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」素材，与「纯色无花纹」冲突 → 按用户指示改用纯色矢量（该素材故意不接，本帧命中 0 次）\", W2 / 2, totalH - 52);",
+      "text": "out.fillText(\"牌墙每墩两枚 = 「余 N 张 / 2」枚，余牌不足时**外枚先消失**（只剩内枚单层）→ 画出的枚数与计数一致；棱边一律朝外（背离桌心）\", W2 / 2, totalH - 52);\r\nout.fillText(\"art/icons/mj/tile_back.png 是「深蓝 + 鱼鳞纹」素材，与「纯色无花纹」冲突 → 按用户指示改用纯色矢量（该素材故意不接，本帧命中 0 次）\", W2 / 2, totalH - 78);" }
+  ]
+}

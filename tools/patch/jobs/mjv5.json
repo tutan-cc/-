@@ -1,0 +1,24 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "/* 牌墙像素实测：在「顶墙 / 左墙」两块取样区里数「绿」与「象牙白」像素 —— 不靠源码字符串。",
+      "to": "/* ── 几何自检（纯几何，可重复复现）── */",
+      "textFile": "tools/patch/text/v5_helpers.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(!!(L.disc && L.disc.tw === 30 && L.disc.th === 40), \"牌河牌面 30×40，四家统一每行 6 张换行\");",
+      "textFile": "tools/patch/text/v5_disc.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(wb.length === 34 && wMargin >= 60, \"牌墙整环外接框 x\" + wx + \"..\" + wx2 + \" y\" + wy + \"..\" + wy2 +\r\n    \"（34 墩 × 每墩两枚 = 68 枚），离绒面边（14/14/1226/846）最小余量 \" + wMargin + \"px ≥ 60（证明已离开屏幕四边）\");",
+      "textFile": "tools/patch/text/v5_checks.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "    k4.map(k => k + \"=\" + (rg.dIn || {})[k]).join(\" · \") + \"（四面全等 \" + rg.rIn + \"px）· 外层 \" +\r\n    rg.rOut + \"px · 四段各在自己那一侧=\" + rg.sameSide + \" · 各段墩数 \" +",
+      "text": "    k4.map(k => k + \"=\" + (rg.dIn || {})[k]).join(\" · \") + \"（上下 \" + rg.rInY + \"px / 左右 \" + rg.rInX + \"px）· 外沿 \" +\r\n    rg.rOutX + \"×\" + rg.rOutY + \"px · 四段各在自己那一侧=\" + rg.sameSide + \" · 各段墩数 \" +" },
+
+    { "file": "mahjong.js",
+      "from": "    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: \"wall\", x: s.x, y: s.y, w: s.w, h: s.h }); }",
+      "text": "    for (i = 0; i < slots.length; i++) { s = slots[i]; out.push({ name: \"wall\", side: s.side, x: s.x, y: s.y, w: s.w, h: s.h }); }" }
+  ]
+}

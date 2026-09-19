@@ -1,0 +1,7 @@
+      /** 同心方环取证（①四段成环 ③牌河在内 / 手牌在外的同心顺序）*/
+      ring: ringInfo,
+      /** 牌墙满墙 68 块 与 牌河 / 手牌 / 副露 / 中央盘 的零相交取证（②）*/
+      wallClear: wallClear,
+      /** 保留框清单（decorCheck / wallClear / ringInfo.order 共用同一份口径）*/
+      reserved: decorReserved,
+      /** 牌墙取证：同一侧的牌背尺寸是否一致 + 当前各边墩数（满墙 34 墩 × 双层 = 68 块） */

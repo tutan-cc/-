@@ -1,0 +1,20 @@
+  /**
+   * 牌墙（照参考图 2 的**同心三层**结构重排）：四面牌墙紧密围成一个方环「□」，
+   * 贴住中央指示盘外侧，**再也不是贴在屏幕四边**。
+   *   · 方环内表面到中心的距离四面**全等**（RING.rIn = 222）→「四段成环」可断言
+   *   · 每边**双层叠放**（外层 / 内层两排牌背，条条对齐），随剩余张数各自从两端同时变短
+   *     （缺口留在正中，与真实牌局一致）。同一侧的牌背尺寸完全一致。
+   *   · 横向边：每张 30×22（wall.tw × wall.th）· 纵向边：每张 22×30（wall.side.tw × wall.side.th）
+   *   · 内层到中心 222 / 外层到中心 246（两排相差 gap + depth = 24px 深）
+   * 34 墩（136 张）的分配照方环均分：上 9 / 右 8 / 下 9 / 左 8 —— 合计 34。
+   *   （照参考图：方环四角本来就留缺口，四段不必首尾相接；每段各自从中点向两端生长。）
+   */
+  var WALL_SHARE = [
+    { side: "top", n: 9 }, { side: "right", n: 8 }, { side: "bottom", n: 9 }, { side: "left", n: 8 }
+  ];
+  var WALL_GEO = {
+    top: { horiz: true, cx: 620, outer: 134, inner: 158 },
+    bottom: { horiz: true, cx: 620, outer: 648, inner: 624 },
+    left: { horiz: false, cy: 402, outer: 352, inner: 376 },
+    right: { horiz: false, cy: 402, outer: 866, inner: 842 }
+  };

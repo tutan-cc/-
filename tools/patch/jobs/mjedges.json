@@ -1,0 +1,32 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "  function drawBackRowV(g, cx, cy, n, vertical) {",
+      "to": "      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, {}); }\r\n    }\r\n  }",
+      "text": "  function drawBackRowV(g, cx, cy, n, vertical, edge) {\r\n    var b = LAYOUT.back, i, x, y, total = (n - 1) * b.step + b.wide;\r\n    for (i = 0; i < n; i++) {\r\n      if (vertical) { x = cx - b.depth / 2; y = cy - total / 2 + i * b.step; drawTileBack(g, x, y, b.depth, b.wide, { edge: edge || \"right\" }); }\r\n      else { x = cx - total / 2 + i * b.step; y = cy - b.depth / 2; drawTileBack(g, x, y, b.wide, b.depth, { edge: edge || \"top\" }); }\r\n    }\r\n  }" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 620, 111, backN, false);",
+      "text": "      drawBackRowV(g, 620, 111, backN, false, \"top\");" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 911, 402, backN, true);",
+      "text": "      drawBackRowV(g, 911, 402, backN, true, \"right\");" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 329, 402, backN, true);",
+      "text": "      drawBackRowV(g, 329, 402, backN, true, \"left\");" },
+
+    { "file": "mahjong.js",
+      "from": "        drawTileBack(g, tx, ty, w, h, { light: true });",
+      "text": "        drawTileBack(g, tx, ty, w, h, { edge: (dir === \"h\" ? \"top\" : (seat === 1 ? \"right\" : \"left\")), dim: true });" },
+
+    { "file": "mahjong.js",
+      "from": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, backSolid: 0, resHands: 0, resHandTiles: 0, meldRects: [] };",
+      "text": "    G.stat = { faces: 0, backs: 0, discards: 0, meldTiles: 0, wallStacks: 0, wallTiles: 0, wallDrawnStacks: 0, backSolid: 0, backGreen: 0, backIvory: 0, resHands: 0, resHandTiles: 0, meldRects: [] };" },
+
+    { "file": "mahjong.js",
+      "from": "                 roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0, tileBackSolid: G.tileBackSolid || 0,",
+      "text": "                 roomBg: !!G.roomBg, tileBackTex: G.tileBackTex || 0, tileBackSolid: G.tileBackSolid || 0,\r\n                 tileBackGreen: (G.stat && G.stat.backGreen) || 0,\r\n                 tileBackIvory: (G.stat && G.stat.backIvory) || 0," }
+  ]
+}

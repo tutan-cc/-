@@ -1,0 +1,23 @@
+    for (i = 0; i < slots.length; i++) {
+      s = slots[i]; k = s.side;
+      if (k === "top") {
+        d = c.y - (s.y + s.h); d2 = c.y - s.y;
+        if (s.y + s.h > c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "bottom") {
+        d = s.y - c.y; d2 = (s.y + s.h) - c.y;
+        if (s.y < c.y) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.x); out.span[k].hi = Math.max(out.span[k].hi, s.x + s.w);
+      } else if (k === "left") {
+        d = c.x - (s.x + s.w); d2 = c.x - s.x;
+        if (s.x + s.w > c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      } else {
+        d = s.x - c.x; d2 = (s.x + s.w) - c.x;
+        if (s.x < c.x) out.sameSide = false;
+        out.span[k].lo = Math.min(out.span[k].lo, s.y); out.span[k].hi = Math.max(out.span[k].hi, s.y + s.h);
+      }
+      out.n[k]++;                                   // n = 本侧墩数
+      if (out.dIn[k] === null || d < out.dIn[k]) out.dIn[k] = d;
+      if (out.dOut[k] === null || d2 > out.dOut[k]) out.dOut[k] = d2;
+    }

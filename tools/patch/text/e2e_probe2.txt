@@ -1,0 +1,7 @@
+  '    A("wall_off_edges", wbx.length === 34 && m0 >= 60, wbx.length + " 墩（每墩两枚）· 整环离绒面边最小余量 " + m0 + "px（旧布局只有 12px → 已确实离开屏幕四边）");',
+  '    /* ── 本批新增：牌墙一墩两枚（照放大参考图）+ 3D 牌背一面绿一面白 ── */',
+  '    var wi2 = (Mahjong.debug.wallInfo ? Mahjong.debug.wallInfo() : null);',
+  '    A("wall_stack_two", !!(wi2 && wi2.total === 68 && wi2.stacks === 34 && wi2.perStack === 2 && wi2.stackDepth === 2 * wi2.tileDepth), wi2 ? ("满墙 " + wi2.stacks + " 墩 × " + wi2.perStack + " 枚 = " + wi2.total + " 枚 · 单枚牌背深 " + wi2.tileDepth + "px / 整墩 " + wi2.stackDepth + "px = 2 × " + wi2.tileDepth) : "no-api");',
+  '    var remain2 = Mahjong.debug.wall().count, wantVis2 = Math.ceil(remain2 / 2);',
+  '    A("wall_draw_count", !!(wi2 && wi2.tiles === wantVis2 && wi2.drawnStacks === Math.ceil(wantVis2 / 2)), wi2 ? ("余 " + remain2 + " 张 → 画出 " + wi2.tiles + " 枚（= ceil(" + remain2 + "/2)）/ " + wi2.drawnStacks + " 墩 · 余牌不足时外枚先消失") : "no-api");',
+  '    A("tileback_green_ivory", !!(ar && ar.tileBackGreen > 0 && ar.tileBackIvory > 0 && ar.tileBackGreen === ar.tileBackIvory), ar && ("每枚牌背 = 绿面 + 象牙白棱：绿面 " + ar.tileBackGreen + " 块 / 白棱 " + ar.tileBackIvory + " 块（本帧牌背 " + ar.tileBackSolid + " 枚）"));',

@@ -1,0 +1,87 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    center: { x: 620, y: 400, w: 116, h: 116 }",
+      "text": "    center: { x: 620, y: 380, w: 118, h: 118 }" },
+
+    { "file": "mahjong.js",
+      "from": "    hand: { y: 752, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 },",
+      "text": "    hand: { y: 762, tw: 56, th: 78, step: 62, gap: 12, lift: 7, drawnLift: 12 }," },
+
+    { "file": "mahjong.js",
+      "from": "    meld0: { x: 1057, y: 694, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 },",
+      "text": "    meld0: { x: 1057, y: 711, tw: 34, th: 46, gap: 4, groupGap: 14, avail: 620 }," },
+
+    { "file": "mahjong.js",
+      "from": "    disc: { tw: 30, th: 40, sx: 32, sy: 42 },",
+      "text": "    disc: { tw: 36, th: 48, sx: 38, sy: 50 }," },
+
+    { "file": "mahjong.js",
+      "from": "  var RING = { cx: 620, cy: 400, rIn: 240, gap: 2, depth: 22 };",
+      "to": "    3: { x: 530, y: 275, perRow: 6, dir: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/v4_ring.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var WALL_GEO = {\r\n    top: { horiz: true, cx: 620, inner: 160 },\r\n    bottom: { horiz: true, cx: 620, inner: 640 },\r\n    left: { horiz: false, cy: 400, inner: 380 },\r\n    right: { horiz: false, cy: 400, inner: 860 }\r\n  };",
+      "textFile": "tools/patch/text/v4_wallgeo.txt" },
+
+    { "file": "mahjong.js",
+      "from": "  var SEAT_POS = {\r\n    0: { x: 62, y: 752, align: \"left\" },\r\n    1: { x: 985, y: 385, align: \"left\" },\r\n    2: { x: 138, y: 43, align: \"left\" },\r\n    3: { x: 131, y: 385, align: \"left\" }\r\n  };",
+      "textFile": "tools/patch/text/v4_seatpos.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    var c = LAYOUT.center, r = RING, slots = wallSlots(), keys = [\"top\", \"right\", \"bottom\", \"left\"];\r\n    var out = { cx: c.x, cy: c.y, rIn: r.rIn, rOut: r.rIn + LAYOUT.wall.stackDepth,",
+      "to": "    out.order = o;\r\n    return out;\r\n  }",
+      "textFile": "tools/patch/text/v4_ringinfo.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    dice:    { x: 1140, y: 690, s: 100, rot: -0.10, id: \"dice\" },",
+      "to": "    ashtray: { x: 110, y: 700, s: 66,  id: \"ashtray\" }",
+      "textFile": "tools/patch/text/v4_decor.txt" },
+
+    { "file": "mahjong.js",
+      "from": "    /* 四家手牌：下 186..1054（14 张最宽）· 右 x896..926 · 上 x438..802 · 左 x314..344",
+      "to": "    out.push({ name: \"disc3\", x: DISC_ZONE[3].x - 3 * d.sx, y: DISC_ZONE[3].y, w: 3 * d.sx + d.tw, h: 5 * d.sy + d.th });",
+      "textFile": "tools/patch/text/v4_reserved.txt" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 620, 95, backN, false, \"top\");",
+      "text": "      drawBackRowV(g, 620, 35, backN, false, \"top\");" },
+
+    { "file": "mahjong.js",
+      "from": "      x = 620 - tot / 2;\r\n      y = 43;",
+      "text": "      x = 230 - tot / 2;\r\n      y = 16;" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 925, 400, backN, true, \"right\");",
+      "text": "      drawBackRowV(g, 1007, 380, backN, true, \"right\");" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 943, y, mS, \"v\", false, 1);",
+      "text": "      y = 380 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 1028, y, mS, \"v\", false, 1);" },
+
+    { "file": "mahjong.js",
+      "from": "      drawBackRowV(g, 315, 400, backN, true, \"left\");",
+      "text": "      drawBackRowV(g, 233, 380, backN, true, \"left\");" },
+
+    { "file": "mahjong.js",
+      "from": "      y = 400 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 263, y, mS, \"v\", false, 3);",
+      "text": "      y = 380 - tot / 2;\r\n      for (j = 0; j < melds.length; j++) {\r\n        res = drawMeldGroup(g, melds[j], 178, y, mS, \"v\", false, 3);" },
+
+    { "file": "mahjong.js",
+      "from": "    edge: .28, line: .05, thick: .11, r: .20,",
+      "text": "    edge: .28, edgeThin: .13, line: .05, thick: .11, r: .20," },
+
+    { "file": "mahjong.js",
+      "from": "    var e = Math.max(2, along * B.edge);                       // 象牙白棱边厚",
+      "text": "    var e = Math.max(2, along * (o.thin ? B.edgeThin : B.edge));   // 象牙白棱边厚（牌墙用 thin）" },
+
+    { "file": "mahjong.js",
+      "from": "      out.tiles.push({ x: out.x, y: oy, w: tw, h: D, edge: side, dim: true });\r\n      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false });",
+      "text": "      out.tiles.push({ x: out.x, y: oy, w: tw, h: D, edge: side, dim: true, thin: true });\r\n      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false, thin: true });" },
+
+    { "file": "mahjong.js",
+      "from": "      out.tiles.push({ x: ox, y: out.y, w: D, h: tw, edge: side, dim: true });\r\n      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false });",
+      "text": "      out.tiles.push({ x: ox, y: out.y, w: D, h: tw, edge: side, dim: true, thin: true });\r\n      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false, thin: true });" }
+  ]
+}

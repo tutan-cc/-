@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    { "file": "tools/mj/shots-layout.js",
+      "from": "           ring: MJ.debug.ring ? MJ.debug.ring() : null,\r\n           wallClear: MJ.debug.wallClear ? MJ.debug.wallClear() : null,\r\n           reserved: MJ.debug.reserved ? MJ.debug.reserved() : null,",
+      "textFile": "tools/patch/text/ring_gate_a.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  add(wb.length === 68 && wMargin >= 60, \"牌墙整环外接框 x\" + wx + \"..\" + wx2 + \" y\" + wy + \"..\" + wy2 +\r\n    \"，离绒面边（14/14/1226/846）最小余量 \" + wMargin + \"px ≥ 60（证明已离开屏幕四边）\");",
+      "textFile": "tools/patch/text/ring_gate_d.txt" }
+  ]
+}

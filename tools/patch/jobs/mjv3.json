@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    { "file": "tools/e2e/mj-browser.js",
+      "from": "  ring_equal: \"牌墙四段内表面到中心**四面全等** = RING.rIn（222px），外层 246px\",",
+      "textFile": "tools/patch/text/v3_zh.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  { t: \"同心三层（照参考图重排）：最中央圆形指示盘 → 内圈牌墙方环（双层 · 四面内表面到中心等距 222px）→ 方环内侧牌河（每行 6 张 · 朝心）→ 外圈四家手牌 + 副露 + 座位牌\",",
+      "textFile": "tools/patch/text/v3_cap.txt" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  { t: \"牌墙方环：上9/右8/下9/左8 墩 · 内层到中心 222px / 外层 246px · 四段各在自己那侧 \" +",
+      "text": "  { t: \"牌墙方环：上9/右8/下9/左8 墩 · 内层到中心 240px / 外层 286px · 四段各在自己那侧 \" +" }
+  ]
+}

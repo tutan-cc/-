@@ -1,0 +1,31 @@
+{
+  "jobs": [
+    { "file": "mahjong.js",
+      "from": "    edge: .28, edgeThin: .13, line: .05, thick: .11, r: .20,",
+      "text": "    edge: .28, edgeThin: .20, line: .05, thick: .11, r: .20," },
+
+    { "file": "mahjong.js",
+      "from": "    var e = Math.max(2, along * (o.thin ? B.edgeThin : B.edge));   // 象牙白棱边厚（牌墙用 thin）",
+      "text": "    /* 象牙白棱边厚：牌墙「外枚」用 thin（窄白棱压在本段外沿）；牌墙「内枚」用 noEdge（不画白棱，\r\n       只靠分界阴影线区分两枚）→ 整段看起来是**一条连续绿带 + 上沿一条白棱**，而不是一圈白条纹。*/\r\n    var e = o.noEdge ? 0 : Math.max(2, along * (o.thin ? B.edgeThin : B.edge));" },
+
+    { "file": "mahjong.js",
+      "from": "      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false, thin: true });",
+      "text": "      out.tiles.push({ x: out.x, y: iy, w: tw, h: D, edge: side, dim: false, noEdge: true });" },
+
+    { "file": "mahjong.js",
+      "from": "      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false, thin: true });",
+      "text": "      out.tiles.push({ x: ix, y: out.y, w: D, h: tw, edge: side, dim: false, noEdge: true });" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  const zones = [ { x: 560, y: 60, w: 120, h: 16 }, { x: 262, y: 340, w: 16, h: 100 } ];",
+      "text": "  const zones = [ { x: 560, y: 60, w: 120, h: 14 }, { x: 264, y: 340, w: 14, h: 100 } ];" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "    px.ivory + \" px（顶墙 x550..690 y134..180 + 左墙 x352..398 y350..454 两块取样区）\");",
+      "text": "    px.ivory + \" px（顶墙 x560..680 y60..74 + 左墙 x264..278 y340..440 两块取样区）\");" },
+
+    { "file": "tools/mj/shots-layout.js",
+      "from": "  out.white = frac({ x: 566, y: 55, w: 108, h: 4 }, \"white\");",
+      "text": "  out.white = frac({ x: 566, y: 55, w: 108, h: 5 }, \"white\");" }
+  ]
+}
