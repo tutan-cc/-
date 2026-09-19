@@ -1,5 +1,5 @@
 {
-    "package":  "重生2-原型-媒体素材",
+    "package":  "天枢-原型-媒体素材",
     "version":  "v1.15",
     "note":  "素材不入 git 仓库；本清单入库作为契约。协作者拿到 media-v1.15.zip 解压到仓库同级目录后，运行 link-media.ps1 即可接通。",
     "root":  [
